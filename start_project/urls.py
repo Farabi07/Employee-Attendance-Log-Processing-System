@@ -70,6 +70,11 @@ urlpatterns = [
 	path('leave_type/', include('attendance.urls.leave_type_urls')),
 	path('leave_request/', include('attendance.urls.leave_request_urls')),
 	path('attendance/', include('attendance.urls.attendance_urls')),
+	path('notification/', include('attendance.urls.notification_urls')),
+
+	# Multi-tenant SaaS: signup + platform owner
+	path('saas/', include('authentication.urls.signup_urls')),
+	path('billing/', include('billing.urls.billing_urls')),
 
 
 	# YOUR PATTERNS

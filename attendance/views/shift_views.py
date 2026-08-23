@@ -2,7 +2,6 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 
 from drf_spectacular.utils import extend_schema, OpenApiParameter
@@ -10,6 +9,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from attendance.models import Shift
 from attendance.serializers import ShiftSerializer, ShiftListSerializer
 from attendance.filters import ShiftFilter
+from authentication.permissions import IsManagerOrModerator, HasActiveSubscription
 
 from commons.pagination import Pagination
 
@@ -27,9 +27,9 @@ from commons.pagination import Pagination
 	responses=ShiftListSerializer
 )
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def getAllShift(request):
-	shifts = Shift.objects.all()
+	shifts = Shift.objects.filter(organization=request.user.organization)
 	total_elements = shifts.count()
 
 	page = request.query_params.get('page')
@@ -57,9 +57,9 @@ def getAllShift(request):
 
 @extend_schema(request=ShiftListSerializer, responses=ShiftListSerializer)
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def getAllShiftWithoutPagination(request):
-	shifts = Shift.objects.all()
+	shifts = Shift.objects.filter(organization=request.user.organization)
 
 	serializer = ShiftListSerializer(shifts, many=True)
 
@@ -74,10 +74,10 @@ def getAllShiftWithoutPagination(request):
 
 @extend_schema(request=ShiftSerializer, responses=ShiftSerializer)
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def getAShift(request, pk):
 	try:
-		shift = Shift.objects.get(pk=pk)
+		shift = Shift.objects.get(pk=pk, organization=request.user.organization)
 		serializer = ShiftListSerializer(shift)
 		return Response(serializer.data, status=status.HTTP_200_OK)
 	except ObjectDoesNotExist:
@@ -88,9 +88,10 @@ def getAShift(request, pk):
 
 @extend_schema(request=ShiftSerializer, responses=ShiftSerializer)
 @api_view(['POST'])
-@permission_classes([IsAdminUser])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def createShift(request):
-	data = request.data
+	data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+	data['organization'] = request.user.organization_id
 
 	serializer = ShiftSerializer(data=data)
 
@@ -105,16 +106,17 @@ def createShift(request):
 
 @extend_schema(request=ShiftSerializer, responses=ShiftSerializer)
 @api_view(['PUT'])
-@permission_classes([IsAdminUser])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def updateShift(request, pk):
-	data = request.data
+	data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+	data.pop('organization', None)
 
 	try:
-		shift = Shift.objects.get(pk=pk)
+		shift = Shift.objects.get(pk=pk, organization=request.user.organization)
 	except ObjectDoesNotExist:
 		return Response({'detail': f"Shift id - {pk} doesn't exists"}, status=status.HTTP_400_BAD_REQUEST)
 
-	serializer = ShiftSerializer(shift, data=data)
+	serializer = ShiftSerializer(shift, data=data, partial=True)
 	if serializer.is_valid():
 		serializer.save()
 		return Response(serializer.data, status=status.HTTP_200_OK)
@@ -126,10 +128,10 @@ def updateShift(request, pk):
 
 @extend_schema(request=ShiftSerializer, responses=ShiftSerializer)
 @api_view(['DELETE'])
-@permission_classes([IsAdminUser])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def deleteShift(request, pk):
 	try:
-		shift = Shift.objects.get(pk=pk)
+		shift = Shift.objects.get(pk=pk, organization=request.user.organization)
 		shift.delete()
 		return Response({'detail': f'Shift id - {pk} is deleted successfully'}, status=status.HTTP_200_OK)
 	except ObjectDoesNotExist:

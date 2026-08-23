@@ -2,13 +2,14 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from attendance.models import LeaveType
 from attendance.serializers import LeaveTypeSerializer, LeaveTypeListSerializer
+from authentication.permissions import IsManagerOrModerator, HasActiveSubscription
 
 from commons.pagination import Pagination
 
@@ -26,9 +27,9 @@ from commons.pagination import Pagination
 	responses=LeaveTypeListSerializer
 )
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, HasActiveSubscription])
 def getAllLeaveType(request):
-	leave_types = LeaveType.objects.all()
+	leave_types = LeaveType.objects.filter(organization=request.user.organization)
 	total_elements = leave_types.count()
 
 	page = request.query_params.get('page')
@@ -56,9 +57,9 @@ def getAllLeaveType(request):
 
 @extend_schema(request=LeaveTypeListSerializer, responses=LeaveTypeListSerializer)
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, HasActiveSubscription])
 def getAllLeaveTypeWithoutPagination(request):
-	leave_types = LeaveType.objects.all()
+	leave_types = LeaveType.objects.filter(organization=request.user.organization)
 
 	serializer = LeaveTypeListSerializer(leave_types, many=True)
 
@@ -73,10 +74,10 @@ def getAllLeaveTypeWithoutPagination(request):
 
 @extend_schema(request=LeaveTypeSerializer, responses=LeaveTypeSerializer)
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, HasActiveSubscription])
 def getALeaveType(request, pk):
 	try:
-		leave_type = LeaveType.objects.get(pk=pk)
+		leave_type = LeaveType.objects.get(pk=pk, organization=request.user.organization)
 		serializer = LeaveTypeListSerializer(leave_type)
 		return Response(serializer.data, status=status.HTTP_200_OK)
 	except ObjectDoesNotExist:
@@ -87,9 +88,10 @@ def getALeaveType(request, pk):
 
 @extend_schema(request=LeaveTypeSerializer, responses=LeaveTypeSerializer)
 @api_view(['POST'])
-@permission_classes([IsAdminUser])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def createLeaveType(request):
-	data = request.data
+	data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+	data['organization'] = request.user.organization_id
 
 	serializer = LeaveTypeSerializer(data=data)
 
@@ -104,16 +106,17 @@ def createLeaveType(request):
 
 @extend_schema(request=LeaveTypeSerializer, responses=LeaveTypeSerializer)
 @api_view(['PUT'])
-@permission_classes([IsAdminUser])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def updateLeaveType(request, pk):
-	data = request.data
+	data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+	data.pop('organization', None)
 
 	try:
-		leave_type = LeaveType.objects.get(pk=pk)
+		leave_type = LeaveType.objects.get(pk=pk, organization=request.user.organization)
 	except ObjectDoesNotExist:
 		return Response({'detail': f"LeaveType id - {pk} doesn't exists"}, status=status.HTTP_400_BAD_REQUEST)
 
-	serializer = LeaveTypeSerializer(leave_type, data=data)
+	serializer = LeaveTypeSerializer(leave_type, data=data, partial=True)
 	if serializer.is_valid():
 		serializer.save()
 		return Response(serializer.data, status=status.HTTP_200_OK)
@@ -125,10 +128,10 @@ def updateLeaveType(request, pk):
 
 @extend_schema(request=LeaveTypeSerializer, responses=LeaveTypeSerializer)
 @api_view(['DELETE'])
-@permission_classes([IsAdminUser])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def deleteLeaveType(request, pk):
 	try:
-		leave_type = LeaveType.objects.get(pk=pk)
+		leave_type = LeaveType.objects.get(pk=pk, organization=request.user.organization)
 		leave_type.delete()
 		return Response({'detail': f'LeaveType id - {pk} is deleted successfully'}, status=status.HTTP_200_OK)
 	except ObjectDoesNotExist:

@@ -4,7 +4,7 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
-from authentication.models import Branch, Employee
+from authentication.models import Branch, Employee, Organization
 
 
 
@@ -14,6 +14,7 @@ class Shift(models.Model):
     start_time = models.TimeField()
     end_time = models.TimeField()
 
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True, related_name='shifts')
     branch = models.ForeignKey(Branch, on_delete=models.SET_NULL, null=True, blank=True)
     grace_minutes = models.PositiveIntegerField(default=15)
 
@@ -60,6 +61,10 @@ class AttendanceQRToken(models.Model):
     token = models.CharField(max_length=64, unique=True, editable=False)
     is_active = models.BooleanField(default=True)
 
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    allowed_radius_meters = models.PositiveIntegerField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -81,6 +86,10 @@ class AttendanceQRToken(models.Model):
         self.token = secrets.token_urlsafe(32)
         self.save()
 
+    @property
+    def geofence_enabled(self):
+        return self.latitude is not None and self.longitude is not None and self.allowed_radius_meters is not None
+
 
 
 
@@ -99,6 +108,11 @@ class Attendance(models.Model):
     check_in_time = models.DateTimeField(null=True, blank=True)
     check_out_time = models.DateTimeField(null=True, blank=True)
     worked_hours = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+
+    check_in_lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    check_in_lon = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    check_out_lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    check_out_lon = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
 
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PRESENT)
 
@@ -121,6 +135,7 @@ class Attendance(models.Model):
 
 class LeaveType(models.Model):
     name = models.CharField(max_length=100)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True, related_name='leave_types')
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -171,3 +186,28 @@ class LeaveRequest(models.Model):
 
     def __str__(self):
         return f"{self.employee} - {self.start_date} to {self.end_date}"
+
+
+
+
+class Notification(models.Model):
+    class NotificationType(models.TextChoices):
+        ROSTER_ASSIGNED = 'roster_assigned', 'Roster assigned'
+        LEAVE_SUBMITTED = 'leave_submitted', 'Leave submitted'
+        LEAVE_REVIEWED = 'leave_reviewed', 'Leave reviewed'
+        GENERAL = 'general', 'General'
+
+    recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications')
+
+    notification_type = models.CharField(max_length=30, choices=NotificationType.choices, default=NotificationType.GENERAL)
+    title = models.CharField(max_length=255)
+    message = models.TextField(blank=True, null=True)
+    is_read = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ('-created_at',)
+
+    def __str__(self):
+        return f"{self.recipient} - {self.title}"

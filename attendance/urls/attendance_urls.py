@@ -23,6 +23,14 @@ urlpatterns = [
 
 	path('api/v1/attendance/qr_token/<int:branch_id>/regenerate/', views.regenerateBranchQRToken),
 
+	path('api/v1/attendance/qr_token/<int:branch_id>/geofence/', views.updateBranchGeofence),
+
+	path('api/v1/attendance/export/pdf/', views.exportAttendancePdf),
+
+	path('api/v1/attendance/export/excel/', views.exportAttendanceExcel),
+
+	path('api/v1/attendance/mark_absent/', views.runMarkAbsent),
+
 	path('api/v1/attendance/<int:pk>', views.getAAttendance),
 
 	path('api/v1/attendance/update/<int:pk>', views.updateAttendance),

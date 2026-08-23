@@ -1,19 +1,16 @@
-from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.exceptions import ObjectDoesNotExist
 
-from rest_framework import serializers, status
+from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from drf_spectacular.utils import  extend_schema, OpenApiParameter
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 
-from authentication.decorators import has_permissions
-from authentication.models import Branch, Employee, Vendor
+from authentication.models import Branch, Employee
 from authentication.serializers import BranchSerializer, BranchListSerializer
 from authentication.filters import BranchFilter
+from authentication.permissions import IsManagerOrModerator, HasActiveSubscription
 
-from commons.enums import PermissionEnum
 from commons.pagination import Pagination
 
 
@@ -30,10 +27,9 @@ from commons.pagination import Pagination
 	responses=BranchSerializer
 )
 @api_view(['GET'])
-# @permission_classes([IsAuthenticated])
-# @has_permissions([PermissionEnum.PERMISSION_LIST_VIEW.name])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def getAllBranch(request):
-	branches = Branch.objects.all()
+	branches = Branch.objects.filter(organization=request.user.organization)
 	total_elements = branches.count()
 
 	page = request.query_params.get('page')
@@ -69,10 +65,9 @@ def getAllBranch(request):
 	responses=BranchSerializer
 )
 @api_view(['GET'])
-# @permission_classes([IsAuthenticated])
-# @has_permissions([PermissionEnum.PERMISSION_LIST_VIEW.name])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def getAllBranchWithoutPagination(request):
-	branches = Branch.objects.all()
+	branches = Branch.objects.filter(organization=request.user.organization)
 
 	serializer = BranchListSerializer(branches, many=True)
 
@@ -83,11 +78,10 @@ def getAllBranchWithoutPagination(request):
 
 @extend_schema(request=BranchSerializer, responses=BranchSerializer)
 @api_view(['GET'])
-# @permission_classes([IsAuthenticated])
-# @has_permissions([PermissionEnum.PERMISSION_DETAILS_VIEW.name])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def getABranch(request, pk):
 	try:
-		branch = Branch.objects.get(pk=pk)
+		branch = Branch.objects.get(pk=pk, organization=request.user.organization)
 		serializer = BranchSerializer(branch)
 		return Response(serializer.data, status=status.HTTP_200_OK)
 	except ObjectDoesNotExist:
@@ -98,11 +92,10 @@ def getABranch(request, pk):
 
 @extend_schema(request=BranchSerializer, responses=BranchSerializer)
 @api_view(['GET'])
-# @permission_classes([IsAuthenticated])
-# @has_permissions([PermissionEnum.PERMISSION_DETAILS_VIEW.name])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def getABranchByUserId(request, user_id):
 	try:
-		user_obj = Employee.objects.get(pk=user_id)
+		user_obj = Employee.objects.get(pk=user_id, organization=request.user.organization)
 		if user_obj.branch:
 			serializer = BranchSerializer(user_obj.branch)
 			return Response(serializer.data, status=status.HTTP_200_OK)
@@ -116,13 +109,10 @@ def getABranchByUserId(request, user_id):
 
 @extend_schema(request=BranchSerializer, responses=BranchSerializer)
 @api_view(['GET'])
-# @permission_classes([IsAuthenticated])
-# @has_permissions([PermissionEnum.PERMISSION_DETAILS_VIEW.name])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def searchBranch(request):
-	branches = BranchFilter(request.GET, queryset=Branch.objects.all())
+	branches = BranchFilter(request.GET, queryset=Branch.objects.filter(organization=request.user.organization))
 	branches = branches.qs
-
-	print('searched_products: ', branches)
 
 	total_elements = branches.count()
 
@@ -155,8 +145,7 @@ def searchBranch(request):
 
 @extend_schema(request=BranchSerializer, responses=BranchSerializer)
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
-# @has_permissions([PermissionEnum.PERMISSION_CREATE.name])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def createBranch(request):
 	data = request.data
 	filtered_data = {}
@@ -164,6 +153,8 @@ def createBranch(request):
 	for key, value in data.items():
 		if value != '' and value != '0':
 			filtered_data[key] = value
+
+	filtered_data['organization'] = request.user.organization_id
 
 	serializer = BranchSerializer(data=filtered_data)
 
@@ -178,13 +169,13 @@ def createBranch(request):
 
 @extend_schema(request=BranchSerializer, responses=BranchSerializer)
 @api_view(['PUT'])
-@permission_classes([IsAuthenticated])
-# @has_permissions([PermissionEnum.PERMISSION_UPDATE.name, PermissionEnum.PERMISSION_PARTIAL_UPDATE.name])
-def updateBranch(request,pk):
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
+def updateBranch(request, pk):
 	try:
-		branch = Branch.objects.get(pk=pk)
-		data = request.data
-		serializer = BranchSerializer(branch, data=data)
+		branch = Branch.objects.get(pk=pk, organization=request.user.organization)
+		data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+		data.pop('organization', None)
+		serializer = BranchSerializer(branch, data=data, partial=True)
 		if serializer.is_valid():
 			serializer.save()
 			return Response(serializer.data, status=status.HTTP_200_OK)
@@ -198,13 +189,11 @@ def updateBranch(request,pk):
 
 @extend_schema(request=BranchSerializer, responses=BranchSerializer)
 @api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
-# @has_permissions([PermissionEnum.PERMISSION_DELETE.name])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def deleteBranch(request, pk):
 	try:
-		branch = Branch.objects.get(pk=pk)
+		branch = Branch.objects.get(pk=pk, organization=request.user.organization)
 		branch.delete()
 		return Response({'detail': f'Branch id - {pk} is deleted successfully'}, status=status.HTTP_200_OK)
 	except ObjectDoesNotExist:
 		return Response({'detail': f"Branch id - {pk} doesn't exists"}, status=status.HTTP_400_BAD_REQUEST)
-

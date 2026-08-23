@@ -250,3 +250,11 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
 			modelObject.updated_by = user
 		modelObject.save()
 		return modelObject
+
+
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+	class Meta:
+		model = Notification
+		fields = '__all__'

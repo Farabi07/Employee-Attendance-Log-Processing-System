@@ -1,9 +1,11 @@
 from enum import unique
 from operator import truediv
 from statistics import mode
+from datetime import timedelta
 from django.db import models
 from django.db.models.fields import BigAutoField
 from django.utils import tree
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
@@ -200,9 +202,11 @@ class Area(models.Model):
 
 class Branch(models.Model):
     name = models.CharField(max_length=50)
-    
+
     short_desc = models.TextField(blank=True, null=True)
     full_desc = models.TextField(blank=True, null=True)
+
+    organization = models.ForeignKey('Organization', on_delete=models.CASCADE, null=True, blank=True, related_name='branches')
 
     is_active = models.BooleanField(default=True)
 
@@ -230,6 +234,52 @@ class Branch(models.Model):
     def save(self, *args, **kwargs):
         self.name = self.name.capitalize()
         super().save(*args, **kwargs)
+
+
+
+
+class Organization(models.Model):
+    class SubscriptionStatus(models.TextChoices):
+        TRIALING = 'trialing', _('Trialing')
+        ACTIVE = 'active', _('Active')
+        PAST_DUE = 'past_due', _('Past Due')
+        CANCELED = 'canceled', _('Canceled')
+
+    class Plan(models.TextChoices):
+        NONE = 'none', _('None')
+        MONTHLY = 'monthly', _('Monthly')
+        YEARLY = 'yearly', _('Yearly')
+
+    name = models.CharField(max_length=255)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='owned_organizations')
+
+    trial_ends_at = models.DateTimeField()
+    subscription_status = models.CharField(max_length=20, choices=SubscriptionStatus.choices, default=SubscriptionStatus.TRIALING)
+    plan = models.CharField(max_length=20, choices=Plan.choices, default=Plan.NONE)
+
+    stripe_customer_id = models.CharField(max_length=255, null=True, blank=True)
+    stripe_subscription_id = models.CharField(max_length=255, null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ('name',)
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.trial_ends_at:
+            self.trial_ends_at = timezone.now() + timedelta(days=7)
+        super().save(*args, **kwargs)
+
+    def has_active_access(self):
+        if self.subscription_status == self.SubscriptionStatus.ACTIVE:
+            return True
+        if self.subscription_status == self.SubscriptionStatus.TRIALING:
+            return timezone.now() <= self.trial_ends_at
+        return False
 
 
 
@@ -295,6 +345,17 @@ class User(AbstractBaseUser):
     
     is_active = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False)
+
+    class OrgRole(models.TextChoices):
+        MANAGER = 'manager', _('Manager')
+        MODERATOR = 'moderator', _('Moderator')
+        EMPLOYEE = 'employee', _('Employee')
+
+    # Tenant boundary + in-store role for the multi-tenant SaaS. Distinct from
+    # `is_admin` (Django's own is_staff/admin-panel gate) and from the legacy
+    # `role` FK below (the old, largely-unused Permission/Role system).
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True, related_name='members')
+    org_role = models.CharField(max_length=20, choices=OrgRole.choices, default=OrgRole.EMPLOYEE)
 
     role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True)
 
@@ -371,6 +432,15 @@ class User(AbstractBaseUser):
         "Is the user a member of staff?"
         # Simplest possible answer: All admins are staff
         return self.is_admin
+
+    def is_manager(self):
+        return self.org_role == self.OrgRole.MANAGER
+
+    def is_manager_or_moderator(self):
+        return self.org_role in (self.OrgRole.MANAGER, self.OrgRole.MODERATOR)
+
+    def is_platform_owner(self):
+        return self.is_admin and self.organization_id is None
 
 
 

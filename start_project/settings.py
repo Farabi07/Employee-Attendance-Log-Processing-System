@@ -56,7 +56,8 @@ INSTALLED_APPS = [
     'site_settings.apps.SiteSettingsConfig',
     'support.apps.SupportConfig',
 	'url_shortener.apps.UrlShortenerConfig',
-	'attendance.apps.AttendanceConfig'
+	'attendance.apps.AttendanceConfig',
+	'billing.apps.BillingConfig'
 ]
 
 INSTALLED_APPS += ['sequences.apps.SequencesConfig']
@@ -297,6 +298,21 @@ INTERNAL_IPS = [
     "192.168.0.151",
     "192.168.0.116",
 ]
+
+
+# Stripe (multi-tenant SaaS billing) — read from environment, never hardcoded.
+# Test-mode keys are fine for local dev. Leave unset and the billing
+# endpoints respond with 503 instead of crashing.
+STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
+STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', '')
+STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
+STRIPE_PRICE_MONTHLY = os.environ.get('STRIPE_PRICE_MONTHLY', '')
+STRIPE_PRICE_YEARLY = os.environ.get('STRIPE_PRICE_YEARLY', '')
+
+_SAAS_FRONTEND_URL = os.environ.get('SAAS_FRONTEND_URL', 'http://127.0.0.1:5173')
+BILLING_SUCCESS_URL = os.environ.get('BILLING_SUCCESS_URL', f'{_SAAS_FRONTEND_URL}/?billing=success')
+BILLING_CANCEL_URL = os.environ.get('BILLING_CANCEL_URL', f'{_SAAS_FRONTEND_URL}/?billing=cancel')
+BILLING_RETURN_URL = os.environ.get('BILLING_RETURN_URL', _SAAS_FRONTEND_URL)
 
 
 

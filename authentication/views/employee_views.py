@@ -1,24 +1,19 @@
-from re import I
-from django.contrib.auth.hashers import make_password
 from django.core.exceptions import ObjectDoesNotExist
-from django.http import HttpResponse
-from django.shortcuts import render
 from django.utils import timezone
 
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAdminUser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
-from authentication.decorators import has_permissions
 from authentication.models import Employee
 from authentication.serializers import EmployeeSerializer, EmployeeListSerializer
 from authentication.filters import EmployeeFilter
+from authentication.permissions import IsManager, IsManagerOrModerator, HasActiveSubscription
 
 from commons.pagination import Pagination
-from commons.enums import PermissionEnum
 
 
 
@@ -34,10 +29,9 @@ from commons.enums import PermissionEnum
 	responses=EmployeeSerializer
 )
 @api_view(['GET'])
-# @permission_classes([IsAdminUser])
-# @has_permissions([PermissionEnum.EMPLOYEE_LIST.name])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def getAllEmployee(request):
-	employees = Employee.objects.all()
+	employees = Employee.objects.filter(organization=request.user.organization)
 	total_elements = employees.count()
 
 	page = request.query_params.get('page')
@@ -69,10 +63,9 @@ def getAllEmployee(request):
 	responses=EmployeeSerializer
 )
 @api_view(['GET'])
-# @permission_classes([IsAdminUser])
-# @has_permissions([PermissionEnum.EMPLOYEE_LIST.name])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def getAllEmployeeWithoutPagination(request):
-	employees = Employee.objects.all()
+	employees = Employee.objects.filter(organization=request.user.organization)
 
 	serializer = EmployeeListSerializer(employees, many=True)
 
@@ -80,29 +73,25 @@ def getAllEmployeeWithoutPagination(request):
 
 @extend_schema(request=EmployeeSerializer, responses=EmployeeSerializer)
 @api_view(['GET'])
-# @permission_classes([IsAdminUser])
-# @has_permissions([PermissionEnum.EMPLOYEE_DETAILS.name])
+@permission_classes([IsAuthenticated, HasActiveSubscription])
 def getAEmployee(request, pk):
 	try:
-		employee = Employee.objects.get(pk=pk)
+		employee = Employee.objects.get(pk=pk, organization=request.user.organization)
 		serializer = EmployeeSerializer(employee)
 		return Response(serializer.data)
 	except ObjectDoesNotExist:
-		return Response({'detail': f"Employee id - {pk} doesn't exists"})
+		return Response({'detail': f"Employee id - {pk} doesn't exists"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 
 
 @extend_schema(request=EmployeeSerializer, responses=EmployeeSerializer)
 @api_view(['GET'])
-# @permission_classes([IsAuthenticated])
-# @has_permissions([PermissionEnum.PRODUCT_DETAILS.name])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def searchEmployee(request):
 
-	employees = EmployeeFilter(request.GET, queryset=Employee.objects.all())
+	employees = EmployeeFilter(request.GET, queryset=Employee.objects.filter(organization=request.user.organization))
 	employees = employees.qs
-
-	print('employees: ', employees)
 
 	total_elements = employees.count()
 
@@ -132,11 +121,12 @@ def searchEmployee(request):
 
 
 
-		
+
+ALLOWED_CREATE_ROLES = {Employee.OrgRole.EMPLOYEE, Employee.OrgRole.MODERATOR}
+
 @extend_schema(request=EmployeeSerializer, responses=EmployeeSerializer)
 @api_view(['POST'])
-@permission_classes([IsAdminUser])
-# @has_permissions([PermissionEnum.EMPLOYEE_CREATE.name])
+@permission_classes([IsManager, HasActiveSubscription])
 def createEmployee(request):
 	data = request.data
 
@@ -144,34 +134,22 @@ def createEmployee(request):
 
 	current_datetime = timezone.now()
 	current_datetime = str(current_datetime)
-	print('current_datetime str: ', current_datetime)
 
-	try:
-		group_obj = Group.objects.get(name='Salary')
-	except Group.ObjectDoesNotExist:
-		return Response("Please insert a 'Salary' data in the Group table and then try again")
-
-	username = data.get('username', None)
-	if username is None:
-		return Response("Please insert username.")
-		
 	for key, value in data.items():
 		if value != '' and value != '0':
 			employee_data_dict[key] = value
-		
-	employee_data_dict['last_login'] = current_datetime
 
-	print('employee_data_dict: ', employee_data_dict)
+	employee_data_dict['last_login'] = current_datetime
+	# Always derive the tenant from the creator; a Manager can only ever
+	# create Employees or Moderators within their own store, never another Manager.
+	employee_data_dict['organization'] = request.user.organization_id
+	requested_role = employee_data_dict.get('org_role')
+	employee_data_dict['org_role'] = requested_role if requested_role in ALLOWED_CREATE_ROLES else Employee.OrgRole.EMPLOYEE
 
 	serializer = EmployeeSerializer(data=employee_data_dict, many=False)
-	
+
 	if serializer.is_valid():
 		serializer.save()
-
-		employee_obj = Employee.objects.get(username=username)
-
-		employee_ledger_obj = LedgerAccount.objects.create(name=username, ledger_type='Employee Ledger', reference_id=employee_obj.id, head_group=group_obj)
-		
 		return Response(serializer.data, status=status.HTTP_201_CREATED)
 	else:
 		return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -181,54 +159,47 @@ def createEmployee(request):
 
 @extend_schema(request=EmployeeSerializer, responses=EmployeeSerializer)
 @api_view(['PUT'])
-@permission_classes([IsAdminUser])
-# @has_permissions([PermissionEnum.EMPLOYEE_UPDATE.name])
-def updateEmployee(request,pk):
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
+def updateEmployee(request, pk):
 	data = request.data
-	print('employee data: ', data)
-	print('content_type: ', request.content_type)
 	filtered_data = {}
 	for key, value in data.items():
 		if value != '' and value != '0':
 			filtered_data[key] = value
 
-	print('filtered_data: ', filtered_data)
+	# Role/tenant changes are a Manager-only action (equivalent to creating a
+	# moderator), regardless of what a Moderator might otherwise edit here.
+	if not request.user.is_manager():
+		filtered_data.pop('org_role', None)
+	filtered_data.pop('organization', None)
 
 	image = filtered_data.get('image', None)
-	
+
 	try:
-		employee = Employee.objects.get(pk=int(pk))
+		employee = Employee.objects.get(pk=int(pk), organization=request.user.organization)
 	except ObjectDoesNotExist:
-		return Response({'detail': f"Customer id - {pk} doesn't exists"})
+		return Response({'detail': f"Employee id - {pk} doesn't exists"}, status=status.HTTP_400_BAD_REQUEST)
 
 	if type(image) == str and image is not None:
-		poped_image = filtered_data.pop('image')
-		serializer = EmployeeSerializer(employee, data=filtered_data)
-		if serializer.is_valid():
-			serializer.save()
-			return Response(serializer.data, status=status.HTTP_200_OK)
-		else:
-			return Response(serializer.errors)
+		filtered_data.pop('image')
+
+	serializer = EmployeeSerializer(employee, data=filtered_data, partial=True)
+	if serializer.is_valid():
+		serializer.save()
+		return Response(serializer.data, status=status.HTTP_200_OK)
 	else:
-		serializer = EmployeeSerializer(employee, data=filtered_data)
-		if serializer.is_valid():
-			serializer.save()
-			return Response(serializer.data, status=status.HTTP_200_OK)
-		else:
-			return Response(serializer.errors)
+		return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 
 
 @extend_schema(request=EmployeeSerializer, responses=EmployeeSerializer)
 @api_view(['DELETE'])
-@permission_classes([IsAdminUser])
-# @has_permissions([PermissionEnum.EMPLOYEE_DELETE.name])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def deleteEmployee(request, pk):
 	try:
-		employee = Employee.objects.get(pk=pk)
+		employee = Employee.objects.get(pk=pk, organization=request.user.organization)
 		employee.delete()
-		return Response({'detail': f'Employee id - {pk} is deleted successfully'})
+		return Response({'detail': f'Employee id - {pk} is deleted successfully'}, status=status.HTTP_200_OK)
 	except ObjectDoesNotExist:
-		return Response({'detail': f"Employee id - {pk} doesn't exists"})
-
+		return Response({'detail': f"Employee id - {pk} doesn't exists"}, status=status.HTTP_400_BAD_REQUEST)

@@ -166,7 +166,8 @@ class DesignationSerializer(serializers.ModelSerializer):
 class UserSerializer(UserCreateSerializer):
 	class Meta(UserCreateSerializer.Meta):
 		model = User
-		fields = ('id', 'email', 'first_name', 'last_name', 'password')
+		fields = ('id', 'email', 'first_name', 'last_name', 'password', 'is_admin', 'organization', 'org_role')
+		read_only_fields = ('is_admin', 'organization', 'org_role')
 
 
 # Don't delete it
