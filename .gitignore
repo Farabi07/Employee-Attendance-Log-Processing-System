@@ -1,13 +1,12 @@
-env
-media
-baira-data/
-migrations
-*.pyc
-__pycache__/
+# Root-level venv (not part of either branch's tracked code)
+/env
 
-.git
-.vscode
-staticfiles/
-static/
-data/
-.env
+# Frontend lives on its own "frontend" branch, not here
+/frontend
+
+# Common junk
+__pycache__/
+*.pyc
+.vscode/
+.idea/
+.DS_Store
