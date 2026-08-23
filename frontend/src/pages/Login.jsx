@@ -5,7 +5,7 @@ import { useAuth } from "../lib/auth";
 import Card from "../components/Card";
 import ForgotPassword from "./ForgotPassword";
 
-export default function Login() {
+export default function Login({ onSignup }) {
   const { login } = useAuth();
   const [mode, setMode] = useState("login"); // "login" | "forgot"
   const [email, setEmail] = useState("");
@@ -106,6 +106,17 @@ export default function Login() {
                 {submitting ? "Signing in…" : "Sign in"}
               </button>
             </form>
+
+            <p style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted, textAlign: "center", marginTop: 16 }}>
+              New store?{" "}
+              <button
+                type="button"
+                onClick={onSignup}
+                style={{ border: "none", background: "transparent", color: T.teal, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer", padding: 0 }}
+              >
+                Start a free trial
+              </button>
+            </p>
           </>
         ) : (
           <>

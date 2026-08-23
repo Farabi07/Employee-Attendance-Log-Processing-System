@@ -48,4 +48,11 @@ export const endpoints = {
   djoserResetPassword: () => `/djoser/auth/users/reset_password/`,
   djoserResetPasswordConfirm: () => `/djoser/auth/users/reset_password_confirm/`,
   djoserSetPassword: () => `/djoser/auth/users/set_password/`,
+
+  signup: () => `/saas/api/v1/signup/`,
+  organizationsAll: () => `/saas/api/v1/organizations/`,
+
+  billingStatus: () => `/billing/api/v1/status/`,
+  billingCheckout: () => `/billing/api/v1/checkout/`,
+  billingCustomerPortal: () => `/billing/api/v1/customer_portal/`,
 };

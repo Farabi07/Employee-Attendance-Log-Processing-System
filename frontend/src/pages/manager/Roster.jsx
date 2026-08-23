@@ -5,6 +5,7 @@ import { api, fetchBlobUrl } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import { formatDayLabel, todayISO } from "../../lib/dates";
 import { useIsMobile } from "../../lib/useMediaQuery";
+import { useAuth } from "../../lib/auth";
 import Card from "../../components/Card";
 
 const inputStyle = {
@@ -22,6 +23,7 @@ const smallBtn = { border: "none", background: "transparent", cursor: "pointer",
 
 export default function ManagerRoster() {
   const isMobile = useIsMobile();
+  const { isManager } = useAuth();
 
   const [employees, setEmployees] = useState([]);
   const [shifts, setShifts] = useState([]);
@@ -459,6 +461,18 @@ export default function ManagerRoster() {
           </div>
         </Card>
 
+        {!isManager && (
+          <Card style={{ padding: "22px 24px" }}>
+            <h3 style={{ fontFamily: fontDisplay, fontSize: 15.5, fontWeight: 600, color: T.ink, margin: "0 0 8px", display: "flex", alignItems: "center", gap: 8 }}>
+              <QrCode size={17} /> Branch check-in QR &amp; geofence
+            </h3>
+            <p style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted, margin: 0 }}>
+              Only the store Manager can generate or manage a branch's check-in QR code.
+            </p>
+          </Card>
+        )}
+
+        {isManager && (
         <Card style={{ padding: "22px 24px" }}>
           <h3 style={{ fontFamily: fontDisplay, fontSize: 15.5, fontWeight: 600, color: T.ink, margin: "0 0 16px", display: "flex", alignItems: "center", gap: 8 }}>
             <QrCode size={17} /> Branch check-in QR &amp; geofence
@@ -523,6 +537,7 @@ export default function ManagerRoster() {
             </>
           )}
         </Card>
+        )}
       </div>
     </div>
   );
