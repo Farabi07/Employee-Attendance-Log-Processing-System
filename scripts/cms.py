@@ -1,0 +1,43 @@
+import os
+import sys
+import django
+import requests
+from datetime import date
+
+
+sys.path.append('/home/farhad/Desktop/Dream_projects/dream_tourism_it/')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'start_project.settings')
+django.setup(set_prefix=False)
+from django.conf import settings
+settings.INSTALLED_APPS
+
+from cms.models import CMSMenuContentImage
+
+def import_images_to_cloudflare():
+    
+    objects = CMSMenuContentImage.objects.filter(cloudflare_image__isnull=True)
+
+    
+    endpoint = 'https://api.cloudflare.com/client/v4/accounts/f8b413899d5239382d13a2665326b04e/images/v1'
+    headers = {
+        'Authorization': 'Bearer Ook1HC9KydDm4YfqkmVH5KnoNsSugDDqgLFj4QHi',
+    }
+
+  
+    for obj in objects:
+        files = {'file': obj.image.file}
+        response = requests.post(endpoint, headers=headers, files=files)
+        response.raise_for_status()
+        json_data = response.json()
+        variants = json_data.get('result', {}).get('variants', [])
+        if variants:
+            cloudflare_image = variants[0]
+            print(f"Cloudflare image URL for {obj}: {cloudflare_image}")
+          
+            obj.cloudflare_image = cloudflare_image
+            obj.save()
+        else:
+            print(f"No variants found for {obj} in the Cloudflare response")
+
+
+import_images_to_cloudflare()
