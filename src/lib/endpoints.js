@@ -1,0 +1,51 @@
+// Centralized backend path builders. Several of these have inconsistent
+// naming in the Django backend (e.g. the "without_paginaiton" typo on
+// employee) — kept in one place on purpose so the typo only has to live here.
+
+export const endpoints = {
+  today: () => `/attendance/api/v1/attendance/today/`,
+  checkin: () => `/attendance/api/v1/attendance/checkin/`,
+  checkout: () => `/attendance/api/v1/attendance/checkout/`,
+  attendanceByEmployee: (id, params = "") => `/attendance/api/v1/attendance/get_all_by_employee_id/${id}${params}`,
+  attendanceSearch: (params = "") => `/attendance/api/v1/attendance/search/${params}`,
+  attendanceAll: (params = "") => `/attendance/api/v1/attendance/all/${params}`,
+  qrImage: (branchId) => `/attendance/api/v1/attendance/qr_token/${branchId}/image/`,
+  qrRegenerate: (branchId) => `/attendance/api/v1/attendance/qr_token/${branchId}/regenerate/`,
+  qrGeofence: (branchId) => `/attendance/api/v1/attendance/qr_token/${branchId}/geofence/`,
+  exportPdf: (params = "") => `/attendance/api/v1/attendance/export/pdf/${params}`,
+  exportExcel: (params = "") => `/attendance/api/v1/attendance/export/excel/${params}`,
+  markAbsent: (params = "") => `/attendance/api/v1/attendance/mark_absent/${params}`,
+
+  rosterByEmployee: (id, params = "") => `/roster/api/v1/roster/get_all_by_employee_id/${id}${params}`,
+  rosterAll: (params = "") => `/roster/api/v1/roster/all/${params}`,
+  rosterCreate: () => `/roster/api/v1/roster/create/`,
+
+  shiftsAll: () => `/shift/api/v1/shift/without_pagination/all/`,
+  shiftCreate: () => `/shift/api/v1/shift/create/`,
+  shiftUpdate: (pk) => `/shift/api/v1/shift/update/${pk}`,
+  shiftDelete: (pk) => `/shift/api/v1/shift/delete/${pk}`,
+
+  leaveTypesAll: () => `/leave_type/api/v1/leave_type/without_pagination/all/`,
+  leaveTypeCreate: () => `/leave_type/api/v1/leave_type/create/`,
+  leaveTypeDelete: (pk) => `/leave_type/api/v1/leave_type/delete/${pk}`,
+
+  leaveRequestCreate: () => `/leave_request/api/v1/leave_request/create/`,
+  leaveRequestByEmployee: (id, params = "") => `/leave_request/api/v1/leave_request/get_all_by_employee_id/${id}${params}`,
+  leaveRequestAll: (params = "") => `/leave_request/api/v1/leave_request/all/${params}`,
+  leaveRequestReview: (pk) => `/leave_request/api/v1/leave_request/review/${pk}`,
+
+  employeesAll: () => `/employee/api/v1/employee/without_paginaiton/all/`,
+  employeeCreate: () => `/employee/api/v1/employee/create/`,
+
+  branchesAll: () => `/branch/api/v1/branch/without_pagination/all/`,
+  branchCreate: () => `/branch/api/v1/branch/create/`,
+
+  notificationsMine: (params = "") => `/notification/api/v1/notification/mine/${params}`,
+  notificationMarkRead: (pk) => `/notification/api/v1/notification/mark_read/${pk}`,
+  notificationMarkAllRead: () => `/notification/api/v1/notification/mark_all_read/`,
+
+  djoserMe: () => `/djoser/auth/users/me/`,
+  djoserResetPassword: () => `/djoser/auth/users/reset_password/`,
+  djoserResetPasswordConfirm: () => `/djoser/auth/users/reset_password_confirm/`,
+  djoserSetPassword: () => `/djoser/auth/users/set_password/`,
+};
