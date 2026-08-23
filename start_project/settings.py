@@ -55,7 +55,8 @@ INSTALLED_APPS = [
     'cms.apps.CmsConfig',
     'site_settings.apps.SiteSettingsConfig',
     'support.apps.SupportConfig',
-	'url_shortener.apps.UrlShortenerConfig'
+	'url_shortener.apps.UrlShortenerConfig',
+	'attendance.apps.AttendanceConfig'
 ]
 
 INSTALLED_APPS += ['sequences.apps.SequencesConfig']

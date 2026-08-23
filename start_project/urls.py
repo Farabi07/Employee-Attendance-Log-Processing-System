@@ -64,6 +64,14 @@ urlpatterns = [
 	path('todo_task/', include('support.urls.todo_task_urls')),
 
 
+	# Attendance module
+	path('shift/', include('attendance.urls.shift_urls')),
+	path('roster/', include('attendance.urls.roster_urls')),
+	path('leave_type/', include('attendance.urls.leave_type_urls')),
+	path('leave_request/', include('attendance.urls.leave_request_urls')),
+	path('attendance/', include('attendance.urls.attendance_urls')),
+
+
 	# YOUR PATTERNS
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
     # Optional UI:
