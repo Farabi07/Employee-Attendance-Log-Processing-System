@@ -154,7 +154,7 @@ export default function PlatformOwnerDashboard() {
             <div style={{ overflowX: "auto" }}>
               <div style={{ minWidth: 700 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr 1fr", padding: "0 4px 10px", borderBottom: `1px solid ${T.line}` }}>
-                  {["Store", "Owner", "Members", "Plan", "Status", "Trial ends"].map((h) => (
+                  {["Store", "Owner", "Members", "Plan", "Status", "Expires"].map((h) => (
                     <span key={h} style={{ fontFamily: fontBody, fontSize: 11.5, fontWeight: 600, color: T.faint, textTransform: "uppercase", letterSpacing: 0.4 }}>
                       {h}
                     </span>
