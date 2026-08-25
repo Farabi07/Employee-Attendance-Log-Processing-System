@@ -154,7 +154,7 @@ export default function PlatformOwnerDashboard() {
             <div style={{ overflowX: "auto" }}>
               <div style={{ minWidth: 700 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr 1fr", padding: "0 4px 10px", borderBottom: `1px solid ${T.line}` }}>
-                  {["Store", "Owner", "Members", "Plan", "Status", "Expires"].map((h) => (
+                  {["Store", "Owner", "Members", "Plan", "Status", "Expired"].map((h) => (
                     <span key={h} style={{ fontFamily: fontBody, fontSize: 11.5, fontWeight: 600, color: T.faint, textTransform: "uppercase", letterSpacing: 0.4 }}>
                       {h}
                     </span>
@@ -167,7 +167,7 @@ export default function PlatformOwnerDashboard() {
                     <span style={{ fontFamily: fontMono, fontSize: 13, color: T.muted }}>{o.member_count}</span>
                     <span style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted }}>{planLabel(o)}</span>
                     <StatusPill status={o.subscription_status} />
-                    <span style={{ fontFamily: fontMono, fontSize: 12, color: T.muted }}>{fmt(o.trial_ends_at)}</span>
+                    <span style={{ fontFamily: fontMono, fontSize: 12, color: T.muted }}>{fmt(o.expires_at)}</span>
                   </div>
                 ))}
                 {orgs.length === 0 && <p style={{ fontFamily: fontBody, fontSize: 13, color: T.muted, padding: "12px 4px" }}>No stores have signed up yet.</p>}
