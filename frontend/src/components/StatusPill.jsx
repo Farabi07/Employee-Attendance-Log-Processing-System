@@ -18,6 +18,11 @@ const MAP = {
 
   completed: { label: "Completed", fg: T.teal, bg: T.tealBg },
   failed: { label: "Failed", fg: T.coral, bg: T.coralBg },
+
+  trialing: { label: "Trial active", fg: T.amber, bg: T.amberBg },
+  active: { label: "Active", fg: T.teal, bg: T.tealBg },
+  past_due: { label: "Past due", fg: T.coral, bg: T.coralBg },
+  canceled: { label: "Canceled", fg: T.coral, bg: T.coralBg },
 };
 
 export default function StatusPill({ status }) {

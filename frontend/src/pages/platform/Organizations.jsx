@@ -10,6 +10,12 @@ import StatusPill from "../../components/StatusPill";
 
 const inputStyle = { padding: "8px 10px", borderRadius: 8, border: `1px solid ${T.line}`, fontFamily: fontBody, fontSize: 13 };
 
+function planLabel(o) {
+  if (o.plan && o.plan !== "none") return o.plan[0].toUpperCase() + o.plan.slice(1);
+  if (o.subscription_status === "trialing") return "Trial";
+  return "No plan";
+}
+
 function fmt(iso) {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "2-digit" });
@@ -159,8 +165,8 @@ export default function PlatformOwnerDashboard() {
                     <span style={{ fontFamily: fontBody, fontSize: 13.5, color: T.ink }}>{o.name}</span>
                     <span style={{ fontFamily: fontMono, fontSize: 12, color: T.muted }}>{o.owner_email || "—"}</span>
                     <span style={{ fontFamily: fontMono, fontSize: 13, color: T.muted }}>{o.member_count}</span>
-                    <span style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted, textTransform: "capitalize" }}>{o.plan}</span>
-                    <StatusPill status={o.subscription_status === "active" ? "approved" : o.subscription_status === "trialing" ? "pending" : "rejected"} />
+                    <span style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted }}>{planLabel(o)}</span>
+                    <StatusPill status={o.subscription_status} />
                     <span style={{ fontFamily: fontMono, fontSize: 12, color: T.muted }}>{fmt(o.trial_ends_at)}</span>
                   </div>
                 ))}
