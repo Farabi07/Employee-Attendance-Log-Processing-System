@@ -8,7 +8,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from drf_spectacular.utils import extend_schema
 
-from authentication.models import Organization, Employee
+from authentication.models import Organization, Employee, User
 from authentication.permissions import IsPlatformOwner
 
 
@@ -31,8 +31,8 @@ def signupOrganization(request):
 	if missing:
 		return Response({'detail': f"Missing required field(s): {', '.join(missing)}"}, status=status.HTTP_400_BAD_REQUEST)
 
-	if Employee.objects.filter(email__iexact=email).exists():
-		return Response({'detail': 'An account with this email already exists'}, status=status.HTTP_400_BAD_REQUEST)
+	if User.objects.filter(email__iexact=email).exists():
+		return Response({'detail': 'An account with this email already exists — sign in instead, or use a different email to start a new trial.'}, status=status.HTTP_400_BAD_REQUEST)
 
 	with transaction.atomic():
 		organization = Organization.objects.create(name=organization_name, trial_ends_at=None)

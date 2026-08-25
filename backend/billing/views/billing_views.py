@@ -9,7 +9,7 @@ from rest_framework.response import Response
 
 from drf_spectacular.utils import extend_schema
 
-from authentication.permissions import IsManager
+from authentication.permissions import IsManager, CanManageSubscription
 from authentication.models import Organization
 
 from commons.currencies import CURRENCY_CHOICES
@@ -48,6 +48,10 @@ def billingStatus(request):
 			'trial_ends_at': org.trial_ends_at,
 			'has_active_access': org.has_active_access(),
 			'is_manager': request.user.is_manager(),
+			'moderator_can_add_employees': org.moderator_can_add_employees,
+			'moderator_can_manage_subscription': org.moderator_can_manage_subscription,
+			'can_add_employees': request.user.can_add_employees(),
+			'can_manage_subscription': request.user.can_manage_subscription(),
 		},
 		status=status.HTTP_200_OK,
 	)
@@ -100,23 +104,42 @@ def platformSettings(request):
 @extend_schema(request=None, responses=None)
 @api_view(['PUT'])
 @permission_classes([IsManager])
-def updateOrganizationCurrency(request):
-	currency = request.data.get('currency')
-	valid_currencies = {c for c, _label in CURRENCY_CHOICES}
-	if currency not in valid_currencies:
-		return Response({'detail': f"currency must be one of {sorted(valid_currencies)}"}, status=status.HTTP_400_BAD_REQUEST)
-
+def updateOrganizationSettings(request):
+	"""Manager-only store settings: currency, plus what Moderators are
+	allowed to do in this store. Only the Manager can change these — a
+	Moderator can never grant itself more access even if one of the
+	toggles below is already on."""
 	org = request.user.organization
-	org.currency = currency
+	data = request.data
+
+	if 'currency' in data:
+		valid_currencies = {c for c, _label in CURRENCY_CHOICES}
+		if data['currency'] not in valid_currencies:
+			return Response({'detail': f"currency must be one of {sorted(valid_currencies)}"}, status=status.HTTP_400_BAD_REQUEST)
+		org.currency = data['currency']
+
+	if 'moderator_can_add_employees' in data:
+		org.moderator_can_add_employees = bool(data['moderator_can_add_employees'])
+
+	if 'moderator_can_manage_subscription' in data:
+		org.moderator_can_manage_subscription = bool(data['moderator_can_manage_subscription'])
+
 	org.save()
-	return Response({'currency': org.currency}, status=status.HTTP_200_OK)
+	return Response(
+		{
+			'currency': org.currency,
+			'moderator_can_add_employees': org.moderator_can_add_employees,
+			'moderator_can_manage_subscription': org.moderator_can_manage_subscription,
+		},
+		status=status.HTTP_200_OK,
+	)
 
 
 
 
 @extend_schema(request=None, responses=None)
 @api_view(['POST'])
-@permission_classes([IsManager])
+@permission_classes([CanManageSubscription])
 def createCheckoutSession(request):
 	if not _stripe_configured():
 		return Response({'detail': 'Payments are not configured yet on this server.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
@@ -162,7 +185,7 @@ def createCheckoutSession(request):
 
 @extend_schema(request=None, responses=None)
 @api_view(['POST'])
-@permission_classes([IsManager])
+@permission_classes([CanManageSubscription])
 def createCustomerPortalSession(request):
 	if not _stripe_configured():
 		return Response({'detail': 'Payments are not configured yet on this server.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
@@ -174,6 +197,61 @@ def createCustomerPortalSession(request):
 
 	session = stripe.billing_portal.Session.create(customer=org.stripe_customer_id, return_url=settings.BILLING_RETURN_URL)
 	return Response({'portal_url': session.url}, status=status.HTTP_200_OK)
+
+
+
+
+def _activate_from_metadata(metadata, stripe_subscription_id):
+	org_id = metadata.get('organization_id')
+	plan = metadata.get('plan')
+	if not org_id:
+		return
+	update = {
+		'subscription_status': Organization.SubscriptionStatus.ACTIVE,
+		'stripe_subscription_id': stripe_subscription_id,
+	}
+	if plan in (Organization.Plan.MONTHLY, Organization.Plan.YEARLY):
+		update['plan'] = plan
+	Organization.objects.filter(pk=org_id).update(**update)
+
+
+
+
+@extend_schema(request=None, responses=None)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def confirmCheckout(request):
+	"""Stripe webhooks need a public HTTPS URL to be delivered to, which a
+	local dev server doesn't have — so as a fallback (and a safety net even
+	in production, if a webhook is ever delayed or missed), the frontend
+	calls this right after returning from Stripe Checkout, and we verify
+	the session directly instead of waiting on the webhook."""
+	if not _stripe_configured():
+		return Response({'detail': 'Payments are not configured yet on this server.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+	session_id = request.data.get('session_id')
+	if not session_id:
+		return Response({'detail': 'session_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+	org = request.user.organization
+	if org is None:
+		return Response({'detail': 'This account has no organization'}, status=status.HTTP_400_BAD_REQUEST)
+
+	stripe.api_key = settings.STRIPE_SECRET_KEY
+	try:
+		session = stripe.checkout.Session.retrieve(session_id).to_dict()
+	except Exception:
+		return Response({'detail': 'Could not verify that checkout session'}, status=status.HTTP_400_BAD_REQUEST)
+
+	metadata = session.get('metadata') or {}
+	if metadata.get('organization_id') != str(org.id):
+		return Response({'detail': 'This checkout session does not belong to your store'}, status=status.HTTP_403_FORBIDDEN)
+
+	if session.get('payment_status') == 'paid' or session.get('status') == 'complete':
+		_activate_from_metadata(metadata, session.get('subscription'))
+
+	org.refresh_from_db()
+	return Response({'subscription_status': org.subscription_status, 'has_active_access': org.has_active_access()}, status=status.HTTP_200_OK)
 
 
 
@@ -204,21 +282,11 @@ def stripeWebhook(request):
 	except (ValueError, stripe.error.SignatureVerificationError):
 		return HttpResponse(status=400)
 
-	obj = event['data']['object']
+	obj = event['data']['object'].to_dict()
 	event_type = event['type']
 
 	if event_type == 'checkout.session.completed':
-		metadata = obj.get('metadata') or {}
-		org_id = metadata.get('organization_id')
-		plan = metadata.get('plan')
-		if org_id:
-			update = {
-				'subscription_status': Organization.SubscriptionStatus.ACTIVE,
-				'stripe_subscription_id': obj.get('subscription'),
-			}
-			if plan in (Organization.Plan.MONTHLY, Organization.Plan.YEARLY):
-				update['plan'] = plan
-			Organization.objects.filter(pk=org_id).update(**update)
+		_activate_from_metadata(obj.get('metadata') or {}, obj.get('subscription'))
 
 	elif event_type == 'customer.subscription.updated':
 		customer_id = obj.get('customer')

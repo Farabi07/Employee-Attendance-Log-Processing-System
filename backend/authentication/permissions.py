@@ -33,6 +33,28 @@ class IsManagerOrModerator(permissions.BasePermission):
 
 
 
+class CanAddEmployees(permissions.BasePermission):
+	"""Manager always; Moderator only if the store's Manager has turned on
+	'moderators can add employees' for this store."""
+
+	def has_permission(self, request, view):
+		user = request.user
+		return bool(user and user.is_authenticated and user.can_add_employees())
+
+
+
+
+class CanManageSubscription(permissions.BasePermission):
+	"""Manager always; Moderator only if the store's Manager has turned on
+	'moderators can manage subscription' for this store."""
+
+	def has_permission(self, request, view):
+		user = request.user
+		return bool(user and user.is_authenticated and user.can_manage_subscription())
+
+
+
+
 class IsPlatformOwner(permissions.BasePermission):
 	"""The SaaS platform owner — an admin account with no organization."""
 

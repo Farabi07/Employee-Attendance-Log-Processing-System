@@ -257,6 +257,12 @@ class Organization(models.Model):
 
     currency = models.CharField(max_length=10, choices=CURRENCY_CHOICES, default='usd')
 
+    # Manager-controlled toggles — Moderators are restricted by default
+    # (per the original role spec), but the Manager can grant either of
+    # these two abilities on a per-store basis at any time.
+    moderator_can_add_employees = models.BooleanField(default=False)
+    moderator_can_manage_subscription = models.BooleanField(default=False)
+
     trial_ends_at = models.DateTimeField()
     subscription_status = models.CharField(max_length=20, choices=SubscriptionStatus.choices, default=SubscriptionStatus.TRIALING)
     plan = models.CharField(max_length=20, choices=Plan.choices, default=Plan.NONE)
@@ -440,11 +446,24 @@ class User(AbstractBaseUser):
     def is_manager(self):
         return self.org_role == self.OrgRole.MANAGER
 
+    def is_moderator(self):
+        return self.org_role == self.OrgRole.MODERATOR
+
     def is_manager_or_moderator(self):
         return self.org_role in (self.OrgRole.MANAGER, self.OrgRole.MODERATOR)
 
     def is_platform_owner(self):
         return self.is_admin and self.organization_id is None
+
+    def can_add_employees(self):
+        if self.is_manager():
+            return True
+        return self.is_moderator() and bool(self.organization_id) and self.organization.moderator_can_add_employees
+
+    def can_manage_subscription(self):
+        if self.is_manager():
+            return True
+        return self.is_moderator() and bool(self.organization_id) and self.organization.moderator_can_manage_subscription
 
 
 

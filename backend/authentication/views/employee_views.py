@@ -11,7 +11,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from authentication.models import Employee
 from authentication.serializers import EmployeeSerializer, EmployeeListSerializer
 from authentication.filters import EmployeeFilter
-from authentication.permissions import IsManager, IsManagerOrModerator, HasActiveSubscription
+from authentication.permissions import IsManager, IsManagerOrModerator, CanAddEmployees, HasActiveSubscription
 
 from commons.pagination import Pagination
 
@@ -126,7 +126,7 @@ ALLOWED_CREATE_ROLES = {Employee.OrgRole.EMPLOYEE, Employee.OrgRole.MODERATOR}
 
 @extend_schema(request=EmployeeSerializer, responses=EmployeeSerializer)
 @api_view(['POST'])
-@permission_classes([IsManager, HasActiveSubscription])
+@permission_classes([CanAddEmployees, HasActiveSubscription])
 def createEmployee(request):
 	data = request.data
 
@@ -144,7 +144,13 @@ def createEmployee(request):
 	# create Employees or Moderators within their own store, never another Manager.
 	employee_data_dict['organization'] = request.user.organization_id
 	requested_role = employee_data_dict.get('org_role')
-	employee_data_dict['org_role'] = requested_role if requested_role in ALLOWED_CREATE_ROLES else Employee.OrgRole.EMPLOYEE
+	if request.user.is_manager():
+		employee_data_dict['org_role'] = requested_role if requested_role in ALLOWED_CREATE_ROLES else Employee.OrgRole.EMPLOYEE
+	else:
+		# A Moderator granted "add employees" can still only ever create
+		# plain Employees — never another Moderator, regardless of what's
+		# requested. Creating Moderators stays Manager-only.
+		employee_data_dict['org_role'] = Employee.OrgRole.EMPLOYEE
 
 	serializer = EmployeeSerializer(data=employee_data_dict, many=False)
 

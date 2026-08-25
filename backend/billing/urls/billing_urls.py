@@ -13,7 +13,9 @@ urlpatterns = [
 
 	path('api/v1/webhook/', views.stripeWebhook),
 
+	path('api/v1/confirm/', views.confirmCheckout),
+
 	path('api/v1/platform_settings/', views.platformSettings),
 
-	path('api/v1/organization/currency/', views.updateOrganizationCurrency),
+	path('api/v1/organization/settings/', views.updateOrganizationSettings),
 ]
