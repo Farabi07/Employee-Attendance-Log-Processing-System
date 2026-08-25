@@ -75,6 +75,7 @@ urlpatterns = [
 	# Multi-tenant SaaS: signup + platform owner
 	path('saas/', include('authentication.urls.signup_urls')),
 	path('billing/', include('billing.urls.billing_urls')),
+	path('wallet/', include('wallet.urls.wallet_urls')),
 
 
 	# YOUR PATTERNS

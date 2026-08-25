@@ -110,7 +110,11 @@ class AttendanceQRTokenSerializer(serializers.ModelSerializer):
 
 	class Meta:
 		model = AttendanceQRToken
-		fields = '__all__'
+		# `token` is the TOTP seed secret — never serialize it out. Anyone who
+		# gets it can compute every future code, forever, defeating the whole
+		# point of the code rotating. The frontend only ever needs the live
+		# code from the /live/ endpoint, not this seed.
+		exclude = ['token']
 
 
 

@@ -1,10 +1,15 @@
 import secrets
+import time
+
+import pyotp
 
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
 from authentication.models import Branch, Employee, Organization
+
+QR_CODE_PERIOD_SECONDS = 30
 
 
 
@@ -57,6 +62,12 @@ class Roster(models.Model):
 
 
 class AttendanceQRToken(models.Model):
+    """One per branch. `token` holds a TOTP seed secret (never shown to
+    anyone) — the QR actually displayed/scanned encodes a 6-digit code
+    derived from that secret plus the current 30-second time window
+    (the same scheme Google Authenticator uses, RFC 6238), so a
+    screenshot or photo of the screen is useless 30 seconds later."""
+
     branch = models.OneToOneField(Branch, on_delete=models.CASCADE, related_name='attendance_qr_token')
     token = models.CharField(max_length=64, unique=True, editable=False)
     is_active = models.BooleanField(default=True)
@@ -79,12 +90,30 @@ class AttendanceQRToken(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.token:
-            self.token = secrets.token_urlsafe(32)
+            self.token = pyotp.random_base32()
         super().save(*args, **kwargs)
 
     def regenerate(self):
-        self.token = secrets.token_urlsafe(32)
+        self.token = pyotp.random_base32()
         self.save()
+
+    @property
+    def _totp(self):
+        return pyotp.TOTP(self.token, interval=QR_CODE_PERIOD_SECONDS, digits=6)
+
+    def current_code(self):
+        return self._totp.now()
+
+    def seconds_remaining(self):
+        return QR_CODE_PERIOD_SECONDS - int(time.time()) % QR_CODE_PERIOD_SECONDS
+
+    def verify_code(self, code):
+        if not code:
+            return False
+        # valid_window=1 tolerates the scan/network round-trip landing just
+        # after a window rolled over, without extending the effective life
+        # of a leaked code by more than one extra period.
+        return self._totp.verify(str(code), valid_window=1)
 
     @property
     def geofence_enabled(self):
@@ -108,6 +137,7 @@ class Attendance(models.Model):
     check_in_time = models.DateTimeField(null=True, blank=True)
     check_out_time = models.DateTimeField(null=True, blank=True)
     worked_hours = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    earnings = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
     check_in_lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     check_in_lon = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)

@@ -57,7 +57,8 @@ INSTALLED_APPS = [
     'support.apps.SupportConfig',
 	'url_shortener.apps.UrlShortenerConfig',
 	'attendance.apps.AttendanceConfig',
-	'billing.apps.BillingConfig'
+	'billing.apps.BillingConfig',
+	'wallet.apps.WalletConfig'
 ]
 
 INSTALLED_APPS += ['sequences.apps.SequencesConfig']

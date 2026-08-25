@@ -475,7 +475,9 @@ class Employee(User):
     emp_join_date = models.DateField(null=True, blank=True)
     basic_money = models.IntegerField(null=True, blank=True)
     allowance_money = models.IntegerField(null=True, blank=True)
-    
+    hourly_rate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    stripe_connect_account_id = models.CharField(max_length=255, null=True, blank=True)
+
     designation = models.ForeignKey(Designation, on_delete=models.SET_NULL, null=True, blank=True)
     father_name = models.CharField(max_length=255, null=True, blank=True)
     mother_name = models.CharField(max_length=255, null=True, blank=True)

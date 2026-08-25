@@ -1,7 +1,6 @@
 env
 media
 baira-data/
-migrations
 *.pyc
 __pycache__/
 

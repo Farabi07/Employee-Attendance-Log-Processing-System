@@ -18,7 +18,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from authentication.models import Branch, Employee
 from authentication.permissions import IsManager, IsManagerOrModerator, HasActiveSubscription
 
-from attendance.models import Attendance, AttendanceQRToken, Roster
+from attendance.models import Attendance, AttendanceQRToken, Roster, QR_CODE_PERIOD_SECONDS
 from attendance.serializers import AttendanceSerializer, AttendanceListSerializer, AttendanceQRTokenSerializer
 from attendance.filters import AttendanceFilter
 from attendance.geo import distance_meters
@@ -59,6 +59,17 @@ def _validate_location(request, qr_token):
 		)
 
 	return lat, lon, None
+
+
+def _resolve_qr_token_by_code(organization, code):
+	"""A scanned code is a live TOTP value, not a lookup key — it doesn't
+	identify a branch by itself. Check it against every active QR token in
+	the employee's organization (there are only ever a handful of branches
+	per store) and return the one it's currently valid for."""
+	for qr_token in AttendanceQRToken.objects.filter(branch__organization=organization, is_active=True).select_related('branch'):
+		if qr_token.verify_code(code):
+			return qr_token
+	return None
 
 
 
@@ -234,22 +245,18 @@ def getMyTodayAttendance(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, HasActiveSubscription])
 def checkIn(request):
-	token = request.data.get('token')
-	if not token:
-		return Response({'detail': 'token is required'}, status=status.HTTP_400_BAD_REQUEST)
-
-	try:
-		qr_token = AttendanceQRToken.objects.get(token=token, is_active=True)
-	except ObjectDoesNotExist:
-		return Response({'detail': 'Invalid or inactive QR code'}, status=status.HTTP_400_BAD_REQUEST)
+	code = request.data.get('token') or request.data.get('code')
+	if not code:
+		return Response({'detail': 'code is required'}, status=status.HTTP_400_BAD_REQUEST)
 
 	try:
 		employee = Employee.objects.get(pk=request.user.pk)
 	except ObjectDoesNotExist:
 		return Response({'detail': 'Only employees can check in'}, status=status.HTTP_400_BAD_REQUEST)
 
-	if qr_token.branch.organization_id != employee.organization_id:
-		return Response({'detail': 'Invalid or inactive QR code'}, status=status.HTTP_400_BAD_REQUEST)
+	qr_token = _resolve_qr_token_by_code(employee.organization, code)
+	if qr_token is None:
+		return Response({'detail': 'This code is invalid or has expired — scan the current QR on screen'}, status=status.HTTP_400_BAD_REQUEST)
 
 	lat, lon, error = _validate_location(request, qr_token)
 	if error:
@@ -292,22 +299,18 @@ def checkIn(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, HasActiveSubscription])
 def checkOut(request):
-	token = request.data.get('token')
-	if not token:
-		return Response({'detail': 'token is required'}, status=status.HTTP_400_BAD_REQUEST)
-
-	try:
-		qr_token = AttendanceQRToken.objects.get(token=token, is_active=True)
-	except ObjectDoesNotExist:
-		return Response({'detail': 'Invalid or inactive QR code'}, status=status.HTTP_400_BAD_REQUEST)
+	code = request.data.get('token') or request.data.get('code')
+	if not code:
+		return Response({'detail': 'code is required'}, status=status.HTTP_400_BAD_REQUEST)
 
 	try:
 		employee = Employee.objects.get(pk=request.user.pk)
 	except ObjectDoesNotExist:
 		return Response({'detail': 'Only employees can check out'}, status=status.HTTP_400_BAD_REQUEST)
 
-	if qr_token.branch.organization_id != employee.organization_id:
-		return Response({'detail': 'Invalid or inactive QR code'}, status=status.HTTP_400_BAD_REQUEST)
+	qr_token = _resolve_qr_token_by_code(employee.organization, code)
+	if qr_token is None:
+		return Response({'detail': 'This code is invalid or has expired — scan the current QR on screen'}, status=status.HTTP_400_BAD_REQUEST)
 
 	lat, lon, error = _validate_location(request, qr_token)
 	if error:
@@ -334,8 +337,24 @@ def checkOut(request):
 	worked_seconds = (now - attendance.check_in_time).total_seconds()
 	attendance.worked_hours = round(Decimal(worked_seconds) / Decimal(3600), 2)
 
+	if employee.hourly_rate is not None:
+		attendance.earnings = round(attendance.worked_hours * employee.hourly_rate, 2)
+
 	attendance.updated_by = request.user
 	attendance.save()
+
+	if attendance.earnings:
+		from wallet.models import WalletTransaction
+
+		WalletTransaction.objects.create(
+			employee=employee,
+			organization=employee.organization,
+			type=WalletTransaction.Type.EARNING,
+			status=WalletTransaction.Status.COMPLETED,
+			amount=attendance.earnings,
+			related_attendance=attendance,
+			note=f"Worked {attendance.worked_hours}h at ${employee.hourly_rate}/h",
+		)
 
 	serializer = AttendanceListSerializer(attendance)
 	return Response(serializer.data, status=status.HTTP_200_OK)
@@ -357,11 +376,43 @@ def getBranchQRImage(request, branch_id):
 		defaults={'created_by': request.user}
 	)
 
-	img = qrcode.make(qr_token.token)
+	img = qrcode.make(qr_token.current_code())
 	buffer = BytesIO()
 	img.save(buffer, format='PNG')
 
-	return HttpResponse(buffer.getvalue(), content_type='image/png')
+	response = HttpResponse(buffer.getvalue(), content_type='image/png')
+	response['Cache-Control'] = 'no-store'
+	return response
+
+
+
+
+@extend_schema(request=None, responses=None)
+@api_view(['GET'])
+@permission_classes([IsManager, HasActiveSubscription])
+def getBranchLiveCode(request, branch_id):
+	"""JSON form of the live code, for a frontend that renders the QR
+	client-side and drives its own countdown — avoids re-fetching a whole
+	PNG every few seconds."""
+	try:
+		branch = Branch.objects.get(pk=branch_id, organization=request.user.organization)
+	except ObjectDoesNotExist:
+		return Response({'detail': f"Branch id - {branch_id} does't exists"}, status=status.HTTP_400_BAD_REQUEST)
+
+	qr_token, created = AttendanceQRToken.objects.get_or_create(
+		branch=branch,
+		defaults={'created_by': request.user}
+	)
+
+	return Response(
+		{
+			'code': qr_token.current_code(),
+			'seconds_remaining': qr_token.seconds_remaining(),
+			'period_seconds': QR_CODE_PERIOD_SECONDS,
+			'branch_name': branch.name,
+		},
+		status=status.HTTP_200_OK,
+	)
 
 
 

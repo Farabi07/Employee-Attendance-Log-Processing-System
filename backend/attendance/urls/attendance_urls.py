@@ -21,6 +21,8 @@ urlpatterns = [
 
 	path('api/v1/attendance/qr_token/<int:branch_id>/image/', views.getBranchQRImage),
 
+	path('api/v1/attendance/qr_token/<int:branch_id>/live/', views.getBranchLiveCode),
+
 	path('api/v1/attendance/qr_token/<int:branch_id>/regenerate/', views.regenerateBranchQRToken),
 
 	path('api/v1/attendance/qr_token/<int:branch_id>/geofence/', views.updateBranchGeofence),

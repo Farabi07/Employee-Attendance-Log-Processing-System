@@ -47,11 +47,11 @@ class AttendanceFlowTests(APITestCase):
     def test_checkin_checkout_happy_path(self):
         self.client.force_authenticate(user=self.employee)
 
-        resp = self.client.post('/attendance/api/v1/attendance/checkin/', {'token': self.qr_token.token}, format='json')
+        resp = self.client.post('/attendance/api/v1/attendance/checkin/', {'token': self.qr_token.current_code()}, format='json')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertIsNotNone(resp.data['check_in_time'])
 
-        resp = self.client.post('/attendance/api/v1/attendance/checkout/', {'token': self.qr_token.token}, format='json')
+        resp = self.client.post('/attendance/api/v1/attendance/checkout/', {'token': self.qr_token.current_code()}, format='json')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertIsNotNone(resp.data['check_out_time'])
 
@@ -60,9 +60,9 @@ class AttendanceFlowTests(APITestCase):
 
     def test_duplicate_checkin_rejected(self):
         self.client.force_authenticate(user=self.employee)
-        self.client.post('/attendance/api/v1/attendance/checkin/', {'token': self.qr_token.token}, format='json')
+        self.client.post('/attendance/api/v1/attendance/checkin/', {'token': self.qr_token.current_code()}, format='json')
 
-        resp = self.client.post('/attendance/api/v1/attendance/checkin/', {'token': self.qr_token.token}, format='json')
+        resp = self.client.post('/attendance/api/v1/attendance/checkin/', {'token': self.qr_token.current_code()}, format='json')
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_checkin_with_invalid_token_rejected(self):
@@ -79,7 +79,7 @@ class AttendanceFlowTests(APITestCase):
         self.client.force_authenticate(user=self.employee)
         resp = self.client.post(
             '/attendance/api/v1/attendance/checkin/',
-            {'token': self.qr_token.token, 'lat': 23.9, 'lon': 90.4},
+            {'token': self.qr_token.current_code(), 'lat': 23.9, 'lon': 90.4},
             format='json',
         )
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
@@ -94,7 +94,7 @@ class AttendanceFlowTests(APITestCase):
         self.client.force_authenticate(user=self.employee)
         resp = self.client.post(
             '/attendance/api/v1/attendance/checkin/',
-            {'token': self.qr_token.token, 'lat': 23.780700, 'lon': 90.279500},
+            {'token': self.qr_token.current_code(), 'lat': 23.780700, 'lon': 90.279500},
             format='json',
         )
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
@@ -224,7 +224,7 @@ class MultiTenantIsolationTests(APITestCase):
     def test_employee_of_org_a_cannot_checkin_at_org_b_branch(self):
         qr_token_b = AttendanceQRToken.objects.create(branch=self.branch_b)
         self.client.force_authenticate(user=self.employee_a)
-        resp = self.client.post('/attendance/api/v1/attendance/checkin/', {'token': qr_token_b.token}, format='json')
+        resp = self.client.post('/attendance/api/v1/attendance/checkin/', {'token': qr_token_b.current_code()}, format='json')
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_manager_a_cannot_generate_qr_for_org_b_branch(self):
