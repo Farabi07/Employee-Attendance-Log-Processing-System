@@ -57,8 +57,9 @@ export const endpoints = {
   billingStatus: () => `/billing/api/v1/status/`,
   billingCheckout: () => `/billing/api/v1/checkout/`,
   billingCustomerPortal: () => `/billing/api/v1/customer_portal/`,
+  billingConfirm: () => `/billing/api/v1/confirm/`,
   platformSettings: () => `/billing/api/v1/platform_settings/`,
-  organizationCurrency: () => `/billing/api/v1/organization/currency/`,
+  organizationSettings: () => `/billing/api/v1/organization/settings/`,
 
   walletMe: () => `/wallet/api/v1/me/`,
   walletPayoutRequest: () => `/wallet/api/v1/payout/request/`,

@@ -45,11 +45,27 @@ export function AuthProvider({ children }) {
     });
 
     if (getToken()) {
-      loadMe().finally(() => setLoading(false));
+      loadMe()
+        .then(async (me) => {
+          // Stripe webhooks need a public URL to be delivered to, which local
+          // dev doesn't have — so when we land back here right after Checkout,
+          // verify the session directly instead of waiting on a webhook.
+          const params = new URLSearchParams(window.location.search);
+          if (me && params.get("billing") === "success" && params.get("session_id")) {
+            try {
+              await api.post(endpoints.billingConfirm(), { session_id: params.get("session_id") });
+              await loadBilling(me);
+            } catch {
+              // ignore — the webhook (if configured) will still catch up
+            }
+            window.history.replaceState({}, "", window.location.pathname);
+          }
+        })
+        .finally(() => setLoading(false));
     } else {
       setLoading(false);
     }
-  }, [loadMe]);
+  }, [loadMe, loadBilling]);
 
   const login = async (email, password) => {
     const data = await api.login(email, password);

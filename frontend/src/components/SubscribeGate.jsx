@@ -71,7 +71,7 @@ export function TrialBanner() {
         {daysLeft(billing.trial_ends_at)} day(s) left in your free trial.
         {error && <span style={{ color: T.coral }}> {error}</span>}
       </span>
-      {billing.is_manager && (
+      {billing.can_manage_subscription && (
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={() => subscribe("monthly")} disabled={busy} style={{ padding: "6px 12px", borderRadius: 7, border: "none", background: T.ink, color: T.paper, fontFamily: fontBody, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
             Subscribe
@@ -115,7 +115,7 @@ export default function SubscribeGate() {
           {billing?.organization_name ? `${billing.organization_name} needs` : "This store needs"} an active subscription to keep using check-in, roster, and leave features.
         </p>
 
-        {billing?.is_manager ? (
+        {billing?.can_manage_subscription ? (
           <>
             <PlanButtons onPick={subscribe} busy={busy} />
             {error && <p style={{ fontFamily: fontBody, fontSize: 12.5, color: T.coral, marginTop: 12 }}>{error}</p>}

@@ -38,7 +38,9 @@ function initialsOf(emp) {
 
 export default function ManagerTeam() {
   const isMobile = useIsMobile();
-  const { isManager, billing } = useAuth();
+  const { isManager, billing, refreshBilling } = useAuth();
+  const canAddEmployees = isManager || !!billing?.can_add_employees;
+  const [savingModEmp, setSavingModEmp] = useState(false);
   const symbol = currencySymbol(billing?.currency);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -83,7 +85,7 @@ export default function ManagerTeam() {
         last_name: lastName,
         email,
         password,
-        org_role: orgRole,
+        org_role: isManager ? orgRole : "employee",
         payout_cycle: payoutCycle,
         ...(hourlyRate ? { hourly_rate: hourlyRate } : {}),
       });
@@ -100,6 +102,18 @@ export default function ManagerTeam() {
       setMessage({ type: "error", text: err.message });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const toggleModEmployees = async (checked) => {
+    setSavingModEmp(true);
+    try {
+      await api.put(endpoints.organizationSettings(), { moderator_can_add_employees: checked });
+      await refreshBilling();
+    } catch (err) {
+      setMessage({ type: "error", text: err.message });
+    } finally {
+      setSavingModEmp(false);
     }
   };
 
@@ -127,7 +141,7 @@ export default function ManagerTeam() {
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "320px 1fr", gap: 20 }}>
-      {isManager ? (
+      {canAddEmployees ? (
         <Card style={{ padding: "22px 24px" }}>
           <h3 style={{ fontFamily: fontDisplay, fontSize: 15.5, fontWeight: 600, color: T.ink, margin: "0 0 16px", display: "flex", alignItems: "center", gap: 8 }}>
             <UserPlus size={17} /> Add employee
@@ -145,11 +159,19 @@ export default function ManagerTeam() {
             <label style={labelStyle}>Temporary password</label>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required style={inputStyle} />
 
-            <label style={labelStyle}>Role</label>
-            <select value={orgRole} onChange={(e) => setOrgRole(e.target.value)} style={inputStyle}>
-              <option value="employee">Employee</option>
-              <option value="moderator">Moderator (can manage shifts, leave &amp; employees, but not create staff or branch QR codes)</option>
-            </select>
+            {isManager ? (
+              <>
+                <label style={labelStyle}>Role</label>
+                <select value={orgRole} onChange={(e) => setOrgRole(e.target.value)} style={inputStyle}>
+                  <option value="employee">Employee</option>
+                  <option value="moderator">Moderator (can manage shifts, leave &amp; employees, but not create staff or branch QR codes)</option>
+                </select>
+              </>
+            ) : (
+              <p style={{ fontFamily: fontBody, fontSize: 11.5, color: T.faint, margin: "-6px 0 14px" }}>
+                Added as a regular Employee — only the Manager can create Moderators.
+              </p>
+            )}
 
             <label style={labelStyle}>Hourly rate (optional, {symbol})</label>
             <input type="number" step="0.01" min="0" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} placeholder="e.g. 15.00" style={inputStyle} />
@@ -179,8 +201,22 @@ export default function ManagerTeam() {
         <Card style={{ padding: "22px 24px" }}>
           <h3 style={{ fontFamily: fontDisplay, fontSize: 15.5, fontWeight: 600, color: T.ink, margin: "0 0 10px" }}>Add employee</h3>
           <p style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted, margin: 0 }}>
-            Only the store Manager can add new employees or moderators.
+            Only the store Manager can add new employees or moderators — ask them to turn on "moderators can add employees" if you need this.
           </p>
+        </Card>
+      )}
+
+      {isManager && (
+        <Card style={{ padding: "16px 20px", gridColumn: isMobile ? "auto" : "1 / -1" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: fontBody, fontSize: 12.5, color: T.muted, cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={!!billing?.moderator_can_add_employees}
+              onChange={(e) => toggleModEmployees(e.target.checked)}
+              disabled={savingModEmp}
+            />
+            Allow moderators to add employees (never other moderators — that stays Manager-only)
+          </label>
         </Card>
       )}
 
