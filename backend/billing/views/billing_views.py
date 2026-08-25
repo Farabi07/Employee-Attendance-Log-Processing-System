@@ -1,5 +1,8 @@
+from datetime import timedelta
+
 from django.conf import settings
 from django.http import HttpResponse
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
 from rest_framework import status
@@ -201,6 +204,12 @@ def createCustomerPortalSession(request):
 
 
 
+PLAN_DURATION_DAYS = {
+	Organization.Plan.MONTHLY: 30,
+	Organization.Plan.YEARLY: 365,
+}
+
+
 def _activate_from_metadata(metadata, stripe_subscription_id):
 	org_id = metadata.get('organization_id')
 	plan = metadata.get('plan')
@@ -212,6 +221,9 @@ def _activate_from_metadata(metadata, stripe_subscription_id):
 	}
 	if plan in (Organization.Plan.MONTHLY, Organization.Plan.YEARLY):
 		update['plan'] = plan
+		# Counted from right now — the day they actually subscribed — not
+		# from the original trial start.
+		update['subscription_expires_at'] = timezone.now() + timedelta(days=PLAN_DURATION_DAYS[plan])
 	Organization.objects.filter(pk=org_id).update(**update)
 
 

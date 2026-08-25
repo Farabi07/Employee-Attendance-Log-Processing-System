@@ -266,6 +266,9 @@ class Organization(models.Model):
     trial_ends_at = models.DateTimeField()
     subscription_status = models.CharField(max_length=20, choices=SubscriptionStatus.choices, default=SubscriptionStatus.TRIALING)
     plan = models.CharField(max_length=20, choices=Plan.choices, default=Plan.NONE)
+    # Counted from the day they actually subscribed (or last renewed) —
+    # not from the original trial start. Only set once a paid plan is active.
+    subscription_expires_at = models.DateTimeField(null=True, blank=True)
 
     stripe_customer_id = models.CharField(max_length=255, null=True, blank=True)
     stripe_subscription_id = models.CharField(max_length=255, null=True, blank=True)
@@ -290,6 +293,14 @@ class Organization(models.Model):
         if self.subscription_status == self.SubscriptionStatus.TRIALING:
             return timezone.now() <= self.trial_ends_at
         return False
+
+    def expires_at(self):
+        """The date that actually matters right now — trial end while
+        trialing, otherwise the paid subscription's own expiry (counted
+        from when they subscribed/last renewed, not from the trial)."""
+        if self.subscription_status == self.SubscriptionStatus.TRIALING:
+            return self.trial_ends_at
+        return self.subscription_expires_at or self.trial_ends_at
 
 
 

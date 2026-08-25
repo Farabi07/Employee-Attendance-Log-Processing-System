@@ -81,7 +81,7 @@ def listOrganizations(request):
 			'owner_email': org.owner.email if org.owner else None,
 			'subscription_status': org.subscription_status,
 			'plan': org.plan,
-			'trial_ends_at': org.trial_ends_at,
+			'expires_at': org.expires_at(),
 			'created_at': org.created_at,
 			'member_count': org.members.count(),
 		}
