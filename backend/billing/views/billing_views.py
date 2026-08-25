@@ -12,6 +12,10 @@ from drf_spectacular.utils import extend_schema
 from authentication.permissions import IsManager
 from authentication.models import Organization
 
+from commons.currencies import CURRENCY_CHOICES
+
+from billing.models import PlatformSettings
+
 try:
 	import stripe
 except ImportError:
@@ -38,6 +42,7 @@ def billingStatus(request):
 		{
 			'organization_id': org.id,
 			'organization_name': org.name,
+			'currency': org.currency,
 			'subscription_status': org.subscription_status,
 			'plan': org.plan,
 			'trial_ends_at': org.trial_ends_at,
@@ -46,6 +51,65 @@ def billingStatus(request):
 		},
 		status=status.HTTP_200_OK,
 	)
+
+
+
+
+@extend_schema(request=None, responses=None)
+@api_view(['GET', 'PUT'])
+@permission_classes([IsAuthenticated])
+def platformSettings(request):
+	settings_obj = PlatformSettings.current()
+
+	if request.method == 'GET':
+		return Response(
+			{
+				'monthly_price': settings_obj.monthly_price,
+				'yearly_price': settings_obj.yearly_price,
+				'currency': settings_obj.currency,
+			},
+			status=status.HTTP_200_OK,
+		)
+
+	if not request.user.is_platform_owner():
+		return Response({'detail': 'Only the platform owner can change subscription pricing.'}, status=status.HTTP_403_FORBIDDEN)
+
+	monthly_price = request.data.get('monthly_price')
+	yearly_price = request.data.get('yearly_price')
+	currency = request.data.get('currency')
+
+	if monthly_price is not None:
+		settings_obj.monthly_price = monthly_price
+	if yearly_price is not None:
+		settings_obj.yearly_price = yearly_price
+	if currency:
+		valid_currencies = {c for c, _label in CURRENCY_CHOICES}
+		if currency not in valid_currencies:
+			return Response({'detail': f"currency must be one of {sorted(valid_currencies)}"}, status=status.HTTP_400_BAD_REQUEST)
+		settings_obj.currency = currency
+
+	settings_obj.save()
+	return Response(
+		{'monthly_price': settings_obj.monthly_price, 'yearly_price': settings_obj.yearly_price, 'currency': settings_obj.currency},
+		status=status.HTTP_200_OK,
+	)
+
+
+
+
+@extend_schema(request=None, responses=None)
+@api_view(['PUT'])
+@permission_classes([IsManager])
+def updateOrganizationCurrency(request):
+	currency = request.data.get('currency')
+	valid_currencies = {c for c, _label in CURRENCY_CHOICES}
+	if currency not in valid_currencies:
+		return Response({'detail': f"currency must be one of {sorted(valid_currencies)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+	org = request.user.organization
+	org.currency = currency
+	org.save()
+	return Response({'currency': org.currency}, status=status.HTTP_200_OK)
 
 
 
@@ -60,9 +124,15 @@ def createCheckoutSession(request):
 	stripe.api_key = settings.STRIPE_SECRET_KEY
 	org = request.user.organization
 	plan = request.data.get('plan')
-	price_id = {'monthly': settings.STRIPE_PRICE_MONTHLY, 'yearly': settings.STRIPE_PRICE_YEARLY}.get(plan)
-	if not price_id:
+	if plan not in ('monthly', 'yearly'):
 		return Response({'detail': "plan must be 'monthly' or 'yearly'"}, status=status.HTTP_400_BAD_REQUEST)
+
+	# Pricing is set by the platform owner from their own dashboard, not
+	# hardcoded — so it can change any time without touching Stripe's
+	# dashboard or redeploying.
+	platform_settings = PlatformSettings.current()
+	unit_amount = int((platform_settings.monthly_price if plan == 'monthly' else platform_settings.yearly_price) * 100)
+	interval = 'month' if plan == 'monthly' else 'year'
 
 	if not org.stripe_customer_id:
 		customer = stripe.Customer.create(email=request.user.email, name=org.name)
@@ -72,7 +142,15 @@ def createCheckoutSession(request):
 	session = stripe.checkout.Session.create(
 		customer=org.stripe_customer_id,
 		mode='subscription',
-		line_items=[{'price': price_id, 'quantity': 1}],
+		line_items=[{
+			'price_data': {
+				'currency': platform_settings.currency,
+				'unit_amount': unit_amount,
+				'recurring': {'interval': interval},
+				'product_data': {'name': f'Roster subscription — {plan}'},
+			},
+			'quantity': 1,
+		}],
 		success_url=settings.BILLING_SUCCESS_URL,
 		cancel_url=settings.BILLING_CANCEL_URL,
 		metadata={'organization_id': str(org.id), 'plan': plan},

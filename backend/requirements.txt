@@ -1,4 +1,5 @@
 asgiref==3.4.1
+python-dotenv==1.2.3
 attrs==21.2.0
 backports.entry-points-selectable==1.1.0
 certifi==2021.10.8

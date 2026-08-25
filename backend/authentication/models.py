@@ -16,6 +16,8 @@ from phonenumber_field.modelfields import PhoneNumberField
 from PIL import Image
 from rest_framework.serializers import BaseSerializer
 
+from commons.currencies import CURRENCY_CHOICES
+
 
 
 
@@ -253,6 +255,8 @@ class Organization(models.Model):
     name = models.CharField(max_length=255)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='owned_organizations')
 
+    currency = models.CharField(max_length=10, choices=CURRENCY_CHOICES, default='usd')
+
     trial_ends_at = models.DateTimeField()
     subscription_status = models.CharField(max_length=20, choices=SubscriptionStatus.choices, default=SubscriptionStatus.TRIALING)
     plan = models.CharField(max_length=20, choices=Plan.choices, default=Plan.NONE)
@@ -469,6 +473,11 @@ class Department(models.Model):
 
 
 class Employee(User):
+    class PayoutCycle(models.TextChoices):
+        WEEKLY = 'weekly', _('Weekly')
+        BIWEEKLY = 'biweekly', _('Every 2 weeks')
+        MONTHLY = 'monthly', _('Monthly')
+
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True)
     branch = models.ForeignKey(Branch, on_delete=models.SET_NULL, null=True, blank=True)
     emp_id_no = models.CharField(max_length=100, null=True, blank=True)
@@ -476,6 +485,7 @@ class Employee(User):
     basic_money = models.IntegerField(null=True, blank=True)
     allowance_money = models.IntegerField(null=True, blank=True)
     hourly_rate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    payout_cycle = models.CharField(max_length=20, choices=PayoutCycle.choices, default=PayoutCycle.WEEKLY)
     stripe_connect_account_id = models.CharField(max_length=255, null=True, blank=True)
 
     designation = models.ForeignKey(Designation, on_delete=models.SET_NULL, null=True, blank=True)

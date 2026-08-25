@@ -16,7 +16,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from authentication.models import Employee
 from authentication.permissions import IsManager, IsManagerOrModerator, HasActiveSubscription
 
-from wallet.models import WalletTransaction, wallet_balance, wallet_pending_payout
+from wallet.models import WalletTransaction, wallet_balance, wallet_pending_payout, next_payout_due_at, is_payout_due
 from wallet.serializers import WalletTransactionSerializer
 from wallet.notify import notify_payout_completed, notify_payout_failed
 
@@ -47,7 +47,7 @@ def _settle_payout(transaction):
 			amount_cents = int(transaction.amount * 100)
 			transfer = stripe.Transfer.create(
 				amount=amount_cents,
-				currency='aud',
+				currency=transaction.organization.currency,
 				destination=employee.stripe_connect_account_id,
 				transfer_group=str(transaction.batch_id or transaction.transaction_id),
 			)
@@ -98,6 +98,9 @@ def getMyWallet(request):
 			'pending_payout': wallet_pending_payout(employee),
 			'this_week_earnings': this_week,
 			'hourly_rate': employee.hourly_rate,
+			'payout_cycle': employee.payout_cycle,
+			'currency': employee.organization.currency,
+			'next_payout_due_at': next_payout_due_at(employee),
 			'history': WalletTransactionSerializer(history, many=True).data,
 		},
 		status=status.HTTP_200_OK,
@@ -176,9 +179,12 @@ def getPayrollSummary(request):
 			{
 				'employee': {'id': employee.id, 'first_name': employee.first_name, 'last_name': employee.last_name, 'email': employee.email},
 				'hourly_rate': employee.hourly_rate,
+				'payout_cycle': employee.payout_cycle,
 				'this_week_earnings': this_week,
 				'current_balance': balance,
 				'pending_payout': pending,
+				'next_payout_due_at': next_payout_due_at(employee),
+				'is_payout_due': is_payout_due(employee),
 			}
 		)
 
@@ -189,6 +195,7 @@ def getPayrollSummary(request):
 	return Response(
 		{
 			'employees': rows,
+			'currency': organization.currency,
 			'total_payable': total_balance,
 			'pending_request_count': pending_requests,
 			'pending_requests': WalletTransactionSerializer(pending_qs, many=True).data,
@@ -202,9 +209,10 @@ def getPayrollSummary(request):
 @extend_schema(request=None, responses=None)
 @api_view(['POST'])
 @permission_classes([IsManager, HasActiveSubscription])
-def runWeeklyPayroll(request):
-	"""'Approve & Pay Weekly Payroll' — pays out every employee's full
-	current balance in the store in one go, grouped under a single batch."""
+def runPayrollNow(request):
+	"""'Approve & Pay Payroll' — a manual manager override that pays out
+	every employee's full current balance right now, regardless of where
+	each employee is in their own payout cycle. Grouped under one batch."""
 	organization = request.user.organization
 	employees = Employee.objects.filter(organization=organization)
 
@@ -224,7 +232,7 @@ def runWeeklyPayroll(request):
 			amount=balance,
 			batch_id=batch_id,
 			created_by=request.user,
-			note='Weekly payroll run',
+			note='Manual payroll run',
 		)
 		transaction = _settle_payout(transaction)
 		if transaction.status == WalletTransaction.Status.COMPLETED:

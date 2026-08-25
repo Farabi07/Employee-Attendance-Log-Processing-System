@@ -81,3 +81,35 @@ def wallet_pending_payout(employee):
 	return WalletTransaction.objects.filter(
 		employee=employee, type=WalletTransaction.Type.PAYOUT, status=WalletTransaction.Status.PENDING
 	).aggregate(s=Sum('amount'))['s'] or 0
+
+
+PAYOUT_CYCLE_DAYS = {
+	'weekly': 7,
+	'biweekly': 14,
+	'monthly': 30,
+}
+
+
+def last_payout_at(employee):
+	last = WalletTransaction.objects.filter(
+		employee=employee, type=WalletTransaction.Type.PAYOUT, status=WalletTransaction.Status.COMPLETED
+	).order_by('-processed_at').first()
+	return last.processed_at if last else None
+
+
+def next_payout_due_at(employee):
+	"""When this employee's next scheduled settlement is due, based on
+	their own payout cycle — set by the manager and changeable any time,
+	e.g. after a raise or a change in how often they want to be paid."""
+	cycle_days = PAYOUT_CYCLE_DAYS.get(employee.payout_cycle, 7)
+	last = last_payout_at(employee)
+	if last is None:
+		return None  # never paid yet — due as soon as there's a balance
+	return last + timezone.timedelta(days=cycle_days)
+
+
+def is_payout_due(employee):
+	if wallet_balance(employee) <= 0:
+		return False
+	due_at = next_payout_due_at(employee)
+	return due_at is None or timezone.now() >= due_at

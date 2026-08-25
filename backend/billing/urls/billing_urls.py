@@ -12,4 +12,8 @@ urlpatterns = [
 	path('api/v1/customer_portal/', views.createCustomerPortalSession),
 
 	path('api/v1/webhook/', views.stripeWebhook),
+
+	path('api/v1/platform_settings/', views.platformSettings),
+
+	path('api/v1/organization/currency/', views.updateOrganizationCurrency),
 ]

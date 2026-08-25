@@ -167,10 +167,12 @@ def updateEmployee(request, pk):
 		if value != '' and value != '0':
 			filtered_data[key] = value
 
-	# Role/tenant changes are a Manager-only action (equivalent to creating a
-	# moderator), regardless of what a Moderator might otherwise edit here.
+	# Role/tenant/pay changes are a Manager-only action, regardless of what
+	# a Moderator might otherwise edit here.
 	if not request.user.is_manager():
 		filtered_data.pop('org_role', None)
+		filtered_data.pop('hourly_rate', None)
+		filtered_data.pop('payout_cycle', None)
 	filtered_data.pop('organization', None)
 
 	image = filtered_data.get('image', None)
