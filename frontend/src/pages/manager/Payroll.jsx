@@ -5,11 +5,17 @@ import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import { useIsMobile } from "../../lib/useMediaQuery";
 import { useAuth } from "../../lib/auth";
+import { formatMoney, CURRENCIES } from "../../lib/currency";
 import Card from "../../components/Card";
 import StatusPill from "../../components/StatusPill";
 
-function money(v) {
-  return `$${Number(v || 0).toFixed(2)}`;
+const CYCLE_LABEL = { weekly: "Weekly", biweekly: "Every 2 weeks", monthly: "Monthly" };
+
+function dueLabel(row) {
+  if (!row.next_payout_due_at) return row.current_balance > 0 ? "Due now" : "—";
+  const due = new Date(row.next_payout_due_at);
+  const label = due.toLocaleDateString([], { month: "short", day: "numeric" });
+  return row.is_payout_due ? `Due now (was ${label})` : label;
 }
 
 export default function ManagerPayroll() {
@@ -20,6 +26,10 @@ export default function ManagerPayroll() {
   const [message, setMessage] = useState(null);
   const [running, setRunning] = useState(false);
   const [reviewingId, setReviewingId] = useState(null);
+  const [currency, setCurrency] = useState("usd");
+  const [savingCurrency, setSavingCurrency] = useState(false);
+
+  const money = (v) => formatMoney(v, summary?.currency);
 
   const load = useCallback(async () => {
     const [summaryRes, txRes] = await Promise.all([
@@ -28,11 +38,25 @@ export default function ManagerPayroll() {
     ]);
     setSummary(summaryRes);
     setTransactions(txRes.transactions || []);
+    setCurrency(summaryRes.currency || "usd");
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  const saveCurrency = async (value) => {
+    setCurrency(value);
+    setSavingCurrency(true);
+    try {
+      await api.put(endpoints.organizationCurrency(), { currency: value });
+      await load();
+    } catch (err) {
+      setMessage({ type: "error", text: err.message });
+    } finally {
+      setSavingCurrency(false);
+    }
+  };
 
   const runPayroll = async () => {
     setMessage(null);
@@ -67,6 +91,22 @@ export default function ManagerPayroll() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {isManager && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <label style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted }}>Store currency (used for all wallets &amp; payouts)</label>
+          <select
+            value={currency}
+            onChange={(e) => saveCurrency(e.target.value)}
+            disabled={savingCurrency}
+            style={{ padding: "6px 9px", borderRadius: 7, border: `1px solid ${T.line}`, fontFamily: fontBody, fontSize: 12.5, background: T.card }}
+          >
+            {CURRENCIES.map((c) => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", gap: 14 }}>
         <Card style={{ padding: "18px 20px" }}>
           <p style={{ fontFamily: fontBody, fontSize: 12, color: T.muted, margin: "0 0 6px" }}>Total payable now</p>
@@ -99,7 +139,7 @@ export default function ManagerPayroll() {
                 gap: 8,
               }}
             >
-              <Wallet size={15} /> {running ? "Processing…" : "Approve & Pay Weekly Payroll"}
+              <Wallet size={15} /> {running ? "Processing…" : "Approve & Pay Payroll"}
             </button>
           ) : (
             <p style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted, margin: 0, textAlign: "center" }}>
@@ -108,6 +148,12 @@ export default function ManagerPayroll() {
           )}
         </Card>
       </div>
+
+      {isManager && (
+        <p style={{ fontFamily: fontBody, fontSize: 12, color: T.muted, margin: 0 }}>
+          This pays everyone's full balance right now, regardless of their own cycle. Each employee's cycle (set in Team) decides when they're paid automatically.
+        </p>
+      )}
 
       {message && (
         <p style={{ fontFamily: fontBody, fontSize: 13, color: message.type === "error" ? T.coral : T.teal, margin: 0 }}>{message.text}</p>
@@ -119,7 +165,7 @@ export default function ManagerPayroll() {
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 560 }}>
             <thead>
               <tr>
-                {["Employee", "Rate", "This week", "Balance", "Pending"].map((h) => (
+                {["Employee", "Rate", "Cycle", "Next due", "This week", "Balance", "Pending"].map((h) => (
                   <th key={h} style={{ textAlign: "left", fontFamily: fontBody, fontSize: 11.5, color: T.faint, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.3, padding: "0 8px 10px", borderBottom: `1px solid ${T.line}` }}>
                     {h}
                   </th>
@@ -134,6 +180,12 @@ export default function ManagerPayroll() {
                   </td>
                   <td style={{ padding: "10px 8px", borderBottom: `1px solid ${T.line2}`, fontFamily: fontMono, fontSize: 12.5, color: T.muted }}>
                     {row.hourly_rate ? `${money(row.hourly_rate)}/h` : "—"}
+                  </td>
+                  <td style={{ padding: "10px 8px", borderBottom: `1px solid ${T.line2}`, fontFamily: fontBody, fontSize: 12.5, color: T.muted }}>
+                    {CYCLE_LABEL[row.payout_cycle] || "Weekly"}
+                  </td>
+                  <td style={{ padding: "10px 8px", borderBottom: `1px solid ${T.line2}`, fontFamily: fontMono, fontSize: 12, color: row.is_payout_due ? T.coral : T.faint }}>
+                    {dueLabel(row)}
                   </td>
                   <td style={{ padding: "10px 8px", borderBottom: `1px solid ${T.line2}`, fontFamily: fontMono, fontSize: 12.5, color: T.muted }}>
                     {money(row.this_week_earnings)}

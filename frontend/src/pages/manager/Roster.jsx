@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Plus, Download, QrCode, Trash2, Pencil, MapPin, Building2, Tag } from "lucide-react";
+import { Plus, QrCode, Trash2, Pencil, MapPin, Building2, Tag, Maximize2 } from "lucide-react";
 import { T, fontDisplay, fontBody, fontMono } from "../../theme";
-import { api, fetchBlobUrl } from "../../lib/api";
+import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import { formatDayLabel, todayISO } from "../../lib/dates";
 import { useIsMobile } from "../../lib/useMediaQuery";
 import { useAuth } from "../../lib/auth";
 import Card from "../../components/Card";
+import LiveQrDisplay from "../../components/LiveQrDisplay";
 
 const inputStyle = {
   width: "100%",
@@ -55,8 +56,7 @@ export default function ManagerRoster() {
   const [creatingLeaveType, setCreatingLeaveType] = useState(false);
 
   const [qrBranchId, setQrBranchId] = useState("");
-  const [qrUrl, setQrUrl] = useState(null);
-  const [qrLoading, setQrLoading] = useState(false);
+  const [showLiveQr, setShowLiveQr] = useState(false);
   const [geoLat, setGeoLat] = useState("");
   const [geoLon, setGeoLon] = useState("");
   const [geoRadius, setGeoRadius] = useState("");
@@ -201,23 +201,19 @@ export default function ManagerRoster() {
     }
   };
 
-  const loadQr = async () => {
-    if (!qrBranchId) return;
-    setQrLoading(true);
-    setGeoMsg(null);
-    try {
-      const url = await fetchBlobUrl(endpoints.qrImage(qrBranchId));
-      setQrUrl(url);
-      const info = await api.get(endpoints.qrGeofence(qrBranchId)).catch(() => null);
-      if (info) {
-        setGeoLat(info.latitude ?? "");
-        setGeoLon(info.longitude ?? "");
-        setGeoRadius(info.allowed_radius_meters ?? "");
-      }
-    } finally {
-      setQrLoading(false);
+  const loadGeofenceInfo = useCallback(async (branchId) => {
+    if (!branchId) return;
+    const info = await api.get(endpoints.qrGeofence(branchId)).catch(() => null);
+    if (info) {
+      setGeoLat(info.latitude ?? "");
+      setGeoLon(info.longitude ?? "");
+      setGeoRadius(info.allowed_radius_meters ?? "");
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (qrBranchId) loadGeofenceInfo(qrBranchId);
+  }, [qrBranchId, loadGeofenceInfo]);
 
   const useMyLocation = () => {
     if (!navigator.geolocation) return;
@@ -474,9 +470,12 @@ export default function ManagerRoster() {
 
         {isManager && (
         <Card style={{ padding: "22px 24px" }}>
-          <h3 style={{ fontFamily: fontDisplay, fontSize: 15.5, fontWeight: 600, color: T.ink, margin: "0 0 16px", display: "flex", alignItems: "center", gap: 8 }}>
-            <QrCode size={17} /> Branch check-in QR &amp; geofence
+          <h3 style={{ fontFamily: fontDisplay, fontSize: 15.5, fontWeight: 600, color: T.ink, margin: "0 0 4px", display: "flex", alignItems: "center", gap: 8 }}>
+            <QrCode size={17} /> Live check-in QR &amp; geofence
           </h3>
+          <p style={{ fontFamily: fontBody, fontSize: 12, color: T.muted, margin: "0 0 14px" }}>
+            The code refreshes every 30 seconds — display it on a screen at the entrance, don't print it.
+          </p>
           <label style={labelStyle}>Branch</label>
           <select value={qrBranchId} onChange={(e) => setQrBranchId(e.target.value)} style={inputStyle}>
             {branches.map((b) => (
@@ -484,61 +483,46 @@ export default function ManagerRoster() {
             ))}
           </select>
           <button
-            onClick={loadQr}
-            disabled={qrLoading || !qrBranchId}
-            style={{ padding: "9px 14px", borderRadius: 8, border: `1px solid ${T.line}`, background: T.card, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, color: T.ink, cursor: "pointer" }}
+            onClick={() => setShowLiveQr(true)}
+            disabled={!qrBranchId}
+            style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 14px", borderRadius: 8, border: `1px solid ${T.line}`, background: T.card, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, color: T.ink, cursor: "pointer" }}
           >
-            {qrLoading ? "Loading…" : "Generate / view QR"}
+            <Maximize2 size={14} /> Show live QR
           </button>
 
-          {qrUrl && (
-            <>
-              <div style={{ marginTop: 16, textAlign: "center" }}>
-                <img src={qrUrl} alt="Branch check-in QR code" style={{ width: 180, height: 180, borderRadius: 10, border: `1px solid ${T.line}` }} />
-                <div style={{ marginTop: 10 }}>
-                  <a
-                    href={qrUrl}
-                    download={`branch-${qrBranchId}-qr.png`}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, color: T.teal, textDecoration: "none" }}
-                  >
-                    <Download size={13} /> Download to print
-                  </a>
-                </div>
-              </div>
-
-              <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${T.line2}` }}>
-                <p style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted, margin: "0 0 10px", display: "flex", alignItems: "center", gap: 6 }}>
-                  <MapPin size={13} /> Optional: require check-in within a radius of this branch
-                </p>
-                <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-                  <input placeholder="Latitude" value={geoLat} onChange={(e) => setGeoLat(e.target.value)} style={{ ...inputStyle, marginBottom: 0, flex: 1 }} />
-                  <input placeholder="Longitude" value={geoLon} onChange={(e) => setGeoLon(e.target.value)} style={{ ...inputStyle, marginBottom: 0, flex: 1 }} />
-                </div>
-                <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                  <input placeholder="Radius (meters)" value={geoRadius} onChange={(e) => setGeoRadius(e.target.value)} style={{ ...inputStyle, marginBottom: 0, flex: 1 }} />
-                  <button type="button" onClick={useMyLocation} style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${T.line}`, background: T.card, fontFamily: fontBody, fontSize: 12, fontWeight: 600, color: T.ink, cursor: "pointer", whiteSpace: "nowrap" }}>
-                    Use my location
-                  </button>
-                </div>
-                <button
-                  onClick={saveGeofence}
-                  disabled={savingGeofence}
-                  style={{ padding: "9px 14px", borderRadius: 8, border: "none", background: T.ink, color: T.paper, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
-                >
-                  {savingGeofence ? "Saving…" : "Save geofence"}
-                </button>
-                {geoMsg && (
-                  <p style={{ fontFamily: fontBody, fontSize: 12, color: geoMsg.type === "error" ? T.coral : T.teal, marginTop: 8 }}>{geoMsg.text}</p>
-                )}
-                <p style={{ fontFamily: fontBody, fontSize: 11.5, color: T.faint, marginTop: 8 }}>
-                  Leave all three blank to allow check-in from anywhere.
-                </p>
-              </div>
-            </>
-          )}
+          <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${T.line2}` }}>
+            <p style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted, margin: "0 0 10px", display: "flex", alignItems: "center", gap: 6 }}>
+              <MapPin size={13} /> Optional: require check-in within a radius of this branch
+            </p>
+            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+              <input placeholder="Latitude" value={geoLat} onChange={(e) => setGeoLat(e.target.value)} style={{ ...inputStyle, marginBottom: 0, flex: 1 }} />
+              <input placeholder="Longitude" value={geoLon} onChange={(e) => setGeoLon(e.target.value)} style={{ ...inputStyle, marginBottom: 0, flex: 1 }} />
+            </div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              <input placeholder="Radius (meters)" value={geoRadius} onChange={(e) => setGeoRadius(e.target.value)} style={{ ...inputStyle, marginBottom: 0, flex: 1 }} />
+              <button type="button" onClick={useMyLocation} style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${T.line}`, background: T.card, fontFamily: fontBody, fontSize: 12, fontWeight: 600, color: T.ink, cursor: "pointer", whiteSpace: "nowrap" }}>
+                Use my location
+              </button>
+            </div>
+            <button
+              onClick={saveGeofence}
+              disabled={savingGeofence}
+              style={{ padding: "9px 14px", borderRadius: 8, border: "none", background: T.ink, color: T.paper, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
+            >
+              {savingGeofence ? "Saving…" : "Save geofence"}
+            </button>
+            {geoMsg && (
+              <p style={{ fontFamily: fontBody, fontSize: 12, color: geoMsg.type === "error" ? T.coral : T.teal, marginTop: 8 }}>{geoMsg.text}</p>
+            )}
+            <p style={{ fontFamily: fontBody, fontSize: 11.5, color: T.faint, marginTop: 8 }}>
+              Leave all three blank to allow check-in from anywhere.
+            </p>
+          </div>
         </Card>
         )}
       </div>
+
+      {showLiveQr && qrBranchId && <LiveQrDisplay branchId={qrBranchId} onClose={() => setShowLiveQr(false)} />}
     </div>
   );
 }

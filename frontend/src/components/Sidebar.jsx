@@ -1,5 +1,5 @@
 import React from "react";
-import { Clock, CalendarDays, FileText, LayoutGrid, TrendingUp, Users } from "lucide-react";
+import { Clock, CalendarDays, FileText, LayoutGrid, TrendingUp, Users, Wallet } from "lucide-react";
 import { T, fontDisplay, fontBody } from "../theme";
 import { useIsMobile } from "../lib/useMediaQuery";
 
@@ -7,6 +7,7 @@ export const EMP_NAV = [
   { key: "today", label: "Today", icon: Clock },
   { key: "shifts", label: "My shifts", icon: CalendarDays },
   { key: "leave", label: "Leave", icon: FileText },
+  { key: "wallet", label: "Wallet", icon: Wallet },
 ];
 
 export const MGR_NAV = [
@@ -14,6 +15,7 @@ export const MGR_NAV = [
   { key: "team", label: "Team", icon: Users },
   { key: "roster", label: "Roster", icon: CalendarDays },
   { key: "approvals", label: "Approvals", icon: FileText },
+  { key: "payroll", label: "Payroll & Wallets", icon: Wallet },
   { key: "reports", label: "Reports", icon: TrendingUp },
 ];
 

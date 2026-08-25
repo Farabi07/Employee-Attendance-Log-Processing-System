@@ -16,11 +16,13 @@ import PlatformOwnerDashboard from "./pages/platform/Organizations";
 import EmployeeToday from "./pages/employee/Today";
 import EmployeeShifts from "./pages/employee/Shifts";
 import EmployeeLeave from "./pages/employee/Leave";
+import EmployeeWallet from "./pages/employee/Wallet";
 
 import ManagerOverview from "./pages/manager/Overview";
 import ManagerTeam from "./pages/manager/Team";
 import ManagerRoster from "./pages/manager/Roster";
 import ManagerApprovals from "./pages/manager/Approvals";
+import ManagerPayroll from "./pages/manager/Payroll";
 import ManagerReports from "./pages/manager/Reports";
 
 function parseResetPath() {
@@ -95,11 +97,13 @@ function Shell() {
             {role === "employee" && active === "today" && <EmployeeToday />}
             {role === "employee" && active === "shifts" && <EmployeeShifts />}
             {role === "employee" && active === "leave" && <EmployeeLeave />}
+            {role === "employee" && active === "wallet" && <EmployeeWallet />}
 
             {role === "manager" && active === "overview" && <ManagerOverview />}
             {role === "manager" && active === "team" && <ManagerTeam />}
             {role === "manager" && active === "roster" && <ManagerRoster />}
             {role === "manager" && active === "approvals" && <ManagerApprovals />}
+            {role === "manager" && active === "payroll" && <ManagerPayroll />}
             {role === "manager" && active === "reports" && <ManagerReports />}
           </div>
         </div>

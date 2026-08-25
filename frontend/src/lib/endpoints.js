@@ -10,6 +10,7 @@ export const endpoints = {
   attendanceSearch: (params = "") => `/attendance/api/v1/attendance/search/${params}`,
   attendanceAll: (params = "") => `/attendance/api/v1/attendance/all/${params}`,
   qrImage: (branchId) => `/attendance/api/v1/attendance/qr_token/${branchId}/image/`,
+  qrLive: (branchId) => `/attendance/api/v1/attendance/qr_token/${branchId}/live/`,
   qrRegenerate: (branchId) => `/attendance/api/v1/attendance/qr_token/${branchId}/regenerate/`,
   qrGeofence: (branchId) => `/attendance/api/v1/attendance/qr_token/${branchId}/geofence/`,
   exportPdf: (params = "") => `/attendance/api/v1/attendance/export/pdf/${params}`,
@@ -36,6 +37,7 @@ export const endpoints = {
 
   employeesAll: () => `/employee/api/v1/employee/without_paginaiton/all/`,
   employeeCreate: () => `/employee/api/v1/employee/create/`,
+  employeeUpdate: (pk) => `/employee/api/v1/employee/update/${pk}`,
 
   branchesAll: () => `/branch/api/v1/branch/without_pagination/all/`,
   branchCreate: () => `/branch/api/v1/branch/create/`,
@@ -55,4 +57,13 @@ export const endpoints = {
   billingStatus: () => `/billing/api/v1/status/`,
   billingCheckout: () => `/billing/api/v1/checkout/`,
   billingCustomerPortal: () => `/billing/api/v1/customer_portal/`,
+  platformSettings: () => `/billing/api/v1/platform_settings/`,
+  organizationCurrency: () => `/billing/api/v1/organization/currency/`,
+
+  walletMe: () => `/wallet/api/v1/me/`,
+  walletPayoutRequest: () => `/wallet/api/v1/payout/request/`,
+  payrollSummary: () => `/wallet/api/v1/payroll/summary/`,
+  payrollRun: () => `/wallet/api/v1/payroll/run/`,
+  payoutReview: (pk) => `/wallet/api/v1/payout/${pk}/review/`,
+  walletTransactions: (params = "") => `/wallet/api/v1/transactions/${params}`,
 };

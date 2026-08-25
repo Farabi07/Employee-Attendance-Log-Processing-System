@@ -11,20 +11,22 @@ import StatusPill from "../../components/StatusPill";
 import ShiftRing from "../../components/ShiftRing";
 import QrScannerModal from "../../components/QrScannerModal";
 
-function getLocationBestEffort(timeoutMs = 4000) {
-  return new Promise((resolve) => {
-    if (!navigator.geolocation) return resolve(null);
-    const timer = setTimeout(() => resolve(null), timeoutMs);
+function getLocation(timeoutMs = 8000) {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("This device doesn't support location — check-in requires it."));
+      return;
+    }
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        clearTimeout(timer);
-        resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+      (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) {
+          reject(new Error("Location access was denied. Enable it in your browser/device settings and try again."));
+        } else {
+          reject(new Error("Couldn't get your location. Move to an open area and try again."));
+        }
       },
-      () => {
-        clearTimeout(timer);
-        resolve(null);
-      },
-      { timeout: timeoutMs, maximumAge: 60000 }
+      { timeout: timeoutMs, maximumAge: 0, enableHighAccuracy: true }
     );
   });
 }
@@ -49,6 +51,8 @@ export default function EmployeeToday() {
   const [monthHours, setMonthHours] = useState(0);
   const [pendingLeave, setPendingLeave] = useState(null);
   const [scanMode, setScanMode] = useState(null); // "checkin" | "checkout" | null
+  const [locating, setLocating] = useState(false);
+  const [location, setLocation] = useState(null);
   const [banner, setBanner] = useState(null);
   const [now, setNow] = useState(Date.now());
 
@@ -119,13 +123,29 @@ export default function EmployeeToday() {
 
   const ringLabel = completed ? "Day complete" : undefined;
 
-  const handleToken = async (token) => {
+  // GPS is checked first — the camera only opens once we have a location,
+  // so a scan can never even start from outside the office if location
+  // access fails or is denied.
+  const startCheck = async (action) => {
+    setBanner(null);
+    setLocating(true);
+    try {
+      const loc = await getLocation();
+      setLocation(loc);
+      setScanMode(action);
+    } catch (err) {
+      setBanner({ type: "error", text: err.message });
+    } finally {
+      setLocating(false);
+    }
+  };
+
+  const handleToken = async (code) => {
     const action = scanMode;
     setScanMode(null);
     setBanner(null);
     try {
-      const location = await getLocationBestEffort();
-      const payload = location ? { token, lat: location.lat, lon: location.lon } : { token };
+      const payload = location ? { code, lat: location.lat, lon: location.lon } : { code };
 
       if (action === "checkin") {
         await api.post(endpoints.checkin(), payload);
@@ -150,9 +170,9 @@ export default function EmployeeToday() {
           checkedIn={checkedIn || completed}
           elapsedMinutes={elapsedMinutes}
           targetMinutes={targetMinutes}
-          onScan={() => setScanMode(checkedIn ? "checkout" : "checkin")}
-          disabled={completed}
-          label={ringLabel}
+          onScan={() => startCheck(checkedIn ? "checkout" : "checkin")}
+          disabled={completed || locating}
+          label={locating ? "Checking location…" : ringLabel}
         />
         <div style={{ marginTop: 20 }}>
           <StatusPill status={completed ? attendance.status : checkedIn ? "in" : "out"} />
@@ -161,6 +181,11 @@ export default function EmployeeToday() {
           <p style={{ fontFamily: fontMono, fontSize: 12.5, color: T.muted, marginTop: 10 }}>
             since {formatTime(attendance.check_in_time)}
             {completed && ` · out ${formatTime(attendance.check_out_time)}`}
+          </p>
+        )}
+        {completed && attendance.earnings !== null && attendance.earnings !== undefined && (
+          <p style={{ fontFamily: fontDisplay, fontSize: 15, fontWeight: 600, color: T.teal, marginTop: 6 }}>
+            Earned today: {attendance.earnings}
           </p>
         )}
         {banner && (

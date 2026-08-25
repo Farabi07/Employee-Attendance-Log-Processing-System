@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { LogOut, Building2 } from "lucide-react";
+import { LogOut, Building2, DollarSign } from "lucide-react";
 import { T, fontDisplay, fontBody, fontMono } from "../../theme";
 import { useAuth } from "../../lib/auth";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
+import { CURRENCIES } from "../../lib/currency";
 import Card from "../../components/Card";
 import StatusPill from "../../components/StatusPill";
+
+const inputStyle = { padding: "8px 10px", borderRadius: 8, border: `1px solid ${T.line}`, fontFamily: fontBody, fontSize: 13 };
 
 function fmt(iso) {
   if (!iso) return "—";
@@ -16,13 +19,32 @@ export default function PlatformOwnerDashboard() {
   const { user, logout } = useAuth();
   const [orgs, setOrgs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [pricing, setPricing] = useState(null);
+  const [savingPricing, setSavingPricing] = useState(false);
+  const [pricingMsg, setPricingMsg] = useState(null);
 
   useEffect(() => {
     api
       .get(endpoints.organizationsAll())
       .then((res) => setOrgs(res.organizations || []))
       .finally(() => setLoading(false));
+    api.get(endpoints.platformSettings()).then(setPricing);
   }, []);
+
+  const savePricing = async (e) => {
+    e.preventDefault();
+    setPricingMsg(null);
+    setSavingPricing(true);
+    try {
+      const res = await api.put(endpoints.platformSettings(), pricing);
+      setPricing(res);
+      setPricingMsg({ type: "success", text: "Pricing updated." });
+    } catch (err) {
+      setPricingMsg({ type: "error", text: err.message });
+    } finally {
+      setSavingPricing(false);
+    }
+  };
 
   const counts = {
     total: orgs.length,
@@ -50,6 +72,61 @@ export default function PlatformOwnerDashboard() {
       </div>
 
       <div style={{ padding: "24px 28px" }}>
+        <Card style={{ padding: "20px 22px", marginBottom: 20 }}>
+          <h3 style={{ fontFamily: fontDisplay, fontSize: 15, fontWeight: 600, color: T.ink, margin: "0 0 14px", display: "flex", alignItems: "center", gap: 7 }}>
+            <DollarSign size={16} /> Subscription pricing
+          </h3>
+          {pricing ? (
+            <form onSubmit={savePricing} style={{ display: "flex", alignItems: "flex-end", gap: 14, flexWrap: "wrap" }}>
+              <div>
+                <label style={{ fontFamily: fontBody, fontSize: 12, color: T.muted, display: "block", marginBottom: 5 }}>Monthly price</label>
+                <input
+                  type="number" step="0.01" min="0"
+                  value={pricing.monthly_price}
+                  onChange={(e) => setPricing((p) => ({ ...p, monthly_price: e.target.value }))}
+                  style={{ ...inputStyle, width: 110 }}
+                />
+              </div>
+              <div>
+                <label style={{ fontFamily: fontBody, fontSize: 12, color: T.muted, display: "block", marginBottom: 5 }}>Yearly price</label>
+                <input
+                  type="number" step="0.01" min="0"
+                  value={pricing.yearly_price}
+                  onChange={(e) => setPricing((p) => ({ ...p, yearly_price: e.target.value }))}
+                  style={{ ...inputStyle, width: 110 }}
+                />
+              </div>
+              <div>
+                <label style={{ fontFamily: fontBody, fontSize: 12, color: T.muted, display: "block", marginBottom: 5 }}>Currency</label>
+                <select
+                  value={pricing.currency}
+                  onChange={(e) => setPricing((p) => ({ ...p, currency: e.target.value }))}
+                  style={inputStyle}
+                >
+                  {CURRENCIES.map((c) => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="submit"
+                disabled={savingPricing}
+                style={{ padding: "9px 16px", borderRadius: 8, border: "none", background: T.ink, color: T.paper, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
+              >
+                {savingPricing ? "Saving…" : "Save pricing"}
+              </button>
+              {pricingMsg && (
+                <span style={{ fontFamily: fontBody, fontSize: 12.5, color: pricingMsg.type === "error" ? T.coral : T.teal }}>{pricingMsg.text}</span>
+              )}
+            </form>
+          ) : (
+            <p style={{ fontFamily: fontBody, color: T.muted }}>Loading…</p>
+          )}
+          <p style={{ fontFamily: fontBody, fontSize: 11.5, color: T.faint, marginTop: 10 }}>
+            This is what every store pays for their subscription — changes apply to new checkouts immediately, existing subscribers keep their current price until they resubscribe.
+          </p>
+        </Card>
+
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 14, marginBottom: 20 }}>
           {[
             { label: "Total stores", value: counts.total, color: T.ink },

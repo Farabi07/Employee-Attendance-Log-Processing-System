@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Clock, AlertTriangle } from "lucide-react";
 import { T, fontDisplay, fontBody } from "../theme";
 import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
 import { endpoints } from "../lib/endpoints";
+import { formatMoney } from "../lib/currency";
 import Card from "./Card";
 
 function daysLeft(trialEndsAt) {
@@ -13,6 +14,12 @@ function daysLeft(trialEndsAt) {
 }
 
 function PlanButtons({ onPick, busy }) {
+  const [pricing, setPricing] = useState(null);
+
+  useEffect(() => {
+    api.get(endpoints.platformSettings()).then(setPricing).catch(() => {});
+  }, []);
+
   const btn = {
     flex: 1,
     padding: "12px 0",
@@ -29,10 +36,10 @@ function PlanButtons({ onPick, busy }) {
   return (
     <div style={{ display: "flex", gap: 10 }}>
       <button disabled={busy} onClick={() => onPick("monthly")} style={btn}>
-        {busy ? "…" : "Monthly"}
+        {busy ? "…" : pricing ? `Monthly · ${formatMoney(pricing.monthly_price, pricing.currency)}` : "Monthly"}
       </button>
       <button disabled={busy} onClick={() => onPick("yearly")} style={{ ...btn, background: T.teal }}>
-        {busy ? "…" : "Yearly"}
+        {busy ? "…" : pricing ? `Yearly · ${formatMoney(pricing.yearly_price, pricing.currency)}` : "Yearly"}
       </button>
     </div>
   );

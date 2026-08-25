@@ -4,12 +4,11 @@ import { T, fontDisplay, fontBody, fontMono } from "../../theme";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import { useIsMobile } from "../../lib/useMediaQuery";
+import { formatMoney, currencySymbol } from "../../lib/currency";
 import Card from "../../components/Card";
 import StatusPill from "../../components/StatusPill";
 
-function money(v) {
-  return `$${Number(v || 0).toFixed(2)}`;
-}
+const CYCLE_LABEL = { weekly: "weekly", biweekly: "every 2 weeks", monthly: "monthly" };
 
 export default function EmployeeWallet() {
   const isMobile = useIsMobile();
@@ -47,6 +46,8 @@ export default function EmployeeWallet() {
     return <p style={{ fontFamily: fontBody, color: T.muted }}>Loading…</p>;
   }
 
+  const money = (v) => formatMoney(v, wallet.currency);
+
   return (
     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "320px 1fr", gap: 20 }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -58,7 +59,8 @@ export default function EmployeeWallet() {
           <p style={{ fontFamily: fontDisplay, fontSize: 34, fontWeight: 600, color: T.paper, margin: 0 }}>{money(wallet.current_balance)}</p>
           {wallet.hourly_rate && (
             <p style={{ fontFamily: fontMono, fontSize: 11.5, color: "rgba(245,246,242,0.55)", marginTop: 8 }}>
-              ${Number(wallet.hourly_rate).toFixed(2)}/hour
+              {currencySymbol(wallet.currency)}{Number(wallet.hourly_rate).toFixed(2)}/hour · paid {CYCLE_LABEL[wallet.payout_cycle] || "weekly"}
+              {wallet.next_payout_due_at && ` · next payout ${new Date(wallet.next_payout_due_at).toLocaleDateString([], { month: "short", day: "numeric" })}`}
             </p>
           )}
         </Card>

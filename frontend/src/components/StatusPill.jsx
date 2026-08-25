@@ -15,6 +15,9 @@ const MAP = {
   approved: { label: "Approved", fg: T.teal, bg: T.tealBg },
   pending: { label: "Pending", fg: T.amber, bg: T.amberBg },
   rejected: { label: "Rejected", fg: T.coral, bg: T.coralBg },
+
+  completed: { label: "Completed", fg: T.teal, bg: T.tealBg },
+  failed: { label: "Failed", fg: T.coral, bg: T.coralBg },
 };
 
 export default function StatusPill({ status }) {

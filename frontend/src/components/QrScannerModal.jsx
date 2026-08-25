@@ -93,13 +93,14 @@ export default function QrScannerModal({ title, onClose, onToken }) {
               marginBottom: 8,
             }}
           >
-            <KeyRound size={13} /> No camera? Paste the QR token
+            <KeyRound size={13} /> No camera? Type the current 6-digit code
           </label>
           <div style={{ display: "flex", gap: 8 }}>
             <input
               value={manualToken}
               onChange={(e) => setManualToken(e.target.value)}
-              placeholder="token from the printed QR"
+              placeholder="e.g. 482913"
+              inputMode="numeric"
               style={{
                 flex: 1,
                 padding: "9px 10px",
