@@ -55,6 +55,17 @@ class CanManageSubscription(permissions.BasePermission):
 
 
 
+class CanManageQr(permissions.BasePermission):
+	"""Manager always; Moderator only if the store's Manager has turned on
+	'moderators can manage QR/geofence' for this store."""
+
+	def has_permission(self, request, view):
+		user = request.user
+		return bool(user and user.is_authenticated and user.can_manage_qr())
+
+
+
+
 class IsPlatformOwner(permissions.BasePermission):
 	"""The SaaS platform owner — an admin account with no organization."""
 

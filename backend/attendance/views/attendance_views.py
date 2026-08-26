@@ -16,7 +16,7 @@ from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from authentication.models import Branch, Employee
-from authentication.permissions import IsManager, IsManagerOrModerator, HasActiveSubscription
+from authentication.permissions import IsManagerOrModerator, CanManageQr, HasActiveSubscription
 
 from attendance.models import Attendance, AttendanceQRToken, Roster, QR_CODE_PERIOD_SECONDS
 from attendance.serializers import AttendanceSerializer, AttendanceListSerializer, AttendanceQRTokenSerializer
@@ -364,7 +364,7 @@ def checkOut(request):
 
 @extend_schema(request=None, responses=AttendanceQRTokenSerializer)
 @api_view(['GET'])
-@permission_classes([IsManager, HasActiveSubscription])
+@permission_classes([CanManageQr, HasActiveSubscription])
 def getBranchQRImage(request, branch_id):
 	try:
 		branch = Branch.objects.get(pk=branch_id, organization=request.user.organization)
@@ -389,7 +389,7 @@ def getBranchQRImage(request, branch_id):
 
 @extend_schema(request=None, responses=None)
 @api_view(['GET'])
-@permission_classes([IsManager, HasActiveSubscription])
+@permission_classes([CanManageQr, HasActiveSubscription])
 def getBranchLiveCode(request, branch_id):
 	"""JSON form of the live code, for a frontend that renders the QR
 	client-side and drives its own countdown — avoids re-fetching a whole
@@ -419,7 +419,7 @@ def getBranchLiveCode(request, branch_id):
 
 @extend_schema(request=None, responses=AttendanceQRTokenSerializer)
 @api_view(['POST'])
-@permission_classes([IsManager, HasActiveSubscription])
+@permission_classes([CanManageQr, HasActiveSubscription])
 def regenerateBranchQRToken(request, branch_id):
 	try:
 		qr_token = AttendanceQRToken.objects.get(branch__id=branch_id, branch__organization=request.user.organization)
@@ -437,7 +437,7 @@ def regenerateBranchQRToken(request, branch_id):
 
 @extend_schema(request=AttendanceQRTokenSerializer, responses=AttendanceQRTokenSerializer)
 @api_view(['GET', 'PUT'])
-@permission_classes([IsManager, HasActiveSubscription])
+@permission_classes([CanManageQr, HasActiveSubscription])
 def updateBranchGeofence(request, branch_id):
 	try:
 		branch = Branch.objects.get(pk=branch_id, organization=request.user.organization)

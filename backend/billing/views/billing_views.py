@@ -53,8 +53,10 @@ def billingStatus(request):
 			'is_manager': request.user.is_manager(),
 			'moderator_can_add_employees': org.moderator_can_add_employees,
 			'moderator_can_manage_subscription': org.moderator_can_manage_subscription,
+			'moderator_can_manage_qr': org.moderator_can_manage_qr,
 			'can_add_employees': request.user.can_add_employees(),
 			'can_manage_subscription': request.user.can_manage_subscription(),
+			'can_manage_qr': request.user.can_manage_qr(),
 		},
 		status=status.HTTP_200_OK,
 	)
@@ -127,12 +129,16 @@ def updateOrganizationSettings(request):
 	if 'moderator_can_manage_subscription' in data:
 		org.moderator_can_manage_subscription = bool(data['moderator_can_manage_subscription'])
 
+	if 'moderator_can_manage_qr' in data:
+		org.moderator_can_manage_qr = bool(data['moderator_can_manage_qr'])
+
 	org.save()
 	return Response(
 		{
 			'currency': org.currency,
 			'moderator_can_add_employees': org.moderator_can_add_employees,
 			'moderator_can_manage_subscription': org.moderator_can_manage_subscription,
+			'moderator_can_manage_qr': org.moderator_can_manage_qr,
 		},
 		status=status.HTTP_200_OK,
 	)

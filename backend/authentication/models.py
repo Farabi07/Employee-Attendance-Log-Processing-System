@@ -262,6 +262,7 @@ class Organization(models.Model):
     # these two abilities on a per-store basis at any time.
     moderator_can_add_employees = models.BooleanField(default=False)
     moderator_can_manage_subscription = models.BooleanField(default=False)
+    moderator_can_manage_qr = models.BooleanField(default=False)
 
     trial_ends_at = models.DateTimeField()
     subscription_status = models.CharField(max_length=20, choices=SubscriptionStatus.choices, default=SubscriptionStatus.TRIALING)
@@ -475,6 +476,11 @@ class User(AbstractBaseUser):
         if self.is_manager():
             return True
         return self.is_moderator() and bool(self.organization_id) and self.organization.moderator_can_manage_subscription
+
+    def can_manage_qr(self):
+        if self.is_manager():
+            return True
+        return self.is_moderator() and bool(self.organization_id) and self.organization.moderator_can_manage_qr
 
 
 
