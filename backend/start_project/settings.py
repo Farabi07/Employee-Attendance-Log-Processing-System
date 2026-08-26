@@ -26,14 +26,14 @@ load_dotenv(BASE_DIR / '.env')
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-u-e(&(%d#(e+gj+nel$(-gefvmg$uwr9v747d7c8^&hqo8amh@'
+# Falls back to the original dev key so local setups keep working untouched;
+# set SECRET_KEY in the environment for any real deployment.
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-u-e(&(%d#(e+gj+nel$(-gefvmg$uwr9v747d7c8^&hqo8amh@')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = [
-    '*'
-]
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -111,14 +111,16 @@ AUTH_USER_MODEL = 'authentication.User'
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
 
+# DATABASE_URL (set by Neon/Render/Railway/etc.) takes over in production;
+# falls back to the original local Postgres settings when it's unset, so
+# local dev is untouched.
+import dj_database_url
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'employee_db',
-        'USER': 'postgres',
-        'PASSWORD':'12345',
-        'HOST': 'localhost'
-    }
+    'default': dj_database_url.config(
+        default='postgres://postgres:12345@localhost/employee_db',
+        conn_max_age=600,
+    )
 }
 
 
