@@ -9,7 +9,7 @@ import { formatMoney, currencySymbol } from "../../lib/currency";
 import Card from "../../components/Card";
 import StatusPill from "../../components/StatusPill";
 
-const CYCLE_LABEL = { weekly: "weekly", biweekly: "every 2 weeks", monthly: "monthly" };
+const CYCLE_LABEL = { hourly: "hourly", weekly: "weekly", biweekly: "every 2 weeks", monthly: "monthly" };
 
 export default function EmployeeWallet() {
   const isMobile = useIsMobile();

@@ -28,6 +28,7 @@ const ROLE_BADGE = {
 };
 
 const PAYOUT_CYCLES = [
+  { value: "hourly", label: "Hourly" },
   { value: "weekly", label: "Weekly" },
   { value: "biweekly", label: "Every 2 weeks" },
   { value: "monthly", label: "Monthly" },
@@ -221,11 +222,16 @@ export default function ManagerTeam() {
               </div>
 
               <label style={labelStyle}>Pay out every</label>
-              <select value={payoutCycle} onChange={(e) => setPayoutCycle(e.target.value)} style={inputStyle}>
+              <select value={payoutCycle} onChange={(e) => setPayoutCycle(e.target.value)} style={{ ...inputStyle, marginBottom: payoutCycle === "hourly" ? 4 : 14 }}>
                 {PAYOUT_CYCLES.map((c) => (
                   <option key={c.value} value={c.value}>{c.label}</option>
                 ))}
               </select>
+              {payoutCycle === "hourly" && (
+                <p style={{ fontFamily: fontBody, fontSize: 11, color: T.faint, margin: "0 0 14px" }}>
+                  Earnings settle to their wallet instantly, right after every check-out — no waiting for a batch.
+                </p>
+              )}
 
               <button
                 type="submit"

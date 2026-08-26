@@ -9,7 +9,7 @@ import { formatMoney, CURRENCIES } from "../../lib/currency";
 import Card from "../../components/Card";
 import StatusPill from "../../components/StatusPill";
 
-const CYCLE_LABEL = { weekly: "Weekly", biweekly: "Every 2 weeks", monthly: "Monthly" };
+const CYCLE_LABEL = { hourly: "Hourly", weekly: "Weekly", biweekly: "Every 2 weeks", monthly: "Monthly" };
 
 function dueLabel(row) {
   if (!row.next_payout_due_at) return row.current_balance > 0 ? "Due now" : "—";

@@ -17,7 +17,7 @@ export default function LiveQrDisplay({ branchId, onClose }) {
   const load = useCallback(async () => {
     try {
       const res = await api.get(endpoints.qrLive(branchId));
-      const dataUrl = await QRCode.toDataURL(res.code, { width: 320, margin: 1, color: { dark: "#16233A", light: "#FFFFFF" } });
+      const dataUrl = await QRCode.toDataURL(res.code, { width: 320, margin: 1, color: { dark: T.ink, light: T.card } });
       setQrDataUrl(dataUrl);
       setSecondsRemaining(res.seconds_remaining);
       setPeriodSeconds(res.period_seconds);
@@ -76,7 +76,7 @@ export default function LiveQrDisplay({ branchId, onClose }) {
         <h1 style={{ fontFamily: fontDisplay, fontSize: 22, fontWeight: 600, color: T.paper, margin: 0 }}>{branchName || "…"}</h1>
       </div>
 
-      <div style={{ background: "#FFFFFF", borderRadius: 20, padding: 20, boxShadow: "0 20px 60px rgba(0,0,0,0.4)" }}>
+      <div style={{ background: T.card, borderRadius: 20, padding: 20, boxShadow: "0 20px 60px rgba(0,0,0,0.4)" }}>
         {qrDataUrl ? (
           <img src={qrDataUrl} alt="Live check-in QR code" width={280} height={280} style={{ display: "block" }} />
         ) : (
