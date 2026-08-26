@@ -15,6 +15,8 @@ from authentication.permissions import IsManager, IsManagerOrModerator, CanAddEm
 
 from commons.pagination import Pagination
 
+from wallet.models import record_rate_change
+
 
 
 
@@ -152,10 +154,20 @@ def createEmployee(request):
 		# requested. Creating Moderators stays Manager-only.
 		employee_data_dict['org_role'] = Employee.OrgRole.EMPLOYEE
 
+	# Whoever sets the pay picks the currency it's paid in — defaults to
+	# the store's own currency if they don't specify one.
+	if employee_data_dict.get('hourly_rate') and not employee_data_dict.get('currency'):
+		employee_data_dict['currency'] = request.user.organization.currency
+
 	serializer = EmployeeSerializer(data=employee_data_dict, many=False)
 
 	if serializer.is_valid():
-		serializer.save()
+		employee = serializer.save()
+		if employee.hourly_rate is not None:
+			record_rate_change(
+				employee, old_rate=None, new_rate=employee.hourly_rate,
+				old_currency=None, new_currency=employee.currency, changed_by=request.user,
+			)
 		return Response(serializer.data, status=status.HTTP_201_CREATED)
 	else:
 		return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -173,11 +185,14 @@ def updateEmployee(request, pk):
 		if value != '' and value != '0':
 			filtered_data[key] = value
 
-	# Role/tenant/pay changes are a Manager-only action, regardless of what
-	# a Moderator might otherwise edit here.
+	# Role changes are Manager-only regardless of anything else. Pay changes
+	# (rate/currency/cycle) follow the same permission as adding employees —
+	# a Moderator granted that can also adjust pay for staff they manage.
 	if not request.user.is_manager():
 		filtered_data.pop('org_role', None)
+	if not request.user.can_add_employees():
 		filtered_data.pop('hourly_rate', None)
+		filtered_data.pop('currency', None)
 		filtered_data.pop('payout_cycle', None)
 	filtered_data.pop('organization', None)
 
@@ -191,9 +206,15 @@ def updateEmployee(request, pk):
 	if type(image) == str and image is not None:
 		filtered_data.pop('image')
 
+	old_rate, old_currency = employee.hourly_rate, employee.currency
+
 	serializer = EmployeeSerializer(employee, data=filtered_data, partial=True)
 	if serializer.is_valid():
-		serializer.save()
+		employee = serializer.save()
+		record_rate_change(
+			employee, old_rate=old_rate, new_rate=employee.hourly_rate,
+			old_currency=old_currency, new_currency=employee.currency, changed_by=request.user,
+		)
 		return Response(serializer.data, status=status.HTTP_200_OK)
 	else:
 		return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

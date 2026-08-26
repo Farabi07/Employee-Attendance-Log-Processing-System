@@ -12,4 +12,6 @@ urlpatterns = [
 	path('api/v1/payout/<int:pk>/review/', views.reviewPayoutRequest),
 
 	path('api/v1/transactions/', views.listTransactions),
+
+	path('api/v1/rate_history/<int:employee_id>/', views.getRateHistory),
 ]

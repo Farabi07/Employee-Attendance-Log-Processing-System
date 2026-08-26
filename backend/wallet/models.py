@@ -59,6 +59,48 @@ class WalletTransaction(models.Model):
 		self.save()
 
 
+class RateHistory(models.Model):
+	"""One row per hourly-rate (or currency) change — a raise after a good
+	month, a cut, whatever. Visible to both the employee and whoever manages
+	pay for the store, so nobody has to just take someone's word for when
+	and by how much it changed."""
+
+	employee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='rate_history')
+	organization = models.ForeignKey('authentication.Organization', on_delete=models.CASCADE, related_name='rate_history')
+
+	old_hourly_rate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+	new_hourly_rate = models.DecimalField(max_digits=10, decimal_places=2)
+	old_currency = models.CharField(max_length=10, null=True, blank=True)
+	new_currency = models.CharField(max_length=10)
+
+	changed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='rate_changes_made')
+	created_at = models.DateTimeField(auto_now_add=True)
+
+	class Meta:
+		ordering = ('-created_at',)
+		verbose_name_plural = 'Rate histories'
+
+	def __str__(self):
+		return f"{self.employee} · {self.old_hourly_rate} -> {self.new_hourly_rate} {self.new_currency}"
+
+
+def record_rate_change(employee, old_rate, new_rate, old_currency, new_currency, changed_by):
+	"""No-ops if neither the rate nor the currency actually changed."""
+	if new_rate is None:
+		return
+	if old_rate == new_rate and old_currency == new_currency:
+		return
+	RateHistory.objects.create(
+		employee=employee,
+		organization=employee.organization,
+		old_hourly_rate=old_rate,
+		new_hourly_rate=new_rate,
+		old_currency=old_currency,
+		new_currency=new_currency,
+		changed_by=changed_by,
+	)
+
+
 def wallet_balance(employee):
 	"""Money earned but not yet paid out or requested — what the employee
 	can actually cash out right now."""

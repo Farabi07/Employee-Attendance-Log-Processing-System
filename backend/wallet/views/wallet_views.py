@@ -16,8 +16,8 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from authentication.models import Employee
 from authentication.permissions import IsManager, IsManagerOrModerator, HasActiveSubscription
 
-from wallet.models import WalletTransaction, wallet_balance, wallet_pending_payout, next_payout_due_at, is_payout_due
-from wallet.serializers import WalletTransactionSerializer
+from wallet.models import WalletTransaction, RateHistory, wallet_balance, wallet_pending_payout, next_payout_due_at, is_payout_due
+from wallet.serializers import WalletTransactionSerializer, RateHistorySerializer
 from wallet.notify import notify_payout_completed, notify_payout_failed
 
 from commons.pagination import Pagination
@@ -47,7 +47,7 @@ def _settle_payout(transaction):
 			amount_cents = int(transaction.amount * 100)
 			transfer = stripe.Transfer.create(
 				amount=amount_cents,
-				currency=transaction.organization.currency,
+				currency=employee.currency,
 				destination=employee.stripe_connect_account_id,
 				transfer_group=str(transaction.batch_id or transaction.transaction_id),
 			)
@@ -99,7 +99,7 @@ def getMyWallet(request):
 			'this_week_earnings': this_week,
 			'hourly_rate': employee.hourly_rate,
 			'payout_cycle': employee.payout_cycle,
-			'currency': employee.organization.currency,
+			'currency': employee.currency,
 			'next_payout_due_at': next_payout_due_at(employee),
 			'history': WalletTransactionSerializer(history, many=True).data,
 		},
@@ -179,6 +179,7 @@ def getPayrollSummary(request):
 			{
 				'employee': {'id': employee.id, 'first_name': employee.first_name, 'last_name': employee.last_name, 'email': employee.email},
 				'hourly_rate': employee.hourly_rate,
+				'currency': employee.currency,
 				'payout_cycle': employee.payout_cycle,
 				'this_week_earnings': this_week,
 				'current_balance': balance,
@@ -277,6 +278,27 @@ def reviewPayoutRequest(request, pk):
 	if transaction.status == WalletTransaction.Status.COMPLETED:
 		notify_payout_completed(transaction)
 	return Response(WalletTransactionSerializer(transaction).data, status=status.HTTP_200_OK)
+
+
+
+
+@extend_schema(request=None, responses=RateHistorySerializer)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, HasActiveSubscription])
+def getRateHistory(request, employee_id):
+	"""Visible to the employee themselves (their own pay history), and to
+	whoever can manage pay for the store (Manager, or a permitted Moderator)."""
+	try:
+		employee = Employee.objects.get(pk=employee_id, organization=request.user.organization)
+	except ObjectDoesNotExist:
+		return Response({'detail': f"Employee id - {employee_id} doesn't exist"}, status=status.HTTP_404_NOT_FOUND)
+
+	is_self = request.user.pk == employee.pk
+	if not (is_self or request.user.can_add_employees()):
+		return Response({'detail': 'You do not have permission to view this.'}, status=status.HTTP_403_FORBIDDEN)
+
+	history = RateHistory.objects.filter(employee=employee).order_by('-created_at')
+	return Response({'history': RateHistorySerializer(history, many=True).data}, status=status.HTTP_200_OK)
 
 
 

@@ -521,6 +521,11 @@ class Employee(User):
     basic_money = models.IntegerField(null=True, blank=True)
     allowance_money = models.IntegerField(null=True, blank=True)
     hourly_rate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    # Set by whoever set hourly_rate (Manager, or a permitted Moderator) —
+    # not necessarily the store's own currency, since this employee could
+    # be paid in a different one. Defaults to the store's currency at the
+    # time the rate is first set.
+    currency = models.CharField(max_length=10, choices=CURRENCY_CHOICES, default='usd')
     payout_cycle = models.CharField(max_length=20, choices=PayoutCycle.choices, default=PayoutCycle.WEEKLY)
     stripe_connect_account_id = models.CharField(max_length=255, null=True, blank=True)
 
