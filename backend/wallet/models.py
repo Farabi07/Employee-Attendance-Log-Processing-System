@@ -144,6 +144,8 @@ def next_payout_due_at(employee):
 	"""When this employee's next scheduled settlement is due, based on
 	their own payout cycle — set by the manager and changeable any time,
 	e.g. after a raise or a change in how often they want to be paid."""
+	if employee.payout_cycle == 'hourly':
+		return None  # settles instantly at every check-out — no schedule to wait on
 	cycle_days = PAYOUT_CYCLE_DAYS.get(employee.payout_cycle, 7)
 	last = last_payout_at(employee)
 	if last is None:

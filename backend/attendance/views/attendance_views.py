@@ -344,17 +344,35 @@ def checkOut(request):
 	attendance.save()
 
 	if attendance.earnings:
+		from commons.currencies import CURRENCY_SYMBOLS
 		from wallet.models import WalletTransaction
+		from wallet.notify import notify_payout_completed
 
-		WalletTransaction.objects.create(
+		symbol = CURRENCY_SYMBOLS.get(employee.currency, '$')
+		earning = WalletTransaction.objects.create(
 			employee=employee,
 			organization=employee.organization,
 			type=WalletTransaction.Type.EARNING,
 			status=WalletTransaction.Status.COMPLETED,
 			amount=attendance.earnings,
 			related_attendance=attendance,
-			note=f"Worked {attendance.worked_hours}h at ${employee.hourly_rate}/h",
+			note=f"Worked {attendance.worked_hours}h at {symbol}{employee.hourly_rate}/h",
 		)
+
+		if employee.payout_cycle == employee.PayoutCycle.HOURLY:
+			from wallet.views.wallet_views import _settle_payout
+
+			payout = WalletTransaction.objects.create(
+				employee=employee,
+				organization=employee.organization,
+				type=WalletTransaction.Type.PAYOUT,
+				status=WalletTransaction.Status.PENDING,
+				amount=earning.amount,
+				note="Instant hourly payout — settled right after check-out",
+			)
+			payout = _settle_payout(payout)
+			if payout.status == WalletTransaction.Status.COMPLETED:
+				notify_payout_completed(payout)
 
 	serializer = AttendanceListSerializer(attendance)
 	return Response(serializer.data, status=status.HTTP_200_OK)

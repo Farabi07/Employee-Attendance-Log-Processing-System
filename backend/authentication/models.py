@@ -510,6 +510,7 @@ class Department(models.Model):
 
 class Employee(User):
     class PayoutCycle(models.TextChoices):
+        HOURLY = 'hourly', _('Hourly (instant, right after each shift)')
         WEEKLY = 'weekly', _('Weekly')
         BIWEEKLY = 'biweekly', _('Every 2 weeks')
         MONTHLY = 'monthly', _('Monthly')
