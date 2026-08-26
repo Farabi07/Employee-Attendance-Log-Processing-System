@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
-import { Search, UserPlus, DollarSign } from "lucide-react";
+import { Search, UserPlus, DollarSign, ShieldCheck } from "lucide-react";
 import { T, fontDisplay, fontBody, fontMono } from "../../theme";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
@@ -40,7 +40,7 @@ export default function ManagerTeam() {
   const isMobile = useIsMobile();
   const { isManager, billing, refreshBilling } = useAuth();
   const canAddEmployees = isManager || !!billing?.can_add_employees;
-  const [savingModEmp, setSavingModEmp] = useState(false);
+  const [savingAccess, setSavingAccess] = useState(null);
   const symbol = currencySymbol(billing?.currency);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -105,15 +105,15 @@ export default function ManagerTeam() {
     }
   };
 
-  const toggleModEmployees = async (checked) => {
-    setSavingModEmp(true);
+  const toggleModAccess = async (key, checked) => {
+    setSavingAccess(key);
     try {
-      await api.put(endpoints.organizationSettings(), { moderator_can_add_employees: checked });
+      await api.put(endpoints.organizationSettings(), { [key]: checked });
       await refreshBilling();
     } catch (err) {
       setMessage({ type: "error", text: err.message });
     } finally {
-      setSavingModEmp(false);
+      setSavingAccess(null);
     }
   };
 
@@ -207,16 +207,30 @@ export default function ManagerTeam() {
       )}
 
       {isManager && (
-        <Card style={{ padding: "16px 20px", gridColumn: isMobile ? "auto" : "1 / -1" }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: fontBody, fontSize: 12.5, color: T.muted, cursor: "pointer" }}>
-            <input
-              type="checkbox"
-              checked={!!billing?.moderator_can_add_employees}
-              onChange={(e) => toggleModEmployees(e.target.checked)}
-              disabled={savingModEmp}
-            />
-            Allow moderators to add employees (never other moderators — that stays Manager-only)
-          </label>
+        <Card style={{ padding: "18px 20px", gridColumn: isMobile ? "auto" : "1 / -1" }}>
+          <h3 style={{ fontFamily: fontDisplay, fontSize: 14.5, fontWeight: 600, color: T.ink, margin: "0 0 4px", display: "flex", alignItems: "center", gap: 7 }}>
+            <ShieldCheck size={15} /> Moderator access
+          </h3>
+          <p style={{ fontFamily: fontBody, fontSize: 12, color: T.muted, margin: "0 0 12px" }}>
+            By default a Moderator can manage shifts, roster and leave — everything else below is off until you turn it on.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {[
+              { key: "moderator_can_add_employees", label: "Add employees (never other moderators — that stays Manager-only)" },
+              { key: "moderator_can_manage_qr", label: "Manage branch check-in QR code & geofence" },
+              { key: "moderator_can_manage_subscription", label: "Manage subscription/billing" },
+            ].map((opt) => (
+              <label key={opt.key} style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: fontBody, fontSize: 12.5, color: T.muted, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={!!billing?.[opt.key]}
+                  onChange={(e) => toggleModAccess(opt.key, e.target.checked)}
+                  disabled={savingAccess === opt.key}
+                />
+                {opt.label}
+              </label>
+            ))}
+          </div>
         </Card>
       )}
 

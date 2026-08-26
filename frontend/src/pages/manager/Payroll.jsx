@@ -20,7 +20,7 @@ function dueLabel(row) {
 
 export default function ManagerPayroll() {
   const isMobile = useIsMobile();
-  const { isManager, billing, refreshBilling } = useAuth();
+  const { isManager } = useAuth();
   const [summary, setSummary] = useState(undefined);
   const [transactions, setTransactions] = useState([]);
   const [message, setMessage] = useState(null);
@@ -28,7 +28,6 @@ export default function ManagerPayroll() {
   const [reviewingId, setReviewingId] = useState(null);
   const [currency, setCurrency] = useState("usd");
   const [savingCurrency, setSavingCurrency] = useState(false);
-  const [savingModSub, setSavingModSub] = useState(false);
 
   const money = (v) => formatMoney(v, summary?.currency);
 
@@ -56,18 +55,6 @@ export default function ManagerPayroll() {
       setMessage({ type: "error", text: err.message });
     } finally {
       setSavingCurrency(false);
-    }
-  };
-
-  const toggleModeratorSubscription = async (checked) => {
-    setSavingModSub(true);
-    try {
-      await api.put(endpoints.organizationSettings(), { moderator_can_manage_subscription: checked });
-      await refreshBilling();
-    } catch (err) {
-      setMessage({ type: "error", text: err.message });
-    } finally {
-      setSavingModSub(false);
     }
   };
 
@@ -105,30 +92,18 @@ export default function ManagerPayroll() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {isManager && (
-        <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <label style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted }}>Store currency (used for all wallets &amp; payouts)</label>
-            <select
-              value={currency}
-              onChange={(e) => saveCurrency(e.target.value)}
-              disabled={savingCurrency}
-              style={{ padding: "6px 9px", borderRadius: 7, border: `1px solid ${T.line}`, fontFamily: fontBody, fontSize: 12.5, background: T.card }}
-            >
-              {CURRENCIES.map((c) => (
-                <option key={c.value} value={c.value}>{c.label}</option>
-              ))}
-            </select>
-          </div>
-
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: fontBody, fontSize: 12.5, color: T.muted, cursor: "pointer" }}>
-            <input
-              type="checkbox"
-              checked={!!billing?.moderator_can_manage_subscription}
-              onChange={(e) => toggleModeratorSubscription(e.target.checked)}
-              disabled={savingModSub}
-            />
-            Allow moderators to manage subscription/billing
-          </label>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <label style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted }}>Store currency (used for all wallets &amp; payouts)</label>
+          <select
+            value={currency}
+            onChange={(e) => saveCurrency(e.target.value)}
+            disabled={savingCurrency}
+            style={{ padding: "6px 9px", borderRadius: 7, border: `1px solid ${T.line}`, fontFamily: fontBody, fontSize: 12.5, background: T.card }}
+          >
+            {CURRENCIES.map((c) => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
         </div>
       )}
 
