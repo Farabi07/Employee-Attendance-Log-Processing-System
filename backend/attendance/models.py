@@ -225,6 +225,7 @@ class Notification(models.Model):
         ROSTER_ASSIGNED = 'roster_assigned', 'Roster assigned'
         LEAVE_SUBMITTED = 'leave_submitted', 'Leave submitted'
         LEAVE_REVIEWED = 'leave_reviewed', 'Leave reviewed'
+        RATE_CHANGED = 'rate_changed', 'Pay rate changed'
         GENERAL = 'general', 'General'
 
     recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications')

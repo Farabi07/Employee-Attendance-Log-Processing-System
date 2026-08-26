@@ -85,12 +85,13 @@ class RateHistory(models.Model):
 
 
 def record_rate_change(employee, old_rate, new_rate, old_currency, new_currency, changed_by):
-	"""No-ops if neither the rate nor the currency actually changed."""
+	"""Logs the change and returns the new RateHistory row — or None if
+	neither the rate nor the currency actually changed."""
 	if new_rate is None:
-		return
+		return None
 	if old_rate == new_rate and old_currency == new_currency:
-		return
-	RateHistory.objects.create(
+		return None
+	return RateHistory.objects.create(
 		employee=employee,
 		organization=employee.organization,
 		old_hourly_rate=old_rate,

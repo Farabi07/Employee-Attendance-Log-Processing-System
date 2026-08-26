@@ -16,6 +16,7 @@ from authentication.permissions import IsManager, IsManagerOrModerator, CanAddEm
 from commons.pagination import Pagination
 
 from wallet.models import record_rate_change
+from wallet.notify import notify_rate_changed
 
 
 
@@ -211,10 +212,12 @@ def updateEmployee(request, pk):
 	serializer = EmployeeSerializer(employee, data=filtered_data, partial=True)
 	if serializer.is_valid():
 		employee = serializer.save()
-		record_rate_change(
+		rate_history = record_rate_change(
 			employee, old_rate=old_rate, new_rate=employee.hourly_rate,
 			old_currency=old_currency, new_currency=employee.currency, changed_by=request.user,
 		)
+		if rate_history:
+			notify_rate_changed(rate_history)
 		return Response(serializer.data, status=status.HTTP_200_OK)
 	else:
 		return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
