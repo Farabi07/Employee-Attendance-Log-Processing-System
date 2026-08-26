@@ -8,6 +8,7 @@ import Avatar from "./components/Avatar";
 import NotificationBell from "./components/NotificationBell";
 import ProfileModal from "./components/ProfileModal";
 import SubscribeGate, { TrialBanner } from "./components/SubscribeGate";
+import OfflineBanner from "./components/OfflineBanner";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ResetPasswordConfirm from "./pages/ResetPasswordConfirm";
@@ -114,7 +115,7 @@ function Shell() {
   );
 }
 
-export default function App() {
+function AppContent() {
   const { isAuthenticated, isPlatformOwner, billing, loading } = useAuth();
   const [resetLink] = useState(parseResetPath);
   const [authView, setAuthView] = useState("login"); // "login" | "signup"
@@ -157,4 +158,13 @@ export default function App() {
   }
 
   return <Shell />;
+}
+
+export default function App() {
+  return (
+    <>
+      <OfflineBanner />
+      <AppContent />
+    </>
+  );
 }

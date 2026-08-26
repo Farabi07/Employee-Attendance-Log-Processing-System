@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.rosterapp.twa",
+      "sha256_cert_fingerprints": [
+        "CA:3F:95:21:56:4C:54:88:37:11:E2:5F:51:0D:F4:3F:CE:A8:44:10:7C:C7:12:BC:B3:12:98:43:01:3F:98:EB"
+      ]
+    }
+  }
+]
