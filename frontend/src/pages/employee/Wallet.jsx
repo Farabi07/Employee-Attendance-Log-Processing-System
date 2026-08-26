@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Wallet as WalletIcon, ArrowDownToLine, Clock3 } from "lucide-react";
+import { Wallet as WalletIcon, ArrowDownToLine, Clock3, History } from "lucide-react";
 import { T, fontDisplay, fontBody, fontMono } from "../../theme";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import { useIsMobile } from "../../lib/useMediaQuery";
+import { useAuth } from "../../lib/auth";
 import { formatMoney, currencySymbol } from "../../lib/currency";
 import Card from "../../components/Card";
 import StatusPill from "../../components/StatusPill";
@@ -12,15 +13,21 @@ const CYCLE_LABEL = { weekly: "weekly", biweekly: "every 2 weeks", monthly: "mon
 
 export default function EmployeeWallet() {
   const isMobile = useIsMobile();
+  const { user } = useAuth();
   const [wallet, setWallet] = useState(undefined);
+  const [rateHistory, setRateHistory] = useState([]);
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(async () => {
-    const res = await api.get(endpoints.walletMe());
+    const [res, historyRes] = await Promise.all([
+      api.get(endpoints.walletMe()),
+      api.get(endpoints.rateHistory(user.id)),
+    ]);
     setWallet(res);
-  }, []);
+    setRateHistory(historyRes.history || []);
+  }, [user.id]);
 
   useEffect(() => {
     load();
@@ -161,6 +168,26 @@ export default function EmployeeWallet() {
           ))}
         </div>
       </Card>
+
+      {rateHistory.length > 0 && (
+        <Card style={{ padding: "20px 22px", gridColumn: isMobile ? "auto" : "1 / -1" }}>
+          <h3 style={{ fontFamily: fontDisplay, fontSize: 15, fontWeight: 600, color: T.ink, margin: "0 0 12px", display: "flex", alignItems: "center", gap: 7 }}>
+            <History size={15} /> Pay history
+          </h3>
+          {rateHistory.map((h, i) => (
+            <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderTop: i === 0 ? "none" : `1px solid ${T.line2}`, fontFamily: fontBody, fontSize: 12.5 }}>
+              <span style={{ color: T.faint, fontFamily: fontMono, width: 130, flexShrink: 0 }}>
+                {new Date(h.created_at).toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" })}
+              </span>
+              <span style={{ color: T.ink }}>
+                {h.old_hourly_rate ? `${formatMoney(h.old_hourly_rate, h.old_currency)} → ` : "Set to "}
+                <strong>{formatMoney(h.new_hourly_rate, h.new_currency)}/h</strong>
+                {h.changed_by && ` by ${h.changed_by.first_name} ${h.changed_by.last_name}`}
+              </span>
+            </div>
+          ))}
+        </Card>
+      )}
     </div>
   );
 }

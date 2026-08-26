@@ -67,4 +67,5 @@ export const endpoints = {
   payrollRun: () => `/wallet/api/v1/payroll/run/`,
   payoutReview: (pk) => `/wallet/api/v1/payout/${pk}/review/`,
   walletTransactions: (params = "") => `/wallet/api/v1/transactions/${params}`,
+  rateHistory: (employeeId) => `/wallet/api/v1/rate_history/${employeeId}/`,
 };

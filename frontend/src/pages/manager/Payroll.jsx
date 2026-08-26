@@ -89,6 +89,9 @@ export default function ManagerPayroll() {
     return <p style={{ fontFamily: fontBody, color: T.muted }}>Loading…</p>;
   }
 
+  const distinctCurrencies = new Set(summary.employees.map((r) => r.currency).filter(Boolean));
+  const hasMixedCurrencies = distinctCurrencies.size > 1;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {isManager && (
@@ -111,6 +114,11 @@ export default function ManagerPayroll() {
         <Card style={{ padding: "18px 20px" }}>
           <p style={{ fontFamily: fontBody, fontSize: 12, color: T.muted, margin: "0 0 6px" }}>Total payable now</p>
           <p style={{ fontFamily: fontDisplay, fontSize: 24, fontWeight: 600, color: T.ink, margin: 0 }}>{money(summary.total_payable)}</p>
+          {hasMixedCurrencies && (
+            <p style={{ fontFamily: fontBody, fontSize: 10.5, color: T.faint, margin: "4px 0 0" }}>
+              Employees are paid in different currencies — this total doesn't convert between them.
+            </p>
+          )}
         </Card>
         <Card style={{ padding: "18px 20px" }}>
           <p style={{ fontFamily: fontBody, fontSize: 12, color: T.muted, margin: "0 0 6px" }}>Pending cash-out requests</p>
@@ -179,7 +187,7 @@ export default function ManagerPayroll() {
                     {row.employee.first_name} {row.employee.last_name}
                   </td>
                   <td style={{ padding: "10px 8px", borderBottom: `1px solid ${T.line2}`, fontFamily: fontMono, fontSize: 12.5, color: T.muted }}>
-                    {row.hourly_rate ? `${money(row.hourly_rate)}/h` : "—"}
+                    {row.hourly_rate ? `${formatMoney(row.hourly_rate, row.currency)}/h` : "—"}
                   </td>
                   <td style={{ padding: "10px 8px", borderBottom: `1px solid ${T.line2}`, fontFamily: fontBody, fontSize: 12.5, color: T.muted }}>
                     {CYCLE_LABEL[row.payout_cycle] || "Weekly"}
@@ -188,13 +196,13 @@ export default function ManagerPayroll() {
                     {dueLabel(row)}
                   </td>
                   <td style={{ padding: "10px 8px", borderBottom: `1px solid ${T.line2}`, fontFamily: fontMono, fontSize: 12.5, color: T.muted }}>
-                    {money(row.this_week_earnings)}
+                    {formatMoney(row.this_week_earnings, row.currency)}
                   </td>
                   <td style={{ padding: "10px 8px", borderBottom: `1px solid ${T.line2}`, fontFamily: fontMono, fontSize: 13, fontWeight: 600, color: T.ink }}>
-                    {money(row.current_balance)}
+                    {formatMoney(row.current_balance, row.currency)}
                   </td>
                   <td style={{ padding: "10px 8px", borderBottom: `1px solid ${T.line2}`, fontFamily: fontMono, fontSize: 12.5, color: T.amber }}>
-                    {Number(row.pending_payout) > 0 ? money(row.pending_payout) : "—"}
+                    {Number(row.pending_payout) > 0 ? formatMoney(row.pending_payout, row.currency) : "—"}
                   </td>
                 </tr>
               ))}
@@ -216,7 +224,7 @@ export default function ManagerPayroll() {
                   {new Date(t.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
                 </p>
               </div>
-              <span style={{ fontFamily: fontMono, fontSize: 14, fontWeight: 600, color: T.ink }}>{money(t.amount)}</span>
+              <span style={{ fontFamily: fontMono, fontSize: 14, fontWeight: 600, color: T.ink }}>{formatMoney(t.amount, t.currency)}</span>
               {isManager ? (
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
@@ -257,7 +265,7 @@ export default function ManagerPayroll() {
                 <p style={{ fontFamily: fontMono, fontSize: 10.5, color: T.faint, margin: 0 }}>{t.transaction_id}</p>
               </div>
               <span style={{ fontFamily: fontMono, fontSize: 13, fontWeight: 600, color: t.type === "earning" ? T.teal : T.ink }}>
-                {t.type === "earning" ? "+" : "-"}{money(t.amount)}
+                {t.type === "earning" ? "+" : "-"}{formatMoney(t.amount, t.currency)}
               </span>
               <StatusPill status={t.status} />
             </div>

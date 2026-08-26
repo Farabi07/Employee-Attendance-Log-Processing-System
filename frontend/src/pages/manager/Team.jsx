@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
-import { Search, UserPlus, DollarSign, ShieldCheck } from "lucide-react";
+import { Search, UserPlus, DollarSign, ShieldCheck, History } from "lucide-react";
 import { T, fontDisplay, fontBody, fontMono } from "../../theme";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import { useIsMobile } from "../../lib/useMediaQuery";
 import { useAuth } from "../../lib/auth";
-import { currencySymbol } from "../../lib/currency";
+import { currencySymbol, formatMoney, CURRENCIES } from "../../lib/currency";
 import Card from "../../components/Card";
 import Avatar from "../../components/Avatar";
 
@@ -41,7 +41,6 @@ export default function ManagerTeam() {
   const { isManager, billing, refreshBilling } = useAuth();
   const canAddEmployees = isManager || !!billing?.can_add_employees;
   const [savingAccess, setSavingAccess] = useState(null);
-  const symbol = currencySymbol(billing?.currency);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -52,14 +51,20 @@ export default function ManagerTeam() {
   const [password, setPassword] = useState("");
   const [orgRole, setOrgRole] = useState("employee");
   const [hourlyRate, setHourlyRate] = useState("");
+  const [currency, setCurrency] = useState(billing?.currency || "usd");
   const [payoutCycle, setPayoutCycle] = useState("weekly");
   const [message, setMessage] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   const [editingPayId, setEditingPayId] = useState(null);
   const [editRate, setEditRate] = useState("");
+  const [editCurrency, setEditCurrency] = useState("usd");
   const [editCycle, setEditCycle] = useState("weekly");
   const [savingPay, setSavingPay] = useState(false);
+
+  const [historyForId, setHistoryForId] = useState(null);
+  const [historyById, setHistoryById] = useState({});
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   const load = useCallback(async () => {
     const res = await api.get(endpoints.employeesAll());
@@ -87,7 +92,7 @@ export default function ManagerTeam() {
         password,
         org_role: isManager ? orgRole : "employee",
         payout_cycle: payoutCycle,
-        ...(hourlyRate ? { hourly_rate: hourlyRate } : {}),
+        ...(hourlyRate ? { hourly_rate: hourlyRate, currency } : {}),
       });
       setMessage({ type: "success", text: "Employee added." });
       setFirstName("");
@@ -96,6 +101,7 @@ export default function ManagerTeam() {
       setPassword("");
       setOrgRole("employee");
       setHourlyRate("");
+      setCurrency(billing?.currency || "usd");
       setPayoutCycle("weekly");
       await load();
     } catch (err) {
@@ -120,6 +126,7 @@ export default function ManagerTeam() {
   const startEditPay = (emp) => {
     setEditingPayId(emp.id);
     setEditRate(emp.hourly_rate ?? "");
+    setEditCurrency(emp.currency || billing?.currency || "usd");
     setEditCycle(emp.payout_cycle || "weekly");
   };
 
@@ -128,14 +135,34 @@ export default function ManagerTeam() {
     try {
       await api.put(endpoints.employeeUpdate(id), {
         payout_cycle: editCycle,
-        ...(editRate !== "" ? { hourly_rate: editRate } : {}),
+        ...(editRate !== "" ? { hourly_rate: editRate, currency: editCurrency } : {}),
       });
       setEditingPayId(null);
+      setHistoryById((h) => ({ ...h, [id]: undefined }));
       await load();
     } catch (err) {
       setMessage({ type: "error", text: err.message });
     } finally {
       setSavingPay(false);
+    }
+  };
+
+  const toggleHistory = async (emp) => {
+    if (historyForId === emp.id) {
+      setHistoryForId(null);
+      return;
+    }
+    setHistoryForId(emp.id);
+    if (!historyById[emp.id]) {
+      setLoadingHistory(true);
+      try {
+        const res = await api.get(endpoints.rateHistory(emp.id));
+        setHistoryById((h) => ({ ...h, [emp.id]: res.history || [] }));
+      } catch (err) {
+        setMessage({ type: "error", text: err.message });
+      } finally {
+        setLoadingHistory(false);
+      }
     }
   };
 
@@ -173,8 +200,15 @@ export default function ManagerTeam() {
               </p>
             )}
 
-            <label style={labelStyle}>Hourly rate (optional, {symbol})</label>
-            <input type="number" step="0.01" min="0" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} placeholder="e.g. 15.00" style={inputStyle} />
+            <label style={labelStyle}>Hourly rate (optional)</label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input type="number" step="0.01" min="0" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} placeholder="e.g. 15.00" style={{ ...inputStyle, flex: 1 }} />
+              <select value={currency} onChange={(e) => setCurrency(e.target.value)} style={{ ...inputStyle, width: 100, flex: "0 0 auto" }}>
+                {CURRENCIES.map((c) => (
+                  <option key={c.value} value={c.value}>{c.value.toUpperCase()}</option>
+                ))}
+              </select>
+            </div>
 
             <label style={labelStyle}>Pay out every</label>
             <select value={payoutCycle} onChange={(e) => setPayoutCycle(e.target.value)} style={inputStyle}>
@@ -255,6 +289,8 @@ export default function ManagerTeam() {
             {filtered.map((emp, i) => {
               const badge = ROLE_BADGE[emp.org_role];
               const isEditing = editingPayId === emp.id;
+              const isHistoryOpen = historyForId === emp.id;
+              const history = historyById[emp.id];
               return (
                 <div key={emp.id} style={{ borderTop: i === 0 ? "none" : `1px solid ${T.line2}`, minWidth: 360 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 4px" }}>
@@ -267,7 +303,7 @@ export default function ManagerTeam() {
                     </div>
                     {emp.hourly_rate && (
                       <span style={{ fontFamily: fontMono, fontSize: 11.5, color: T.muted, whiteSpace: "nowrap" }}>
-                        {symbol}{Number(emp.hourly_rate).toFixed(2)}/h · {PAYOUT_CYCLES.find((c) => c.value === emp.payout_cycle)?.label || "Weekly"}
+                        {currencySymbol(emp.currency)}{Number(emp.hourly_rate).toFixed(2)}/h · {PAYOUT_CYCLES.find((c) => c.value === emp.payout_cycle)?.label || "Weekly"}
                       </span>
                     )}
                     {badge && (
@@ -275,7 +311,15 @@ export default function ManagerTeam() {
                         {badge.label}
                       </span>
                     )}
-                    {isManager && (
+                    <button
+                      onClick={() => toggleHistory(emp)}
+                      aria-label="View pay history"
+                      title="Pay history"
+                      style={{ border: "none", background: "transparent", cursor: "pointer", padding: 4, display: "flex" }}
+                    >
+                      <History size={15} color={isHistoryOpen ? T.teal : T.faint} />
+                    </button>
+                    {canAddEmployees && (
                       <button
                         onClick={() => (isEditing ? setEditingPayId(null) : startEditPay(emp))}
                         aria-label="Edit pay"
@@ -298,6 +342,15 @@ export default function ManagerTeam() {
                         style={{ width: 110, padding: "7px 9px", borderRadius: 7, border: `1px solid ${T.line}`, fontFamily: fontBody, fontSize: 12.5 }}
                       />
                       <select
+                        value={editCurrency}
+                        onChange={(e) => setEditCurrency(e.target.value)}
+                        style={{ padding: "7px 9px", borderRadius: 7, border: `1px solid ${T.line}`, fontFamily: fontBody, fontSize: 12.5 }}
+                      >
+                        {CURRENCIES.map((c) => (
+                          <option key={c.value} value={c.value}>{c.value.toUpperCase()}</option>
+                        ))}
+                      </select>
+                      <select
                         value={editCycle}
                         onChange={(e) => setEditCycle(e.target.value)}
                         style={{ padding: "7px 9px", borderRadius: 7, border: `1px solid ${T.line}`, fontFamily: fontBody, fontSize: 12.5 }}
@@ -313,6 +366,29 @@ export default function ManagerTeam() {
                       >
                         {savingPay ? "Saving…" : "Save"}
                       </button>
+                    </div>
+                  )}
+
+                  {isHistoryOpen && (
+                    <div style={{ padding: "0 4px 14px 46px" }}>
+                      {loadingHistory && !history ? (
+                        <p style={{ fontFamily: fontBody, fontSize: 12, color: T.muted, margin: 0 }}>Loading…</p>
+                      ) : !history || history.length === 0 ? (
+                        <p style={{ fontFamily: fontBody, fontSize: 12, color: T.muted, margin: 0 }}>No pay changes recorded yet.</p>
+                      ) : (
+                        history.map((h) => (
+                          <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", fontFamily: fontBody, fontSize: 12 }}>
+                            <span style={{ color: T.faint, fontFamily: fontMono, width: 130, flexShrink: 0 }}>
+                              {new Date(h.created_at).toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" })}
+                            </span>
+                            <span style={{ color: T.ink }}>
+                              {h.old_hourly_rate ? `${formatMoney(h.old_hourly_rate, h.old_currency)} → ` : "Set to "}
+                              <strong>{formatMoney(h.new_hourly_rate, h.new_currency)}/h</strong>
+                              {h.changed_by && ` by ${h.changed_by.first_name} ${h.changed_by.last_name}`}
+                            </span>
+                          </div>
+                        ))
+                      )}
                     </div>
                   )}
                 </div>
