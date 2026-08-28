@@ -159,7 +159,7 @@ export default function ManagerReports() {
               ))}
             </div>
             {rows.map((r) => (
-              <div key={r.name} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", alignItems: "center", padding: "12px 4px", borderBottom: `1px solid ${T.line2}` }}>
+              <div key={r.name} className="row-hover" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", alignItems: "center", padding: "12px 4px", borderRadius: 8, borderBottom: `1px solid ${T.line2}` }}>
                 <span style={{ fontFamily: fontBody, fontSize: 13.5, color: T.ink }}>{r.name}</span>
                 <span style={{ fontFamily: fontMono, fontSize: 13, color: T.muted }}>{r.days} / {totalDays}</span>
                 <span style={{ fontFamily: fontMono, fontSize: 13, color: T.muted }}>{formatDuration(r.hours)}</span>

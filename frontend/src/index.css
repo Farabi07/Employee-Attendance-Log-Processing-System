@@ -8,7 +8,7 @@ html, body, #root {
 
 body {
   margin: 0;
-  background: #F5F6F2;
+  background: #F3F7F5;
   font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -20,9 +20,48 @@ button, input, select, textarea {
 
 button {
   outline: none;
+  transition: filter 0.15s ease, transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+button:disabled {
+  cursor: default;
+}
+
+input, select, textarea {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 input:focus, select:focus, textarea:focus, button:focus-visible {
-  outline: 2px solid #0E7C74;
+  outline: 2px solid #2E5C88;
   outline-offset: 1px;
+}
+
+.row-hover {
+  transition: background-color 0.12s ease;
+}
+
+.row-hover:hover {
+  background-color: #EAF1EE;
+}
+
+.nav-item {
+  background-color: transparent;
+}
+
+.nav-item:not(.nav-item--active):hover {
+  background-color: #EAF1EE;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button, input, select, textarea, .row-hover {
+    transition: none;
+  }
 }

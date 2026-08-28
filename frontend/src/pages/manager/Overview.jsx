@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Search, Users, CheckCircle2, Coffee, UserX } from "lucide-react";
 import { T, fontDisplay, fontBody, fontMono } from "../../theme";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
@@ -70,16 +70,21 @@ export default function ManagerOverview() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14 }}>
         {[
-          { label: "Team size", value: employees.length, color: T.ink },
-          { label: "Checked in today", value: counts.checkedIn, color: T.teal },
-          { label: "On leave", value: counts.onLeave, color: T.amber },
-          { label: "Not checked in", value: counts.notIn, color: T.coral },
+          { label: "Team size", value: employees.length, color: T.navy, bg: T.navyBg, icon: Users },
+          { label: "Checked in today", value: counts.checkedIn, color: T.tealDeep, bg: T.tealBg, icon: CheckCircle2 },
+          { label: "On leave", value: counts.onLeave, color: T.amber, bg: T.amberBg, icon: Coffee },
+          { label: "Not checked in", value: counts.notIn, color: T.coral, bg: T.coralBg, icon: UserX },
         ].map((m) => (
           <Card key={m.label} style={{ padding: "16px 18px" }}>
-            <p style={{ fontFamily: fontBody, fontSize: 12, color: T.muted, margin: "0 0 6px" }}>{m.label}</p>
-            <p style={{ fontFamily: fontDisplay, fontSize: 24, fontWeight: 600, color: m.color, margin: 0 }}>{m.value}</p>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <p style={{ fontFamily: fontBody, fontSize: 12, color: T.muted, margin: 0 }}>{m.label}</p>
+              <span style={{ width: 28, height: 28, borderRadius: 8, background: m.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <m.icon size={14} color={m.color} strokeWidth={2.2} />
+              </span>
+            </div>
+            <p style={{ fontFamily: fontDisplay, fontSize: 26, fontWeight: 600, color: T.ink, margin: 0 }}>{m.value}</p>
           </Card>
         ))}
       </div>
@@ -111,7 +116,7 @@ export default function ManagerOverview() {
               ))}
             </div>
             {rows.map(({ employee, attendance, display }) => (
-              <div key={employee.id} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", alignItems: "center", padding: "12px 4px", borderBottom: `1px solid ${T.line2}` }}>
+              <div key={employee.id} className="row-hover" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", alignItems: "center", padding: "12px 4px", borderRadius: 8, borderBottom: `1px solid ${T.line2}` }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <Avatar initials={initialsOf(employee)} size={32} />
                   <div>

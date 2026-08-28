@@ -240,7 +240,7 @@ export default function ManagerPayroll() {
             </thead>
             <tbody>
               {summary.employees.map((row) => (
-                <tr key={row.employee.id}>
+                <tr key={row.employee.id} className="row-hover">
                   <td style={{ padding: "10px 8px", borderBottom: `1px solid ${T.line2}`, fontFamily: fontBody, fontSize: 13, color: T.ink }}>
                     {row.employee.first_name} {row.employee.last_name}
                   </td>
@@ -273,7 +273,7 @@ export default function ManagerPayroll() {
         <Card style={{ padding: "20px 22px" }}>
           <h3 style={{ fontFamily: fontDisplay, fontSize: 15.5, fontWeight: 600, color: T.ink, margin: "0 0 14px" }}>Cash-out requests awaiting review</h3>
           {summary.pending_requests.map((t, i) => (
-            <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 4px", borderTop: i === 0 ? "none" : `1px solid ${T.line2}`, flexWrap: "wrap" }}>
+            <div key={t.id} className="row-hover" style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 4px", borderRadius: 8, borderTop: i === 0 ? "none" : `1px solid ${T.line2}`, flexWrap: "wrap" }}>
               <div style={{ flex: 1, minWidth: 160 }}>
                 <p style={{ fontFamily: fontBody, fontSize: 13.5, fontWeight: 500, color: T.ink, margin: 0 }}>
                   {t.employee.first_name} {t.employee.last_name}
@@ -315,7 +315,7 @@ export default function ManagerPayroll() {
         {transactions.length === 0 && <p style={{ fontFamily: fontBody, fontSize: 13, color: T.muted, margin: 0 }}>No transactions yet.</p>}
         <div style={{ overflowX: "auto" }}>
           {transactions.map((t, i) => (
-            <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 4px", borderTop: i === 0 ? "none" : `1px solid ${T.line2}`, minWidth: 500 }}>
+            <div key={t.id} className="row-hover" style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 4px", borderRadius: 8, borderTop: i === 0 ? "none" : `1px solid ${T.line2}`, minWidth: 500 }}>
               <div style={{ flex: 1 }}>
                 <p style={{ fontFamily: fontBody, fontSize: 13, color: T.ink, margin: 0 }}>
                   {t.employee.first_name} {t.employee.last_name} — {t.type === "earning" ? "earned" : "payout"}

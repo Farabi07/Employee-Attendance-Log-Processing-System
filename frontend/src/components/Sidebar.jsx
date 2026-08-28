@@ -92,6 +92,7 @@ export default function Sidebar({ role, active, setActive }) {
           <button
             key={it.key}
             onClick={() => setActive(it.key)}
+            className={`nav-item${isActive ? " nav-item--active" : ""}`}
             style={{
               display: "flex",
               alignItems: "center",
@@ -99,7 +100,7 @@ export default function Sidebar({ role, active, setActive }) {
               padding: "9px 12px",
               borderRadius: 9,
               border: "none",
-              background: isActive ? T.tealBg : "transparent",
+              background: isActive ? T.tealBg : undefined,
               color: isActive ? T.tealDeep : T.muted,
               fontFamily: fontBody,
               fontSize: 13.5,

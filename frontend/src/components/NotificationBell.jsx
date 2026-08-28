@@ -71,8 +71,8 @@ export default function NotificationBell() {
         aria-label="Notifications"
         style={{
           position: "relative",
-          border: `1px solid ${T.line}`,
-          background: T.card,
+          border: `1px solid ${T.navyBg}`,
+          background: T.navyBg,
           borderRadius: 9,
           width: 34,
           height: 34,
@@ -82,7 +82,7 @@ export default function NotificationBell() {
           cursor: "pointer",
         }}
       >
-        <Bell size={15} color={T.muted} />
+        <Bell size={15} color={T.navyDeep} />
         {unreadCount > 0 && (
           <span
             style={{

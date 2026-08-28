@@ -8,7 +8,7 @@ export default function Avatar({ initials, size = 38 }) {
         width: size,
         height: size,
         borderRadius: "50%",
-        background: T.ink,
+        background: T.navy,
         color: T.paper,
         display: "flex",
         alignItems: "center",
