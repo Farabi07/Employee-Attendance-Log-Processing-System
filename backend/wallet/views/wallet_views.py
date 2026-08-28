@@ -1,9 +1,11 @@
 import uuid
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Sum
+from django.http import HttpResponse
 from django.utils import timezone
 
 from rest_framework import status
@@ -19,6 +21,8 @@ from authentication.permissions import IsManager, IsManagerOrModerator, HasActiv
 from wallet.models import WalletTransaction, RateHistory, wallet_balance, wallet_pending_payout, next_payout_due_at, is_payout_due
 from wallet.serializers import WalletTransactionSerializer, RateHistorySerializer
 from wallet.notify import notify_payout_completed, notify_payout_failed
+from wallet.reports import build_payroll_report_rows
+from wallet.exporters import render_csv, render_pdf, render_excel
 
 from commons.pagination import Pagination
 
@@ -203,6 +207,75 @@ def getPayrollSummary(request):
 		},
 		status=status.HTTP_200_OK,
 	)
+
+
+
+
+def _parse_report_range(request):
+	date_from = request.query_params.get('date_from')
+	date_to = request.query_params.get('date_to')
+	if not date_from or not date_to:
+		return None, None, Response({'detail': 'date_from and date_to are required'}, status=status.HTTP_400_BAD_REQUEST)
+	try:
+		date_from = datetime.strptime(date_from, '%Y-%m-%d').date()
+		date_to = datetime.strptime(date_to, '%Y-%m-%d').date()
+	except ValueError:
+		return None, None, Response({'detail': 'date_from/date_to must be YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
+	return date_from, date_to, None
+
+
+
+
+@extend_schema(request=None, responses=None)
+@api_view(['GET'])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
+def exportPayrollCsv(request):
+	date_from, date_to, error = _parse_report_range(request)
+	if error:
+		return error
+
+	rows = build_payroll_report_rows(date_from, date_to, request.user.organization)
+	csv_bytes = render_csv(rows)
+
+	response = HttpResponse(csv_bytes, content_type='text/csv')
+	response['Content-Disposition'] = f'attachment; filename="payroll-report_{date_from}_to_{date_to}.csv"'
+	return response
+
+
+
+
+@extend_schema(request=None, responses=None)
+@api_view(['GET'])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
+def exportPayrollPdf(request):
+	date_from, date_to, error = _parse_report_range(request)
+	if error:
+		return error
+
+	rows = build_payroll_report_rows(date_from, date_to, request.user.organization)
+	pdf_bytes = render_pdf(rows, date_from, date_to)
+
+	response = HttpResponse(pdf_bytes, content_type='application/pdf')
+	response['Content-Disposition'] = f'attachment; filename="payroll-report_{date_from}_to_{date_to}.pdf"'
+	return response
+
+
+
+
+@extend_schema(request=None, responses=None)
+@api_view(['GET'])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
+def exportPayrollExcel(request):
+	date_from, date_to, error = _parse_report_range(request)
+	if error:
+		return error
+
+	rows = build_payroll_report_rows(date_from, date_to, request.user.organization)
+	excel_bytes = render_excel(rows, date_from, date_to)
+
+	response = HttpResponse(excel_bytes, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+	response['Content-Disposition'] = f'attachment; filename="payroll-report_{date_from}_to_{date_to}.xlsx"'
+	return response
 
 
 

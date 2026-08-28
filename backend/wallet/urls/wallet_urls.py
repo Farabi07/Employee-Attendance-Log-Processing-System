@@ -9,6 +9,9 @@ urlpatterns = [
 
 	path('api/v1/payroll/summary/', views.getPayrollSummary),
 	path('api/v1/payroll/run/', views.runPayrollNow),
+	path('api/v1/payroll/export/csv/', views.exportPayrollCsv),
+	path('api/v1/payroll/export/pdf/', views.exportPayrollPdf),
+	path('api/v1/payroll/export/excel/', views.exportPayrollExcel),
 	path('api/v1/payout/<int:pk>/review/', views.reviewPayoutRequest),
 
 	path('api/v1/transactions/', views.listTransactions),
