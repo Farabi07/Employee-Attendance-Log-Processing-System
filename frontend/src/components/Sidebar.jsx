@@ -80,10 +80,10 @@ export default function Sidebar({ role, active, setActive }) {
       }}
     >
       <div style={{ padding: "0 10px", marginBottom: 28, display: "flex", alignItems: "center", gap: 9 }}>
-        <div style={{ width: 26, height: 26, borderRadius: 7, background: T.ink, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: 26, height: 26, borderRadius: 7, background: T.navy, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <Clock size={15} color={T.paper} strokeWidth={2} />
         </div>
-        <span style={{ fontFamily: fontDisplay, fontWeight: 600, fontSize: 15, color: T.ink }}>Roster</span>
+        <span style={{ fontFamily: fontDisplay, fontWeight: 600, fontSize: 15, color: T.ink }}>TimeTap</span>
       </div>
       {items.map((it) => {
         const Icon = it.icon;

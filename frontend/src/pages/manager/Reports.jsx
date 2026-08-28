@@ -113,7 +113,7 @@ export default function ManagerReports() {
     }
   };
 
-  const exportBtnStyle = { display: "flex", alignItems: "center", gap: 6, padding: "9px 14px", borderRadius: 9, border: `1px solid ${T.line}`, background: T.card, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, color: T.ink, cursor: "pointer" };
+  const exportBtnStyle = { display: "flex", alignItems: "center", gap: 6, padding: "9px 14px", borderRadius: 9, border: `1px solid ${T.navyBg}`, background: T.navyBg, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, color: T.navyDeep, cursor: "pointer" };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>

@@ -204,21 +204,21 @@ export default function ManagerPayroll() {
           <button
             onClick={() => exportPayroll("csv")}
             disabled={exporting !== null}
-            style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 14px", borderRadius: 9, border: `1px solid ${T.line}`, background: T.card, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, color: T.ink, cursor: "pointer" }}
+            style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 14px", borderRadius: 9, border: `1px solid ${T.navyBg}`, background: T.navyBg, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, color: T.navyDeep, cursor: "pointer" }}
           >
             <Download size={14} /> {exporting === "csv" ? "Preparing…" : "CSV"}
           </button>
           <button
             onClick={() => exportPayroll("pdf")}
             disabled={exporting !== null}
-            style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 14px", borderRadius: 9, border: `1px solid ${T.line}`, background: T.card, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, color: T.ink, cursor: "pointer" }}
+            style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 14px", borderRadius: 9, border: `1px solid ${T.navyBg}`, background: T.navyBg, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, color: T.navyDeep, cursor: "pointer" }}
           >
             <FileText size={14} /> {exporting === "pdf" ? "Preparing…" : "PDF"}
           </button>
           <button
             onClick={() => exportPayroll("excel")}
             disabled={exporting !== null}
-            style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 14px", borderRadius: 9, border: `1px solid ${T.line}`, background: T.card, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, color: T.ink, cursor: "pointer" }}
+            style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 14px", borderRadius: 9, border: `1px solid ${T.navyBg}`, background: T.navyBg, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, color: T.navyDeep, cursor: "pointer" }}
           >
             <FileSpreadsheet size={14} /> {exporting === "excel" ? "Preparing…" : "Excel"}
           </button>

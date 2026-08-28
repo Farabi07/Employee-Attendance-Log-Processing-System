@@ -40,10 +40,10 @@ export default function Login({ onSignup }) {
     >
       <Card style={{ width: "min(360px, 100%)", padding: "32px 28px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 26 }}>
-          <div style={{ width: 30, height: 30, borderRadius: 8, background: T.ink, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ width: 30, height: 30, borderRadius: 8, background: T.navy, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <Clock size={16} color={T.paper} strokeWidth={2} />
           </div>
-          <span style={{ fontFamily: fontDisplay, fontWeight: 600, fontSize: 18, color: T.ink }}>Roster</span>
+          <span style={{ fontFamily: fontDisplay, fontWeight: 600, fontSize: 18, color: T.ink }}>TimeTap</span>
         </div>
 
         {mode === "login" ? (

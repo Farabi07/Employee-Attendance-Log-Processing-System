@@ -1,6 +1,6 @@
 {
-  "name": "Roster — Attendance & Payroll",
-  "short_name": "Roster",
+  "name": "TimeTap — Attendance & Payroll",
+  "short_name": "TimeTap",
   "description": "QR check-in, rosters, leave, and payroll for your team.",
   "start_url": "/",
   "scope": "/",
