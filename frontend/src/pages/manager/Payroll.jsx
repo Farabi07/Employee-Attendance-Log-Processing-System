@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Wallet, CheckCircle2, XCircle, ListChecks } from "lucide-react";
+import { Wallet, CheckCircle2, XCircle, ListChecks, Download, FileText, FileSpreadsheet } from "lucide-react";
 import { T, fontDisplay, fontBody, fontMono } from "../../theme";
-import { api } from "../../lib/api";
+import { api, downloadFile } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import { useIsMobile } from "../../lib/useMediaQuery";
 import { useAuth } from "../../lib/auth";
 import { formatMoney, CURRENCIES } from "../../lib/currency";
+import { weekDates } from "../../lib/dates";
 import Card from "../../components/Card";
 import StatusPill from "../../components/StatusPill";
 
@@ -28,6 +29,11 @@ export default function ManagerPayroll() {
   const [reviewingId, setReviewingId] = useState(null);
   const [currency, setCurrency] = useState("usd");
   const [savingCurrency, setSavingCurrency] = useState(false);
+
+  const defaultWeek = weekDates();
+  const [exportFrom, setExportFrom] = useState(defaultWeek[0]);
+  const [exportTo, setExportTo] = useState(defaultWeek[6]);
+  const [exporting, setExporting] = useState(null); // "csv" | "pdf" | "excel" | null
 
   const money = (v) => formatMoney(v, summary?.currency);
 
@@ -82,6 +88,25 @@ export default function ManagerPayroll() {
       setMessage({ type: "error", text: err.message });
     } finally {
       setReviewingId(null);
+    }
+  };
+
+  const exportPayroll = async (kind) => {
+    setExporting(kind);
+    try {
+      const params = `?date_from=${exportFrom}&date_to=${exportTo}`;
+      const filename = `payroll-report_${exportFrom}_to_${exportTo}`;
+      if (kind === "csv") {
+        await downloadFile(endpoints.payrollExportCsv(params), `${filename}.csv`);
+      } else if (kind === "pdf") {
+        await downloadFile(endpoints.payrollExportPdf(params), `${filename}.pdf`);
+      } else {
+        await downloadFile(endpoints.payrollExportExcel(params), `${filename}.xlsx`);
+      }
+    } catch (err) {
+      setMessage({ type: "error", text: err.message });
+    } finally {
+      setExporting(null);
     }
   };
 
@@ -166,6 +191,39 @@ export default function ManagerPayroll() {
       {message && (
         <p style={{ fontFamily: fontBody, fontSize: 13, color: message.type === "error" ? T.coral : T.teal, margin: 0 }}>{message.text}</p>
       )}
+
+      <Card style={{ padding: "20px 22px" }}>
+        <h3 style={{ fontFamily: fontDisplay, fontSize: 15.5, fontWeight: 600, color: T.ink, margin: "0 0 4px" }}>Export for accounting</h3>
+        <p style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted, margin: "0 0 14px" }}>
+          Gross pay per employee for a pay period — hours, rate, and total earned. Import the CSV straight into Xero, MYOB, or Excel.
+        </p>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <input type="date" value={exportFrom} onChange={(e) => setExportFrom(e.target.value)} style={{ padding: "7px 10px", borderRadius: 8, border: `1px solid ${T.line}`, fontFamily: fontBody, fontSize: 12.5 }} />
+          <span style={{ color: T.muted, fontSize: 12 }}>to</span>
+          <input type="date" value={exportTo} onChange={(e) => setExportTo(e.target.value)} style={{ padding: "7px 10px", borderRadius: 8, border: `1px solid ${T.line}`, fontFamily: fontBody, fontSize: 12.5 }} />
+          <button
+            onClick={() => exportPayroll("csv")}
+            disabled={exporting !== null}
+            style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 14px", borderRadius: 9, border: `1px solid ${T.line}`, background: T.card, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, color: T.ink, cursor: "pointer" }}
+          >
+            <Download size={14} /> {exporting === "csv" ? "Preparing…" : "CSV"}
+          </button>
+          <button
+            onClick={() => exportPayroll("pdf")}
+            disabled={exporting !== null}
+            style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 14px", borderRadius: 9, border: `1px solid ${T.line}`, background: T.card, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, color: T.ink, cursor: "pointer" }}
+          >
+            <FileText size={14} /> {exporting === "pdf" ? "Preparing…" : "PDF"}
+          </button>
+          <button
+            onClick={() => exportPayroll("excel")}
+            disabled={exporting !== null}
+            style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 14px", borderRadius: 9, border: `1px solid ${T.line}`, background: T.card, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, color: T.ink, cursor: "pointer" }}
+          >
+            <FileSpreadsheet size={14} /> {exporting === "excel" ? "Preparing…" : "Excel"}
+          </button>
+        </div>
+      </Card>
 
       <Card style={{ padding: "20px 22px" }}>
         <h3 style={{ fontFamily: fontDisplay, fontSize: 15.5, fontWeight: 600, color: T.ink, margin: "0 0 14px" }}>Team balances</h3>
