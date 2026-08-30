@@ -20,4 +20,11 @@ urlpatterns = [
 	path('api/v1/transactions/', views.listTransactions),
 
 	path('api/v1/rate_history/<int:employee_id>/', views.getRateHistory),
+
+	path('api/v1/pay_adjustment/eligible/', views.getEligiblePayAdjustments),
+	path('api/v1/pay_adjustment/request/', views.createPayAdjustmentRequest),
+	path('api/v1/pay_adjustment/mine/', views.listMyPayAdjustments),
+	path('api/v1/pay_adjustment/all/', views.listOrgPayAdjustments),
+	path('api/v1/pay_adjustment/<int:pk>/review/', views.reviewPayAdjustment),
+	path('api/v1/pay_adjustment/<int:pk>/accept/', views.acceptPayAdjustment),
 ]

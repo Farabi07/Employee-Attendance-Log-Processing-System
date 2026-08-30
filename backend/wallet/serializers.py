@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from wallet.models import WalletTransaction, RateHistory
+from wallet.models import WalletTransaction, RateHistory, PayAdjustmentRequest
 
 
 class EmployeeMinimalSerializer(serializers.Serializer):
@@ -45,3 +45,25 @@ class RateHistorySerializer(serializers.ModelSerializer):
 	class Meta:
 		model = RateHistory
 		fields = ['id', 'old_hourly_rate', 'new_hourly_rate', 'old_currency', 'new_currency', 'changed_by', 'created_at']
+
+
+class PayAdjustmentRequestSerializer(serializers.ModelSerializer):
+	employee = EmployeeMinimalSerializer(read_only=True)
+	reviewed_by = ChangedByMinimalSerializer(read_only=True)
+	attendance_date = serializers.DateField(source='attendance.date', read_only=True)
+	currency = serializers.SerializerMethodField()
+
+	class Meta:
+		model = PayAdjustmentRequest
+		fields = [
+			'id', 'employee', 'attendance', 'attendance_date', 'kind', 'hours', 'requested_amount',
+			'note', 'attachment', 'status', 'granted_amount', 'manager_note', 'currency',
+			'reviewed_by', 'reviewed_at', 'accepted_at', 'created_at',
+		]
+
+	def get_currency(self, obj):
+		from authentication.models import Employee
+		try:
+			return Employee.objects.get(pk=obj.employee_id).currency
+		except Employee.DoesNotExist:
+			return None

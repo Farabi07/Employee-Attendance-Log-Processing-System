@@ -139,6 +139,14 @@ class Attendance(models.Model):
     worked_hours = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     earnings = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
+    # Set at check-out by comparing worked_hours to that day's Roster/Shift
+    # (when one exists). earnings above only ever pays for min(worked,
+    # scheduled) — the extra or the missing chunk sits here until the
+    # employee claims it through a PayAdjustmentRequest.
+    scheduled_hours = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    overtime_hours = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    shortfall_hours = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+
     check_in_lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     check_in_lon = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     check_out_lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
@@ -226,6 +234,8 @@ class Notification(models.Model):
         LEAVE_SUBMITTED = 'leave_submitted', 'Leave submitted'
         LEAVE_REVIEWED = 'leave_reviewed', 'Leave reviewed'
         RATE_CHANGED = 'rate_changed', 'Pay rate changed'
+        PAY_ADJUSTMENT_SUBMITTED = 'pay_adjustment_submitted', 'Pay adjustment requested'
+        PAY_ADJUSTMENT_REVIEWED = 'pay_adjustment_reviewed', 'Pay adjustment reviewed'
         GENERAL = 'general', 'General'
 
     recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications')

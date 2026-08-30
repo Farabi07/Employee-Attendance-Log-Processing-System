@@ -39,6 +39,61 @@ def notify_payout_completed(transaction):
 	)
 
 
+def notify_pay_adjustment_submitted(request_obj):
+	"""Employee submitted an overtime/shortfall claim — every Manager and
+	Moderator in the store needs to know there's something to review."""
+	from authentication.models import User, Employee
+
+	kind_label = "overtime" if request_obj.kind == request_obj.Kind.OVERTIME else "shortfall"
+	# request_obj.employee is a plain User (the FK targets AUTH_USER_MODEL) —
+	# currency only exists on the Employee subclass, so it has to be looked
+	# up explicitly rather than read straight off the FK.
+	employee = Employee.objects.get(pk=request_obj.employee_id)
+	message = (
+		f"{employee.first_name} {employee.last_name} is claiming {request_obj.hours}h of {kind_label} "
+		f"({_money(request_obj.requested_amount, employee.currency)}) for {request_obj.attendance.date}."
+	)
+	managers = User.objects.filter(
+		organization=request_obj.organization,
+		org_role__in=[User.OrgRole.MANAGER, User.OrgRole.MODERATOR],
+	)
+	Notification.objects.bulk_create(
+		[
+			Notification(
+				recipient=manager,
+				notification_type=Notification.NotificationType.PAY_ADJUSTMENT_SUBMITTED,
+				title="Pay adjustment requested",
+				message=message,
+			)
+			for manager in managers
+		]
+	)
+
+
+def notify_pay_adjustment_reviewed(request_obj):
+	"""Manager decided on a claim — tell the employee exactly what was
+	granted so they know what they're accepting."""
+	from authentication.models import Employee
+
+	currency = Employee.objects.filter(pk=request_obj.employee_id).values_list('currency', flat=True).first()
+	granted = request_obj.granted_amount or 0
+	if granted >= request_obj.requested_amount:
+		message = f"Your {request_obj.hours}h claim was fully approved — {_money(granted, currency)}. Accept it to add it to your balance."
+	elif granted > 0:
+		message = f"Your {request_obj.hours}h claim was partially approved — {_money(granted, currency)} of {_money(request_obj.requested_amount, currency)} requested. Accept it to add it to your balance."
+	else:
+		message = f"Your {request_obj.hours}h claim wasn't approved this time. You can submit a new request if you'd like to try again."
+	if request_obj.manager_note:
+		message += f' Note from your manager: "{request_obj.manager_note}"'
+
+	Notification.objects.create(
+		recipient=request_obj.employee,
+		notification_type=Notification.NotificationType.PAY_ADJUSTMENT_REVIEWED,
+		title="Pay adjustment reviewed",
+		message=message,
+	)
+
+
 def notify_payout_failed(transaction):
 	from authentication.models import User, Employee
 

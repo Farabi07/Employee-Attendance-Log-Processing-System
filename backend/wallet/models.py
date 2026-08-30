@@ -158,3 +158,51 @@ def is_payout_due(employee):
 		return False
 	due_at = next_payout_due_at(employee)
 	return due_at is None or timezone.now() >= due_at
+
+
+def pay_adjustment_upload_path(instance, filename):
+	return f'pay_adjustment_attachments/org_{instance.organization_id}/{instance.employee_id}_{filename}'
+
+
+class PayAdjustmentRequest(models.Model):
+	"""A claim on the hours check-out left aside — either overtime worked
+	beyond the day's scheduled shift, or the shortfall from leaving before
+	it ended. Nothing here touches the wallet until the employee accepts
+	whatever the Manager ends up granting, which can be the full amount,
+	a partial one, or nothing."""
+
+	class Kind(models.TextChoices):
+		OVERTIME = 'overtime', _('Overtime')
+		SHORTFALL = 'shortfall', _('Shortfall')
+
+	class Status(models.TextChoices):
+		PENDING = 'pending', _('Pending')      # waiting on the Manager
+		REVIEWED = 'reviewed', _('Reviewed')    # Manager decided, waiting on the employee
+		ACCEPTED = 'accepted', _('Accepted')    # employee accepted — paid out
+
+	employee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='pay_adjustment_requests')
+	organization = models.ForeignKey('authentication.Organization', on_delete=models.CASCADE, related_name='pay_adjustment_requests')
+	attendance = models.ForeignKey('attendance.Attendance', on_delete=models.CASCADE, related_name='pay_adjustment_requests')
+
+	kind = models.CharField(max_length=20, choices=Kind.choices)
+	hours = models.DecimalField(max_digits=5, decimal_places=2)
+	requested_amount = models.DecimalField(max_digits=10, decimal_places=2)
+
+	note = models.TextField(null=True, blank=True)
+	attachment = models.FileField(upload_to=pay_adjustment_upload_path, null=True, blank=True)
+
+	status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+	granted_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+	manager_note = models.TextField(null=True, blank=True)
+
+	reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='pay_adjustments_reviewed')
+	reviewed_at = models.DateTimeField(null=True, blank=True)
+	accepted_at = models.DateTimeField(null=True, blank=True)
+
+	created_at = models.DateTimeField(auto_now_add=True)
+
+	class Meta:
+		ordering = ('-created_at',)
+
+	def __str__(self):
+		return f"{self.employee} · {self.kind} · {self.hours}h · {self.status}"

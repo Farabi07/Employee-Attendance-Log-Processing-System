@@ -4,7 +4,7 @@ from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Sum
+from django.db.models import Sum, Q
 from django.http import HttpResponse
 from django.utils import timezone
 
@@ -18,9 +18,14 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from authentication.models import Employee
 from authentication.permissions import IsManager, IsManagerOrModerator, HasActiveSubscription
 
-from wallet.models import WalletTransaction, RateHistory, wallet_balance, wallet_pending_payout, next_payout_due_at, is_payout_due
-from wallet.serializers import WalletTransactionSerializer, RateHistorySerializer
-from wallet.notify import notify_payout_completed, notify_payout_failed
+from attendance.models import Attendance
+
+from wallet.models import WalletTransaction, RateHistory, PayAdjustmentRequest, wallet_balance, wallet_pending_payout, next_payout_due_at, is_payout_due
+from wallet.serializers import WalletTransactionSerializer, RateHistorySerializer, PayAdjustmentRequestSerializer
+from wallet.notify import (
+	notify_payout_completed, notify_payout_failed,
+	notify_pay_adjustment_submitted, notify_pay_adjustment_reviewed,
+)
 from wallet.reports import build_payroll_report_rows
 from wallet.exporters import render_csv, render_pdf, render_excel
 
@@ -698,3 +703,220 @@ def listTransactions(request):
 		},
 		status=status.HTTP_200_OK,
 	)
+
+
+
+
+def _unclaimed_hours(attendance, kind):
+	"""How much of this day's overtime/shortfall pool hasn't already been
+	paid out through an accepted claim — resubmitting after a partial or
+	zero grant can never add up to more than what was actually worked
+	(or missed)."""
+	pool = attendance.overtime_hours if kind == PayAdjustmentRequest.Kind.OVERTIME else attendance.shortfall_hours
+	accepted = PayAdjustmentRequest.objects.filter(
+		attendance=attendance, kind=kind, status=PayAdjustmentRequest.Status.ACCEPTED,
+	).aggregate(s=Sum('hours'))['s'] or Decimal('0')
+	return (pool or Decimal('0')) - accepted
+
+
+
+
+@extend_schema(request=None, responses=None)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, HasActiveSubscription])
+def getEligiblePayAdjustments(request):
+	"""Days where the employee worked more (or less) than their scheduled
+	shift and hasn't fully claimed it yet — what shows up as "Overtime" /
+	"Shortfall" cards on their Wallet page."""
+	try:
+		employee = Employee.objects.get(pk=request.user.pk)
+	except ObjectDoesNotExist:
+		return Response({'detail': 'Only employees have this'}, status=status.HTTP_400_BAD_REQUEST)
+
+	attendances = Attendance.objects.filter(employee=employee).filter(
+		Q(overtime_hours__gt=0) | Q(shortfall_hours__gt=0)
+	).order_by('-date')[:60]
+
+	rows = []
+	for attendance in attendances:
+		for kind in (PayAdjustmentRequest.Kind.OVERTIME, PayAdjustmentRequest.Kind.SHORTFALL):
+			pool = attendance.overtime_hours if kind == PayAdjustmentRequest.Kind.OVERTIME else attendance.shortfall_hours
+			if not pool:
+				continue
+			unclaimed = _unclaimed_hours(attendance, kind)
+			if unclaimed <= 0:
+				continue
+			has_pending = PayAdjustmentRequest.objects.filter(
+				attendance=attendance, kind=kind, status=PayAdjustmentRequest.Status.PENDING
+			).exists()
+			rows.append(
+				{
+					'attendance_id': attendance.id,
+					'date': attendance.date,
+					'kind': kind,
+					'hours': unclaimed,
+					'amount': round(unclaimed * employee.hourly_rate, 2) if employee.hourly_rate else None,
+					'has_pending_request': has_pending,
+				}
+			)
+
+	return Response({'eligible': rows}, status=status.HTTP_200_OK)
+
+
+
+
+@extend_schema(request=None, responses=PayAdjustmentRequestSerializer)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, HasActiveSubscription])
+def createPayAdjustmentRequest(request):
+	try:
+		employee = Employee.objects.get(pk=request.user.pk)
+	except ObjectDoesNotExist:
+		return Response({'detail': 'Only employees can submit this'}, status=status.HTTP_400_BAD_REQUEST)
+
+	kind = request.data.get('kind')
+	if kind not in PayAdjustmentRequest.Kind.values:
+		return Response({'detail': "kind must be 'overtime' or 'shortfall'"}, status=status.HTTP_400_BAD_REQUEST)
+
+	try:
+		attendance = Attendance.objects.get(pk=request.data.get('attendance'), employee=employee)
+	except (ObjectDoesNotExist, ValueError, TypeError):
+		return Response({'detail': 'Attendance record not found'}, status=status.HTTP_404_NOT_FOUND)
+
+	if PayAdjustmentRequest.objects.filter(
+		attendance=attendance, kind=kind, status=PayAdjustmentRequest.Status.PENDING
+	).exists():
+		return Response({'detail': 'A request for this is already pending review.'}, status=status.HTTP_400_BAD_REQUEST)
+
+	if not employee.hourly_rate:
+		return Response({'detail': 'Set an hourly rate before requesting this.'}, status=status.HTTP_400_BAD_REQUEST)
+
+	unclaimed = _unclaimed_hours(attendance, kind)
+	if unclaimed <= 0:
+		return Response({'detail': 'There is nothing unclaimed to request here.'}, status=status.HTTP_400_BAD_REQUEST)
+
+	obj = PayAdjustmentRequest.objects.create(
+		employee=employee,
+		organization=employee.organization,
+		attendance=attendance,
+		kind=kind,
+		hours=unclaimed,
+		requested_amount=round(unclaimed * employee.hourly_rate, 2),
+		note=request.data.get('note') or None,
+		attachment=request.FILES.get('attachment'),
+	)
+	notify_pay_adjustment_submitted(obj)
+	return Response(PayAdjustmentRequestSerializer(obj).data, status=status.HTTP_201_CREATED)
+
+
+
+
+@extend_schema(request=None, responses=PayAdjustmentRequestSerializer)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, HasActiveSubscription])
+def listMyPayAdjustments(request):
+	try:
+		employee = Employee.objects.get(pk=request.user.pk)
+	except ObjectDoesNotExist:
+		return Response({'detail': 'Only employees have this'}, status=status.HTTP_400_BAD_REQUEST)
+
+	qs = PayAdjustmentRequest.objects.filter(employee=employee).order_by('-created_at')[:50]
+	return Response({'requests': PayAdjustmentRequestSerializer(qs, many=True).data}, status=status.HTTP_200_OK)
+
+
+
+
+@extend_schema(
+	parameters=[OpenApiParameter("status")],
+	request=None, responses=PayAdjustmentRequestSerializer,
+)
+@api_view(['GET'])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
+def listOrgPayAdjustments(request):
+	qs = PayAdjustmentRequest.objects.filter(organization=request.user.organization)
+	status_filter = request.query_params.get('status')
+	if status_filter:
+		qs = qs.filter(status=status_filter)
+	return Response({'requests': PayAdjustmentRequestSerializer(qs[:100], many=True).data}, status=status.HTTP_200_OK)
+
+
+
+
+@extend_schema(request=None, responses=PayAdjustmentRequestSerializer)
+@api_view(['POST'])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
+def reviewPayAdjustment(request, pk):
+	try:
+		obj = PayAdjustmentRequest.objects.get(pk=pk, organization=request.user.organization)
+	except ObjectDoesNotExist:
+		return Response({'detail': 'Request not found'}, status=status.HTTP_404_NOT_FOUND)
+
+	if obj.status != PayAdjustmentRequest.Status.PENDING:
+		return Response({'detail': 'This request has already been reviewed'}, status=status.HTTP_400_BAD_REQUEST)
+
+	try:
+		granted = Decimal(str(request.data.get('granted_amount')))
+	except (InvalidOperation, TypeError):
+		return Response({'detail': 'A valid granted_amount is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+	if granted < 0 or granted > obj.requested_amount:
+		return Response({'detail': f'granted_amount must be between 0 and {obj.requested_amount}'}, status=status.HTTP_400_BAD_REQUEST)
+
+	obj.granted_amount = granted
+	obj.manager_note = request.data.get('manager_note') or None
+	obj.status = PayAdjustmentRequest.Status.REVIEWED
+	obj.reviewed_by = request.user
+	obj.reviewed_at = timezone.now()
+	obj.save()
+
+	notify_pay_adjustment_reviewed(obj)
+	return Response(PayAdjustmentRequestSerializer(obj).data, status=status.HTTP_200_OK)
+
+
+
+
+@extend_schema(request=None, responses=PayAdjustmentRequestSerializer)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, HasActiveSubscription])
+def acceptPayAdjustment(request, pk):
+	try:
+		employee = Employee.objects.get(pk=request.user.pk)
+	except ObjectDoesNotExist:
+		return Response({'detail': 'Only employees can accept this'}, status=status.HTTP_400_BAD_REQUEST)
+
+	try:
+		obj = PayAdjustmentRequest.objects.get(pk=pk, employee=employee)
+	except ObjectDoesNotExist:
+		return Response({'detail': 'Request not found'}, status=status.HTTP_404_NOT_FOUND)
+
+	if obj.status != PayAdjustmentRequest.Status.REVIEWED:
+		return Response({'detail': 'This request is not ready to accept'}, status=status.HTTP_400_BAD_REQUEST)
+
+	obj.status = PayAdjustmentRequest.Status.ACCEPTED
+	obj.accepted_at = timezone.now()
+
+	if obj.granted_amount:
+		# Safeguard against double-claiming the same hours through an old
+		# reviewed request left over from before a resubmission — this is
+		# the actual source of truth, not "is there another pending row".
+		already_accepted = PayAdjustmentRequest.objects.filter(
+			attendance=obj.attendance, kind=obj.kind, status=PayAdjustmentRequest.Status.ACCEPTED,
+		).exclude(pk=obj.pk).aggregate(s=Sum('hours'))['s'] or Decimal('0')
+		pool = obj.attendance.overtime_hours if obj.kind == PayAdjustmentRequest.Kind.OVERTIME else obj.attendance.shortfall_hours
+		if already_accepted + obj.hours > (pool or Decimal('0')):
+			return Response({'detail': 'Part of this has already been claimed through another request.'}, status=status.HTTP_400_BAD_REQUEST)
+
+		obj.save()
+		WalletTransaction.objects.create(
+			employee=employee,
+			organization=employee.organization,
+			type=WalletTransaction.Type.EARNING,
+			status=WalletTransaction.Status.COMPLETED,
+			amount=obj.granted_amount,
+			related_attendance=obj.attendance,
+			note=f"{obj.get_kind_display()} claim accepted for {obj.attendance.date}",
+		)
+	else:
+		obj.save()
+
+	return Response(PayAdjustmentRequestSerializer(obj).data, status=status.HTTP_200_OK)

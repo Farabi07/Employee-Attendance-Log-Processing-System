@@ -33,6 +33,16 @@ from commons.pagination import Pagination
 
 # Create your views here.
 
+def _shift_scheduled_hours(shift):
+	"""Duration of a shift in hours, handling ones that cross midnight
+	(end_time earlier than start_time means it runs into the next day)."""
+	start_minutes = shift.start_time.hour * 60 + shift.start_time.minute
+	end_minutes = shift.end_time.hour * 60 + shift.end_time.minute
+	if end_minutes <= start_minutes:
+		end_minutes += 24 * 60
+	return Decimal(end_minutes - start_minutes) / Decimal(60)
+
+
 def _validate_location(request, qr_token):
 	"""Returns (lat, lon, error_response). error_response is None when OK to proceed."""
 	lat = request.data.get('lat')
@@ -337,8 +347,24 @@ def checkOut(request):
 	worked_seconds = (now - attendance.check_in_time).total_seconds()
 	attendance.worked_hours = round(Decimal(worked_seconds) / Decimal(3600), 2)
 
+	# Compare against today's scheduled shift (if one was actually rostered)
+	# to split worked hours into what's paid automatically (regular, capped
+	# at the shift length) versus what's set aside for the employee to
+	# claim through a PayAdjustmentRequest (overtime or shortfall).
+	roster = Roster.objects.filter(employee=employee, date=today).select_related('shift').first()
+	if roster and roster.shift:
+		attendance.scheduled_hours = _shift_scheduled_hours(roster.shift)
+		regular_hours = min(attendance.worked_hours, attendance.scheduled_hours)
+		attendance.overtime_hours = max(Decimal('0'), attendance.worked_hours - attendance.scheduled_hours)
+		attendance.shortfall_hours = max(Decimal('0'), attendance.scheduled_hours - attendance.worked_hours)
+	else:
+		attendance.scheduled_hours = None
+		regular_hours = attendance.worked_hours
+		attendance.overtime_hours = Decimal('0')
+		attendance.shortfall_hours = Decimal('0')
+
 	if employee.hourly_rate is not None:
-		attendance.earnings = round(attendance.worked_hours * employee.hourly_rate, 2)
+		attendance.earnings = round(regular_hours * employee.hourly_rate, 2)
 
 	attendance.updated_by = request.user
 	attendance.save()
@@ -349,6 +375,11 @@ def checkOut(request):
 		from wallet.notify import notify_payout_completed
 
 		symbol = CURRENCY_SYMBOLS.get(employee.currency, '$')
+		note = f"Worked {regular_hours}h at {symbol}{employee.hourly_rate}/h"
+		if attendance.overtime_hours:
+			note += f" — {attendance.overtime_hours}h overtime pending your approval request"
+		elif attendance.shortfall_hours:
+			note += f" — {attendance.shortfall_hours}h short of your {attendance.scheduled_hours}h shift"
 		earning = WalletTransaction.objects.create(
 			employee=employee,
 			organization=employee.organization,
@@ -356,7 +387,7 @@ def checkOut(request):
 			status=WalletTransaction.Status.COMPLETED,
 			amount=attendance.earnings,
 			related_attendance=attendance,
-			note=f"Worked {attendance.worked_hours}h at {symbol}{employee.hourly_rate}/h",
+			note=note,
 		)
 
 		if employee.payout_cycle == employee.PayoutCycle.HOURLY:
