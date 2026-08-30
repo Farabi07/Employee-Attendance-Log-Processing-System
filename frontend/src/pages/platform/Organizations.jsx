@@ -28,6 +28,8 @@ export default function PlatformOwnerDashboard() {
   const [pricing, setPricing] = useState(null);
   const [savingPricing, setSavingPricing] = useState(false);
   const [pricingMsg, setPricingMsg] = useState(null);
+  const [commissionDrafts, setCommissionDrafts] = useState({});
+  const [savingCommissionId, setSavingCommissionId] = useState(null);
 
   useEffect(() => {
     api
@@ -49,6 +51,31 @@ export default function PlatformOwnerDashboard() {
       setPricingMsg({ type: "error", text: err.message });
     } finally {
       setSavingPricing(false);
+    }
+  };
+
+  const commissionFor = (o) => {
+    if (o.id in commissionDrafts) return commissionDrafts[o.id];
+    return o.payout_commission_percent === null || o.payout_commission_percent === undefined ? "" : o.payout_commission_percent;
+  };
+
+  const saveCommission = async (o) => {
+    const draft = commissionFor(o);
+    setSavingCommissionId(o.id);
+    try {
+      const res = await api.put(endpoints.organizationCommission(o.id), {
+        payout_commission_percent: draft === "" ? null : draft,
+      });
+      setOrgs((list) => list.map((row) => (row.id === o.id ? { ...row, ...res } : row)));
+      setCommissionDrafts((d) => {
+        const next = { ...d };
+        delete next[o.id];
+        return next;
+      });
+    } catch (err) {
+      setPricingMsg({ type: "error", text: err.message });
+    } finally {
+      setSavingCommissionId(null);
     }
   };
 
@@ -114,6 +141,15 @@ export default function PlatformOwnerDashboard() {
                   ))}
                 </select>
               </div>
+              <div>
+                <label style={{ fontFamily: fontBody, fontSize: 12, color: T.muted, display: "block", marginBottom: 5 }}>Default payout commission %</label>
+                <input
+                  type="number" step="0.01" min="0" max="100"
+                  value={pricing.default_payout_commission_percent}
+                  onChange={(e) => setPricing((p) => ({ ...p, default_payout_commission_percent: e.target.value }))}
+                  style={{ ...inputStyle, width: 110 }}
+                />
+              </div>
               <button
                 type="submit"
                 disabled={savingPricing}
@@ -130,6 +166,7 @@ export default function PlatformOwnerDashboard() {
           )}
           <p style={{ fontFamily: fontBody, fontSize: 11.5, color: T.faint, marginTop: 10 }}>
             This is what every store pays for their subscription — changes apply to new checkouts immediately, existing subscribers keep their current price until they resubscribe.
+            The commission is the cut taken on top of every real-money payout a store makes to its employees; override it per store below.
           </p>
         </Card>
 
@@ -152,22 +189,38 @@ export default function PlatformOwnerDashboard() {
             <p style={{ fontFamily: fontBody, color: T.muted }}>Loading…</p>
           ) : (
             <div style={{ overflowX: "auto" }}>
-              <div style={{ minWidth: 700 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr 1fr", padding: "0 4px 10px", borderBottom: `1px solid ${T.line}` }}>
-                  {["Store", "Owner", "Members", "Plan", "Status", "Expired"].map((h) => (
+              <div style={{ minWidth: 880 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr 1fr 1.4fr", padding: "0 4px 10px", borderBottom: `1px solid ${T.line}` }}>
+                  {["Store", "Owner", "Members", "Plan", "Status", "Expired", "Payout fee %"].map((h) => (
                     <span key={h} style={{ fontFamily: fontBody, fontSize: 11.5, fontWeight: 600, color: T.faint, textTransform: "uppercase", letterSpacing: 0.4 }}>
                       {h}
                     </span>
                   ))}
                 </div>
                 {orgs.map((o) => (
-                  <div key={o.id} style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr 1fr", alignItems: "center", padding: "12px 4px", borderBottom: `1px solid ${T.line2}` }}>
+                  <div key={o.id} style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr 1fr 1.4fr", alignItems: "center", padding: "12px 4px", borderBottom: `1px solid ${T.line2}` }}>
                     <span style={{ fontFamily: fontBody, fontSize: 13.5, color: T.ink }}>{o.name}</span>
                     <span style={{ fontFamily: fontMono, fontSize: 12, color: T.muted }}>{o.owner_email || "—"}</span>
                     <span style={{ fontFamily: fontMono, fontSize: 13, color: T.muted }}>{o.member_count}</span>
                     <span style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted }}>{planLabel(o)}</span>
                     <StatusPill status={o.subscription_status} />
                     <span style={{ fontFamily: fontMono, fontSize: 12, color: T.muted }}>{fmt(o.expires_at)}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <input
+                        type="number" step="0.01" min="0" max="100"
+                        value={commissionFor(o)}
+                        placeholder={String(pricing?.default_payout_commission_percent ?? "0")}
+                        onChange={(e) => setCommissionDrafts((d) => ({ ...d, [o.id]: e.target.value }))}
+                        style={{ ...inputStyle, width: 64, padding: "5px 7px", fontSize: 12 }}
+                      />
+                      <button
+                        onClick={() => saveCommission(o)}
+                        disabled={savingCommissionId === o.id || !(o.id in commissionDrafts)}
+                        style={{ padding: "5px 9px", borderRadius: 7, border: "none", background: T.navyBg, color: T.navyDeep, fontFamily: fontBody, fontSize: 11.5, fontWeight: 600, cursor: "pointer", opacity: o.id in commissionDrafts ? 1 : 0.5 }}
+                      >
+                        {savingCommissionId === o.id ? "…" : "Save"}
+                      </button>
+                    </div>
                   </div>
                 ))}
                 {orgs.length === 0 && <p style={{ fontFamily: fontBody, fontSize: 13, color: T.muted, padding: "12px 4px" }}>No stores have signed up yet.</p>}

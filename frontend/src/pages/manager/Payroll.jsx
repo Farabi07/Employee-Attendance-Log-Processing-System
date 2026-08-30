@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Wallet, CheckCircle2, XCircle, ListChecks, Download, FileText, FileSpreadsheet } from "lucide-react";
+import { Wallet, CheckCircle2, XCircle, ListChecks, Download, FileText, FileSpreadsheet, CreditCard } from "lucide-react";
 import { T, fontDisplay, fontBody, fontMono } from "../../theme";
 import { api, downloadFile } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
@@ -27,8 +27,11 @@ export default function ManagerPayroll() {
   const [message, setMessage] = useState(null);
   const [running, setRunning] = useState(false);
   const [reviewingId, setReviewingId] = useState(null);
+  const [confirmingId, setConfirmingId] = useState(null);
   const [currency, setCurrency] = useState("usd");
   const [savingCurrency, setSavingCurrency] = useState(false);
+  const [payoutCard, setPayoutCard] = useState(undefined);
+  const [settingUpCard, setSettingUpCard] = useState(false);
 
   const defaultWeek = weekDates();
   const [exportFrom, setExportFrom] = useState(defaultWeek[0]);
@@ -38,18 +41,65 @@ export default function ManagerPayroll() {
   const money = (v) => formatMoney(v, summary?.currency);
 
   const load = useCallback(async () => {
-    const [summaryRes, txRes] = await Promise.all([
+    const [summaryRes, txRes, cardRes] = await Promise.all([
       api.get(endpoints.payrollSummary()),
       api.get(endpoints.walletTransactions("?size=20")),
+      isManager ? api.get(endpoints.payoutCardStatus()) : Promise.resolve(undefined),
     ]);
     setSummary(summaryRes);
     setTransactions(txRes.transactions || []);
     setCurrency(summaryRes.currency || "usd");
-  }, []);
+    if (cardRes) setPayoutCard(cardRes);
+  }, [isManager]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  // Returning from a Stripe Checkout redirect (payout card setup, or a
+  // one-off payout payment) — confirm it right away instead of waiting on
+  // the webhook, then tidy the URL back up.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id");
+
+    if (params.get("payout_card") === "success" && sessionId) {
+      api
+        .post(endpoints.payoutCardConfirm(), { session_id: sessionId })
+        .then(() => {
+          setMessage({ type: "success", text: "Payout card saved — future approvals will charge it automatically." });
+          load();
+        })
+        .catch((err) => setMessage({ type: "error", text: err.message }));
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (params.get("payout_card") === "cancelled") {
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (params.get("payout") === "success" && sessionId) {
+      api
+        .post(endpoints.payoutConfirm(), { session_id: sessionId })
+        .then(() => {
+          setMessage({ type: "success", text: "Payment confirmed." });
+          load();
+        })
+        .catch((err) => setMessage({ type: "error", text: err.message }));
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (params.get("payout") === "cancelled") {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const startPayoutCardSetup = async () => {
+    setMessage(null);
+    setSettingUpCard(true);
+    try {
+      const res = await api.post(endpoints.payoutCardSetup());
+      window.location.href = res.checkout_url;
+    } catch (err) {
+      setMessage({ type: "error", text: err.message });
+      setSettingUpCard(false);
+    }
+  };
 
   const saveCurrency = async (value) => {
     setCurrency(value);
@@ -78,11 +128,31 @@ export default function ManagerPayroll() {
     }
   };
 
-  const review = async (id, action) => {
+  const reject = async (id) => {
     setReviewingId(id);
     setMessage(null);
     try {
-      await api.post(endpoints.payoutReview(id), { action });
+      await api.post(endpoints.payoutReview(id), { action: "reject" });
+      await load();
+    } catch (err) {
+      setMessage({ type: "error", text: err.message });
+    } finally {
+      setReviewingId(null);
+    }
+  };
+
+  const confirmApprove = async (id) => {
+    setReviewingId(id);
+    setMessage(null);
+    try {
+      const res = await api.post(endpoints.payoutReview(id), { action: "approve" });
+      if (res.checkout_url) {
+        window.location.href = res.checkout_url;
+        return;
+      }
+      // Saved card on file — already charged synchronously, no redirect.
+      setConfirmingId(null);
+      setMessage({ type: "success", text: `Paid ${money(res.total_charge)} from your saved card.` });
       await load();
     } catch (err) {
       setMessage({ type: "error", text: err.message });
@@ -188,6 +258,46 @@ export default function ManagerPayroll() {
         </p>
       )}
 
+      {isManager && (
+        <Card style={{ padding: "18px 20px" }}>
+          <h3 style={{ fontFamily: fontDisplay, fontSize: 14.5, fontWeight: 600, color: T.ink, margin: "0 0 4px", display: "flex", alignItems: "center", gap: 7 }}>
+            <CreditCard size={15} /> Payout card
+          </h3>
+          {payoutCard === undefined ? (
+            <p style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted, margin: 0 }}>Loading…</p>
+          ) : payoutCard.saved ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              <p style={{ fontFamily: fontMono, fontSize: 13, color: T.ink, margin: 0, textTransform: "capitalize" }}>
+                {payoutCard.brand} •••• {payoutCard.last4}
+              </p>
+              <span style={{ fontFamily: fontBody, fontSize: 11.5, color: T.tealDeep, background: T.tealBg, padding: "3px 8px", borderRadius: 999, fontWeight: 600 }}>
+                Approvals charge this automatically
+              </span>
+              <button
+                onClick={startPayoutCardSetup}
+                disabled={settingUpCard}
+                style={{ padding: "6px 12px", borderRadius: 8, border: `1px solid ${T.line}`, background: T.card, color: T.ink, fontFamily: fontBody, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+              >
+                {settingUpCard ? "Opening…" : "Replace card"}
+              </button>
+            </div>
+          ) : (
+            <div>
+              <p style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted, margin: "0 0 12px" }}>
+                Add a card once so approving a cash-out charges it instantly — no redirect each time. Without one, you'll pay through a one-off checkout page per approval.
+              </p>
+              <button
+                onClick={startPayoutCardSetup}
+                disabled={settingUpCard}
+                style={{ padding: "9px 16px", borderRadius: 9, border: "none", background: T.navy, color: T.paper, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer", opacity: settingUpCard ? 0.7 : 1 }}
+              >
+                {settingUpCard ? "Opening…" : "Add a payout card"}
+              </button>
+            </div>
+          )}
+        </Card>
+      )}
+
       {message && (
         <p style={{ fontFamily: fontBody, fontSize: 13, color: message.type === "error" ? T.coral : T.teal, margin: 0 }}>{message.text}</p>
       )}
@@ -271,40 +381,86 @@ export default function ManagerPayroll() {
 
       {summary.pending_requests.length > 0 && (
         <Card style={{ padding: "20px 22px" }}>
-          <h3 style={{ fontFamily: fontDisplay, fontSize: 15.5, fontWeight: 600, color: T.ink, margin: "0 0 14px" }}>Cash-out requests awaiting review</h3>
-          {summary.pending_requests.map((t, i) => (
-            <div key={t.id} className="row-hover" style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 4px", borderRadius: 8, borderTop: i === 0 ? "none" : `1px solid ${T.line2}`, flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: 160 }}>
-                <p style={{ fontFamily: fontBody, fontSize: 13.5, fontWeight: 500, color: T.ink, margin: 0 }}>
-                  {t.employee.first_name} {t.employee.last_name}
-                </p>
-                <p style={{ fontFamily: fontMono, fontSize: 11, color: T.faint, margin: 0 }}>
-                  {new Date(t.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
-                </p>
-              </div>
-              <span style={{ fontFamily: fontMono, fontSize: 14, fontWeight: 600, color: T.ink }}>{formatMoney(t.amount, t.currency)}</span>
-              {isManager ? (
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button
-                    onClick={() => review(t.id, "approve")}
-                    disabled={reviewingId === t.id}
-                    style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 12px", borderRadius: 8, border: "none", background: T.tealBg, color: T.tealDeep, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
-                  >
-                    <CheckCircle2 size={14} /> Approve
-                  </button>
-                  <button
-                    onClick={() => review(t.id, "reject")}
-                    disabled={reviewingId === t.id}
-                    style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 12px", borderRadius: 8, border: "none", background: T.coralBg, color: T.coral, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
-                  >
-                    <XCircle size={14} /> Reject
-                  </button>
+          <h3 style={{ fontFamily: fontDisplay, fontSize: 15.5, fontWeight: 600, color: T.ink, margin: "0 0 4px" }}>Cash-out requests awaiting review</h3>
+          {isManager && !summary.payouts_available && (
+            <p style={{ fontFamily: fontBody, fontSize: 12, color: T.amber, margin: "0 0 14px" }}>
+              Paying these out requires a paid subscription — not available during the free trial.
+            </p>
+          )}
+          {summary.pending_requests.map((t, i) => {
+            const commissionPercent = Number(summary.commission_percent || 0);
+            const commissionAmount = Math.round(Number(t.amount) * commissionPercent) / 100;
+            const totalCharge = Number(t.amount) + commissionAmount;
+            const isConfirming = confirmingId === t.id;
+            return (
+              <div key={t.id} className="row-hover" style={{ padding: "12px 4px", borderRadius: 8, borderTop: i === 0 ? "none" : `1px solid ${T.line2}` }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                  <div style={{ flex: 1, minWidth: 160 }}>
+                    <p style={{ fontFamily: fontBody, fontSize: 13.5, fontWeight: 500, color: T.ink, margin: 0 }}>
+                      {t.employee.first_name} {t.employee.last_name}
+                    </p>
+                    <p style={{ fontFamily: fontMono, fontSize: 11, color: T.faint, margin: 0 }}>
+                      {new Date(t.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
+                    </p>
+                  </div>
+                  <span style={{ fontFamily: fontMono, fontSize: 14, fontWeight: 600, color: T.ink }}>{formatMoney(t.amount, t.currency)}</span>
+                  {isManager ? (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {!isConfirming && (
+                        <button
+                          onClick={() => setConfirmingId(t.id)}
+                          disabled={reviewingId === t.id || !summary.payouts_available}
+                          style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 12px", borderRadius: 8, border: "none", background: T.tealBg, color: T.tealDeep, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer", opacity: summary.payouts_available ? 1 : 0.5 }}
+                        >
+                          <CheckCircle2 size={14} /> Approve
+                        </button>
+                      )}
+                      <button
+                        onClick={() => reject(t.id)}
+                        disabled={reviewingId === t.id}
+                        style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 12px", borderRadius: 8, border: "none", background: T.coralBg, color: T.coral, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
+                      >
+                        <XCircle size={14} /> Reject
+                      </button>
+                    </div>
+                  ) : (
+                    <StatusPill status="pending" />
+                  )}
                 </div>
-              ) : (
-                <StatusPill status="pending" />
-              )}
-            </div>
-          ))}
+
+                {isConfirming && (
+                  <div style={{ marginTop: 10, padding: "12px 14px", borderRadius: 9, background: T.navyBg }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr auto", rowGap: 4, fontFamily: fontMono, fontSize: 12.5, color: T.navyDeep, marginBottom: 10 }}>
+                      <span>{t.employee.first_name} receives</span>
+                      <span style={{ fontWeight: 600, textAlign: "right" }}>{formatMoney(t.amount, t.currency)}</span>
+                      <span>Platform fee ({commissionPercent}%)</span>
+                      <span style={{ textAlign: "right" }}>{formatMoney(commissionAmount, t.currency)}</span>
+                      <span style={{ fontWeight: 700 }}>Charged to your card</span>
+                      <span style={{ fontWeight: 700, textAlign: "right" }}>{formatMoney(totalCharge, t.currency)}</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        onClick={() => confirmApprove(t.id)}
+                        disabled={reviewingId === t.id}
+                        style={{ padding: "8px 14px", borderRadius: 8, border: "none", background: T.teal, color: T.paper, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
+                      >
+                        {reviewingId === t.id
+                          ? payoutCard?.saved ? "Paying…" : "Redirecting…"
+                          : payoutCard?.saved ? "Pay now" : "Continue to payment"}
+                      </button>
+                      <button
+                        onClick={() => setConfirmingId(null)}
+                        disabled={reviewingId === t.id}
+                        style={{ padding: "8px 14px", borderRadius: 8, border: `1px solid ${T.line}`, background: T.card, color: T.muted, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </Card>
       )}
 

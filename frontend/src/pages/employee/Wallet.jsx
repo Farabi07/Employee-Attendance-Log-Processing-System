@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Wallet as WalletIcon, ArrowDownToLine, Clock3, History } from "lucide-react";
+import { Wallet as WalletIcon, ArrowDownToLine, Clock3, History, Landmark, CheckCircle2 } from "lucide-react";
 import { T, fontDisplay, fontBody, fontMono } from "../../theme";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
@@ -19,6 +19,7 @@ export default function EmployeeWallet() {
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [connecting, setConnecting] = useState(false);
 
   const load = useCallback(async () => {
     const [res, historyRes] = await Promise.all([
@@ -46,6 +47,18 @@ export default function EmployeeWallet() {
       setMessage({ type: "error", text: err.message });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const startOnboarding = async () => {
+    setMessage(null);
+    setConnecting(true);
+    try {
+      const res = await api.post(endpoints.connectOnboard());
+      window.location.href = res.url;
+    } catch (err) {
+      setMessage({ type: "error", text: err.message });
+      setConnecting(false);
     }
   };
 
@@ -86,49 +99,96 @@ export default function EmployeeWallet() {
 
         <Card style={{ padding: "20px 22px" }}>
           <h3 style={{ fontFamily: fontDisplay, fontSize: 15, fontWeight: 600, color: T.ink, margin: "0 0 4px", display: "flex", alignItems: "center", gap: 7 }}>
+            <Landmark size={15} /> Payout method
+          </h3>
+          {wallet.payouts_enabled ? (
+            <>
+              <p style={{ fontFamily: fontBody, fontSize: 12.5, color: T.tealDeep, margin: "0 0 10px", display: "flex", alignItems: "center", gap: 6 }}>
+                <CheckCircle2 size={14} /> Ready to receive payouts
+              </p>
+              <button
+                onClick={startOnboarding}
+                disabled={connecting}
+                style={{ width: "100%", padding: "9px 0", borderRadius: 9, border: `1px solid ${T.line}`, background: T.card, color: T.ink, fontFamily: fontBody, fontWeight: 600, fontSize: 12.5, cursor: "pointer" }}
+              >
+                {connecting ? "Opening…" : "Add another bank or card"}
+              </button>
+            </>
+          ) : (
+            <>
+              <p style={{ fontFamily: fontBody, fontSize: 12, color: T.muted, margin: "0 0 14px" }}>
+                {wallet.payout_method_connected
+                  ? "Almost there — finish verifying your details with Stripe to start receiving payouts."
+                  : "Add a bank account or card so your payouts can actually reach you."}
+              </p>
+              <button
+                onClick={startOnboarding}
+                disabled={connecting}
+                style={{ width: "100%", padding: "10px 0", borderRadius: 9, border: "none", background: T.navy, color: T.paper, fontFamily: fontBody, fontWeight: 600, fontSize: 13.5, cursor: "pointer", opacity: connecting ? 0.7 : 1 }}
+              >
+                {connecting ? "Opening…" : wallet.payout_method_connected ? "Finish setup" : "Connect a bank account or card"}
+              </button>
+            </>
+          )}
+        </Card>
+
+        <Card style={{ padding: "20px 22px" }}>
+          <h3 style={{ fontFamily: fontDisplay, fontSize: 15, fontWeight: 600, color: T.ink, margin: "0 0 4px", display: "flex", alignItems: "center", gap: 7 }}>
             <ArrowDownToLine size={15} /> Request payout
           </h3>
-          <p style={{ fontFamily: fontBody, fontSize: 12, color: T.muted, margin: "0 0 14px" }}>
-            Need cash before payday? Request an instant cash-out — your manager approves and settles it.
-          </p>
-          <form onSubmit={handleRequest}>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              max={wallet.current_balance}
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder={`Up to ${money(wallet.current_balance)}`}
-              required
-              disabled={Number(wallet.current_balance) <= 0}
-              style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: `1px solid ${T.line}`, fontFamily: fontBody, fontSize: 13.5, marginBottom: 10 }}
-            />
-            <button
-              type="submit"
-              disabled={submitting || Number(wallet.current_balance) <= 0}
-              style={{
-                width: "100%",
-                padding: "10px 0",
-                borderRadius: 9,
-                border: "none",
-                background: T.ink,
-                color: T.paper,
-                fontFamily: fontBody,
-                fontWeight: 600,
-                fontSize: 13.5,
-                cursor: "pointer",
-                opacity: submitting || Number(wallet.current_balance) <= 0 ? 0.6 : 1,
-              }}
-            >
-              {submitting ? "Requesting…" : "Request payout"}
-            </button>
-            {message && (
-              <p style={{ fontFamily: fontBody, fontSize: 12, color: message.type === "error" ? T.coral : T.teal, marginTop: 10, textAlign: "center" }}>
-                {message.text}
+          {!wallet.payouts_available ? (
+            <p style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted, margin: 0 }}>
+              Cash-out requests open up once your employer subscribes — currently on a free trial.
+            </p>
+          ) : !wallet.payouts_enabled ? (
+            <p style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted, margin: 0 }}>
+              Set up your payout method above first, then you can request a cash-out here.
+            </p>
+          ) : (
+            <>
+              <p style={{ fontFamily: fontBody, fontSize: 12, color: T.muted, margin: "0 0 14px" }}>
+                Need cash before payday? Request an instant cash-out — your manager approves and pays it.
               </p>
-            )}
-          </form>
+              <form onSubmit={handleRequest}>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max={wallet.current_balance}
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder={`Up to ${money(wallet.current_balance)}`}
+                  required
+                  disabled={Number(wallet.current_balance) <= 0}
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: `1px solid ${T.line}`, fontFamily: fontBody, fontSize: 13.5, marginBottom: 10 }}
+                />
+                <button
+                  type="submit"
+                  disabled={submitting || Number(wallet.current_balance) <= 0}
+                  style={{
+                    width: "100%",
+                    padding: "10px 0",
+                    borderRadius: 9,
+                    border: "none",
+                    background: T.ink,
+                    color: T.paper,
+                    fontFamily: fontBody,
+                    fontWeight: 600,
+                    fontSize: 13.5,
+                    cursor: "pointer",
+                    opacity: submitting || Number(wallet.current_balance) <= 0 ? 0.6 : 1,
+                  }}
+                >
+                  {submitting ? "Requesting…" : "Request payout"}
+                </button>
+              </form>
+            </>
+          )}
+          {message && (
+            <p style={{ fontFamily: fontBody, fontSize: 12, color: message.type === "error" ? T.coral : T.teal, marginTop: 10, textAlign: "center" }}>
+              {message.text}
+            </p>
+          )}
         </Card>
       </div>
 

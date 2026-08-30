@@ -53,6 +53,7 @@ export const endpoints = {
 
   signup: () => `/saas/api/v1/signup/`,
   organizationsAll: () => `/saas/api/v1/organizations/`,
+  organizationCommission: (id) => `/saas/api/v1/organizations/${id}/commission/`,
 
   billingStatus: () => `/billing/api/v1/status/`,
   billingCheckout: () => `/billing/api/v1/checkout/`,
@@ -60,15 +61,21 @@ export const endpoints = {
   billingConfirm: () => `/billing/api/v1/confirm/`,
   platformSettings: () => `/billing/api/v1/platform_settings/`,
   organizationSettings: () => `/billing/api/v1/organization/settings/`,
+  payoutCardStatus: () => `/billing/api/v1/payout_card/status/`,
+  payoutCardSetup: () => `/billing/api/v1/payout_card/setup/`,
+  payoutCardConfirm: () => `/billing/api/v1/payout_card/confirm/`,
 
   walletMe: () => `/wallet/api/v1/me/`,
   walletPayoutRequest: () => `/wallet/api/v1/payout/request/`,
+  connectOnboard: () => `/wallet/api/v1/connect/onboard/`,
+  connectStatus: () => `/wallet/api/v1/connect/status/`,
   payrollSummary: () => `/wallet/api/v1/payroll/summary/`,
   payrollRun: () => `/wallet/api/v1/payroll/run/`,
   payrollExportCsv: (params = "") => `/wallet/api/v1/payroll/export/csv/${params}`,
   payrollExportPdf: (params = "") => `/wallet/api/v1/payroll/export/pdf/${params}`,
   payrollExportExcel: (params = "") => `/wallet/api/v1/payroll/export/excel/${params}`,
   payoutReview: (pk) => `/wallet/api/v1/payout/${pk}/review/`,
+  payoutConfirm: () => `/wallet/api/v1/payout/confirm/`,
   walletTransactions: (params = "") => `/wallet/api/v1/transactions/${params}`,
   rateHistory: (employeeId) => `/wallet/api/v1/rate_history/${employeeId}/`,
 };
