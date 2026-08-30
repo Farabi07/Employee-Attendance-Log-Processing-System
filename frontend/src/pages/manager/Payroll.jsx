@@ -119,7 +119,10 @@ export default function ManagerPayroll() {
     setRunning(true);
     try {
       const res = await api.post(endpoints.payrollRun(), {});
-      setMessage({ type: "success", text: `Paid ${res.employees_paid} employee(s), total ${money(res.total_paid)}.` });
+      let text = `Paid ${res.employees_paid} employee(s), total ${money(res.total_paid)}.`;
+      if (res.employees_failed) text += ` ${res.employees_failed} card charge(s) failed.`;
+      if (res.employees_skipped?.length) text += ` Skipped (no payout method set up): ${res.employees_skipped.join(", ")}.`;
+      setMessage({ type: (res.employees_failed || res.employees_skipped?.length) ? "error" : "success", text });
       await load();
     } catch (err) {
       setMessage({ type: "error", text: err.message });
