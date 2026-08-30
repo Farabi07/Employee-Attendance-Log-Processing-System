@@ -87,6 +87,49 @@ def _settle_payout(transaction):
 	return transaction
 
 
+def _charge_payout_via_saved_card(transaction, employee, organization):
+	"""Charges the org's saved default card for one employee's payout via a
+	Destination Charge (transfer_data + application_fee_amount), same shape
+	as the interactive Checkout path in reviewPayoutRequest, and marks the
+	transaction completed/failed based on the result. Shared by a single
+	manual approval and a full payroll run so both move real money the same
+	way. Returns (transaction, commission_percent, commission_amount, total_charge)."""
+	commission_percent = organization.effective_commission_percent()
+	commission_amount = (transaction.amount * commission_percent / Decimal('100')).quantize(Decimal('0.01'))
+	total_charge = transaction.amount + commission_amount
+
+	stripe.api_key = settings.STRIPE_SECRET_KEY
+	try:
+		intent = stripe.PaymentIntent.create(
+			amount=int(total_charge * 100),
+			currency=employee.currency,
+			customer=organization.stripe_customer_id,
+			payment_method=organization.default_payout_payment_method_id,
+			off_session=True,
+			confirm=True,
+			transfer_data={'destination': employee.stripe_connect_account_id},
+			application_fee_amount=int(commission_amount * 100),
+			metadata={'purpose': 'payout_single', 'wallet_transaction_id': str(transaction.id)},
+		).to_dict()
+	except stripe.error.CardError as exc:  # pragma: no cover - depends on the card
+		transaction.mark_failed(exc.user_message or str(exc))
+		notify_payout_failed(transaction)
+		return transaction, commission_percent, commission_amount, total_charge
+	except Exception as exc:  # pragma: no cover - network/stripe errors
+		transaction.mark_failed(str(exc))
+		notify_payout_failed(transaction)
+		return transaction, commission_percent, commission_amount, total_charge
+
+	if intent.get('status') == 'succeeded':
+		transaction.mark_completed()
+		notify_payout_completed(transaction)
+	else:  # pragma: no cover - e.g. requires_action (3D Secure) on an off-session charge
+		transaction.mark_failed(f"Payment needs manual confirmation (status: {intent.get('status')})")
+		notify_payout_failed(transaction)
+
+	return transaction, commission_percent, commission_amount, total_charge
+
+
 
 
 def _week_bounds():
@@ -406,18 +449,42 @@ def exportPayrollExcel(request):
 @api_view(['POST'])
 @permission_classes([IsManager, HasActiveSubscription])
 def runPayrollNow(request):
-	"""'Approve & Pay Payroll' — a manual manager override that pays out
-	every employee's full current balance right now, regardless of where
-	each employee is in their own payout cycle. Grouped under one batch."""
+	"""'Approve & Pay Payroll' — pays every employee's full current balance
+	right now in one manager action, regardless of where each employee is
+	in their own payout cycle, grouped under one batch. Each payout is a
+	real Destination Charge against the org's saved payout card — the same
+	charge reviewPayoutRequest makes for a single approval — so this never
+	moves during a trial and never runs without a saved card (there's no
+	way to send the manager to an interactive Checkout page once per
+	employee in a single click)."""
 	organization = request.user.organization
+
+	if not organization.has_paid_subscription():
+		return Response(
+			{'detail': "Paying out real money isn't available during the free trial — subscribe to unlock it."},
+			status=status.HTTP_402_PAYMENT_REQUIRED,
+		)
+
+	if not (_stripe_connect_configured() and organization.stripe_customer_id and organization.default_payout_payment_method_id):
+		return Response(
+			{'detail': 'Save a payout card first (Payroll → Payout card) before paying everyone in one click.'},
+			status=status.HTTP_400_BAD_REQUEST,
+		)
+
 	employees = Employee.objects.filter(organization=organization)
 
 	batch_id = uuid.uuid4()
 	paid = []
+	failed = []
+	skipped = []
 
 	for employee in employees:
 		balance = wallet_balance(employee)
 		if balance <= 0:
+			continue
+
+		if not _connect_payouts_enabled(employee):
+			skipped.append(f'{employee.first_name} {employee.last_name}')
 			continue
 
 		transaction = WalletTransaction.objects.create(
@@ -430,17 +497,17 @@ def runPayrollNow(request):
 			created_by=request.user,
 			note='Manual payroll run',
 		)
-		transaction = _settle_payout(transaction)
-		if transaction.status == WalletTransaction.Status.COMPLETED:
-			notify_payout_completed(transaction)
-		paid.append(transaction)
+		transaction, *_ = _charge_payout_via_saved_card(transaction, employee, organization)
+		(paid if transaction.status == WalletTransaction.Status.COMPLETED else failed).append(transaction)
 
 	return Response(
 		{
 			'batch_id': batch_id,
 			'employees_paid': len(paid),
-			'total_paid': sum((t.amount for t in paid if t.status == WalletTransaction.Status.COMPLETED), Decimal('0')),
-			'transactions': WalletTransactionSerializer(paid, many=True).data,
+			'employees_failed': len(failed),
+			'employees_skipped': skipped,
+			'total_paid': sum((t.amount for t in paid), Decimal('0')),
+			'transactions': WalletTransactionSerializer(paid + failed, many=True).data,
 		},
 		status=status.HTTP_200_OK,
 	)
@@ -501,34 +568,9 @@ def reviewPayoutRequest(request, pk):
 	# card once (Payroll → payout card), and every approval after that just
 	# runs against it.
 	if organization.default_payout_payment_method_id:
-		try:
-			intent = stripe.PaymentIntent.create(
-				amount=int(total_charge * 100),
-				currency=employee.currency,
-				customer=organization.stripe_customer_id,
-				payment_method=organization.default_payout_payment_method_id,
-				off_session=True,
-				confirm=True,
-				transfer_data={'destination': employee.stripe_connect_account_id},
-				application_fee_amount=int(commission_amount * 100),
-				metadata={'purpose': 'payout_single', 'wallet_transaction_id': str(transaction.id)},
-			).to_dict()
-		except stripe.error.CardError as exc:  # pragma: no cover - depends on the card
-			reason = exc.user_message or str(exc)
-			transaction.mark_failed(reason)
-			notify_payout_failed(transaction)
-			return Response({'detail': f'Card declined: {reason}'}, status=status.HTTP_400_BAD_REQUEST)
-		except Exception as exc:  # pragma: no cover - network/stripe errors
-			return Response({'detail': f'Could not charge the saved card: {exc}'}, status=status.HTTP_400_BAD_REQUEST)
-
-		if intent.get('status') == 'succeeded':
-			transaction.mark_completed()
-			notify_payout_completed(transaction)
-		else:  # pragma: no cover - e.g. requires_action (3D Secure) on an off-session charge
-			reason = f"Payment needs manual confirmation (status: {intent.get('status')})"
-			transaction.mark_failed(reason)
-			notify_payout_failed(transaction)
-			return Response({'detail': reason}, status=status.HTTP_400_BAD_REQUEST)
+		transaction, commission_percent, commission_amount, total_charge = _charge_payout_via_saved_card(transaction, employee, organization)
+		if transaction.status == WalletTransaction.Status.FAILED:
+			return Response({'detail': f'Payment failed: {transaction.failure_reason}'}, status=status.HTTP_400_BAD_REQUEST)
 
 		return Response(
 			{
