@@ -84,7 +84,39 @@ def listOrganizations(request):
 			'expires_at': org.expires_at(),
 			'created_at': org.created_at,
 			'member_count': org.members.count(),
+			'payout_commission_percent': org.payout_commission_percent,
+			'effective_commission_percent': org.effective_commission_percent(),
 		}
 		for org in organizations
 	]
 	return Response({'organizations': data}, status=status.HTTP_200_OK)
+
+
+
+
+@extend_schema(request=None, responses=None)
+@api_view(['PUT'])
+@permission_classes([IsPlatformOwner])
+def updateOrganizationCommission(request, pk):
+	"""Platform-owner-only override of one store's payout commission —
+	null clears the override back to the platform-wide default."""
+	try:
+		org = Organization.objects.get(pk=pk)
+	except Organization.DoesNotExist:
+		return Response({'detail': 'Store not found'}, status=status.HTTP_404_NOT_FOUND)
+
+	if 'payout_commission_percent' not in request.data:
+		return Response({'detail': 'payout_commission_percent is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+	value = request.data['payout_commission_percent']
+	org.payout_commission_percent = None if value in (None, '') else value
+	org.save(update_fields=['payout_commission_percent'])
+
+	return Response(
+		{
+			'id': org.id,
+			'payout_commission_percent': org.payout_commission_percent,
+			'effective_commission_percent': org.effective_commission_percent(),
+		},
+		status=status.HTTP_200_OK,
+	)

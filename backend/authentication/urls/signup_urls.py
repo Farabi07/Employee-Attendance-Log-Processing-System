@@ -8,4 +8,5 @@ urlpatterns = [
 	path('api/v1/signup/', views.signupOrganization),
 
 	path('api/v1/organizations/', views.listOrganizations),
+	path('api/v1/organizations/<int:pk>/commission/', views.updateOrganizationCommission),
 ]

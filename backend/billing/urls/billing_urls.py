@@ -11,6 +11,10 @@ urlpatterns = [
 
 	path('api/v1/customer_portal/', views.createCustomerPortalSession),
 
+	path('api/v1/payout_card/status/', views.getPayoutCardStatus),
+	path('api/v1/payout_card/setup/', views.createPayoutCardSetupSession),
+	path('api/v1/payout_card/confirm/', views.confirmPayoutCardSetup),
+
 	path('api/v1/webhook/', views.stripeWebhook),
 
 	path('api/v1/confirm/', views.confirmCheckout),

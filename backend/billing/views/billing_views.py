@@ -76,6 +76,7 @@ def platformSettings(request):
 				'monthly_price': settings_obj.monthly_price,
 				'yearly_price': settings_obj.yearly_price,
 				'currency': settings_obj.currency,
+				'default_payout_commission_percent': settings_obj.default_payout_commission_percent,
 			},
 			status=status.HTTP_200_OK,
 		)
@@ -86,6 +87,7 @@ def platformSettings(request):
 	monthly_price = request.data.get('monthly_price')
 	yearly_price = request.data.get('yearly_price')
 	currency = request.data.get('currency')
+	default_payout_commission_percent = request.data.get('default_payout_commission_percent')
 
 	if monthly_price is not None:
 		settings_obj.monthly_price = monthly_price
@@ -96,10 +98,17 @@ def platformSettings(request):
 		if currency not in valid_currencies:
 			return Response({'detail': f"currency must be one of {sorted(valid_currencies)}"}, status=status.HTTP_400_BAD_REQUEST)
 		settings_obj.currency = currency
+	if default_payout_commission_percent is not None:
+		settings_obj.default_payout_commission_percent = default_payout_commission_percent
 
 	settings_obj.save()
 	return Response(
-		{'monthly_price': settings_obj.monthly_price, 'yearly_price': settings_obj.yearly_price, 'currency': settings_obj.currency},
+		{
+			'monthly_price': settings_obj.monthly_price,
+			'yearly_price': settings_obj.yearly_price,
+			'currency': settings_obj.currency,
+			'default_payout_commission_percent': settings_obj.default_payout_commission_percent,
+		},
 		status=status.HTTP_200_OK,
 	)
 
@@ -210,10 +219,149 @@ def createCustomerPortalSession(request):
 
 
 
+@extend_schema(request=None, responses=None)
+@api_view(['GET'])
+@permission_classes([IsManager])
+def getPayoutCardStatus(request):
+	org = request.user.organization
+	if not (_stripe_configured() and org.default_payout_payment_method_id):
+		return Response({'saved': False}, status=status.HTTP_200_OK)
+
+	stripe.api_key = settings.STRIPE_SECRET_KEY
+	try:
+		pm = stripe.PaymentMethod.retrieve(org.default_payout_payment_method_id).to_dict()
+		card = pm.get('card') or {}
+		return Response(
+			{'saved': True, 'brand': card.get('brand'), 'last4': card.get('last4')},
+			status=status.HTTP_200_OK,
+		)
+	except Exception:  # pragma: no cover - network/stripe errors, or a since-detached card
+		return Response({'saved': False}, status=status.HTTP_200_OK)
+
+
+
+
+@extend_schema(request=None, responses=None)
+@api_view(['POST'])
+@permission_classes([IsManager])
+def createPayoutCardSetupSession(request):
+	"""Hosted Stripe page for the Manager to add (or replace) the card used
+	to pay employees — same Checkout-based pattern as subscription/payroll
+	payments, just in 'setup' mode: no charge, only saves the card."""
+	if not _stripe_configured():
+		return Response({'detail': 'Payments are not configured yet on this server.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+	stripe.api_key = settings.STRIPE_SECRET_KEY
+	org = request.user.organization
+
+	if not org.stripe_customer_id:
+		customer = stripe.Customer.create(email=request.user.email, name=org.name)
+		org.stripe_customer_id = customer.id
+		org.save(update_fields=['stripe_customer_id'])
+
+	session = stripe.checkout.Session.create(
+		customer=org.stripe_customer_id,
+		mode='setup',
+		payment_method_types=['card'],
+		success_url=f'{settings.BILLING_RETURN_URL}/?payout_card=success&session_id={{CHECKOUT_SESSION_ID}}',
+		cancel_url=f'{settings.BILLING_RETURN_URL}/?payout_card=cancelled',
+		metadata={'purpose': 'payout_card_setup', 'organization_id': str(org.id)},
+	)
+	return Response({'checkout_url': session.url}, status=status.HTTP_200_OK)
+
+
+
+
+@extend_schema(request=None, responses=None)
+@api_view(['POST'])
+@permission_classes([IsManager])
+def confirmPayoutCardSetup(request):
+	"""Fallback for local dev (no public URL for Stripe's webhook to reach)
+	and a fast-path even in production: called right after the Manager
+	returns from the card-setup Checkout page."""
+	if not _stripe_configured():
+		return Response({'detail': 'Payments are not configured yet on this server.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+	session_id = request.data.get('session_id')
+	if not session_id:
+		return Response({'detail': 'session_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+	org = request.user.organization
+	stripe.api_key = settings.STRIPE_SECRET_KEY
+	try:
+		session = stripe.checkout.Session.retrieve(session_id, expand=['setup_intent']).to_dict()
+	except Exception:
+		return Response({'detail': 'Could not verify that checkout session'}, status=status.HTTP_400_BAD_REQUEST)
+
+	metadata = session.get('metadata') or {}
+	if metadata.get('organization_id') != str(org.id):
+		return Response({'detail': 'This checkout session does not belong to your store'}, status=status.HTTP_403_FORBIDDEN)
+
+	setup_intent = session.get('setup_intent') or {}
+	if setup_intent.get('status') != 'succeeded':
+		return Response({'detail': 'Card setup was not completed'}, status=status.HTTP_400_BAD_REQUEST)
+
+	org.default_payout_payment_method_id = setup_intent.get('payment_method')
+	org.save(update_fields=['default_payout_payment_method_id'])
+
+	return Response({'saved': True}, status=status.HTTP_200_OK)
+
+
+
+
 PLAN_DURATION_DAYS = {
 	Organization.Plan.MONTHLY: 30,
 	Organization.Plan.YEARLY: 365,
 }
+
+
+def _confirm_payout(metadata):
+	"""A manager's card charge for a single employee cash-out succeeded —
+	the Stripe destination charge has already moved the money, this just
+	records it as done and tells the employee."""
+	from wallet.models import WalletTransaction
+	from wallet.notify import notify_payout_completed
+
+	transaction_id = metadata.get('wallet_transaction_id')
+	if not transaction_id:
+		return
+	try:
+		transaction = WalletTransaction.objects.get(pk=transaction_id, status=WalletTransaction.Status.PENDING)
+	except WalletTransaction.DoesNotExist:
+		return
+	transaction.mark_completed()
+	notify_payout_completed(transaction)
+
+
+def _fail_payout(metadata, payment_intent):
+	"""The manager's card was declined (or otherwise failed) — nothing
+	transferred, so the request goes back to failed and everyone's told."""
+	from wallet.models import WalletTransaction
+	from wallet.notify import notify_payout_failed
+
+	transaction_id = metadata.get('wallet_transaction_id')
+	if not transaction_id:
+		return
+	try:
+		transaction = WalletTransaction.objects.get(pk=transaction_id, status=WalletTransaction.Status.PENDING)
+	except WalletTransaction.DoesNotExist:
+		return
+	reason = (payment_intent.get('last_payment_error') or {}).get('message') or 'Card payment failed'
+	transaction.mark_failed(reason)
+	notify_payout_failed(transaction)
+
+
+def _save_payout_card(metadata, setup_intent_id):
+	org_id = metadata.get('organization_id')
+	if not (org_id and setup_intent_id):
+		return
+	try:
+		setup_intent = stripe.SetupIntent.retrieve(setup_intent_id).to_dict()
+	except Exception:  # pragma: no cover - network/stripe errors
+		return
+	if setup_intent.get('status') != 'succeeded':
+		return
+	Organization.objects.filter(pk=org_id).update(default_payout_payment_method_id=setup_intent.get('payment_method'))
 
 
 def _activate_from_metadata(metadata, stripe_subscription_id):
@@ -304,7 +452,18 @@ def stripeWebhook(request):
 	event_type = event['type']
 
 	if event_type == 'checkout.session.completed':
-		_activate_from_metadata(obj.get('metadata') or {}, obj.get('subscription'))
+		metadata = obj.get('metadata') or {}
+		if metadata.get('purpose') == 'payout_single':
+			_confirm_payout(metadata)
+		elif metadata.get('purpose') == 'payout_card_setup':
+			_save_payout_card(metadata, obj.get('setup_intent'))
+		else:
+			_activate_from_metadata(metadata, obj.get('subscription'))
+
+	elif event_type == 'payment_intent.payment_failed':
+		metadata = obj.get('metadata') or {}
+		if metadata.get('purpose') == 'payout_single':
+			_fail_payout(metadata, obj)
 
 	elif event_type == 'customer.subscription.updated':
 		customer_id = obj.get('customer')

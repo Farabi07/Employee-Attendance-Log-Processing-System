@@ -274,6 +274,17 @@ class Organization(models.Model):
     stripe_customer_id = models.CharField(max_length=255, null=True, blank=True)
     stripe_subscription_id = models.CharField(max_length=255, null=True, blank=True)
 
+    # Cut the platform takes on a real-money payout, on top of what the
+    # employee receives. Null means "use the platform-wide default" —
+    # set by the platform owner in PlatformSettings.
+    payout_commission_percent = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+
+    # The Manager's saved card for paying employees — set once (either via
+    # an explicit "add a payout card" action or automatically the first
+    # time they pay through the checkout flow), then reused for every
+    # future approval with no further card entry.
+    default_payout_payment_method_id = models.CharField(max_length=255, null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -294,6 +305,19 @@ class Organization(models.Model):
         if self.subscription_status == self.SubscriptionStatus.TRIALING:
             return timezone.now() <= self.trial_ends_at
         return False
+
+    def has_paid_subscription(self):
+        """Stricter than has_active_access() — trialing stores can use the
+        rest of the app, but real-money payouts are paid-plan only."""
+        return self.subscription_status == self.SubscriptionStatus.ACTIVE
+
+    def effective_commission_percent(self):
+        """This store's payout commission if it has its own override,
+        otherwise the platform-wide default."""
+        if self.payout_commission_percent is not None:
+            return self.payout_commission_percent
+        from billing.models import PlatformSettings
+        return PlatformSettings.current().default_payout_commission_percent
 
     def expires_at(self):
         """The date that actually matters right now — trial end while
