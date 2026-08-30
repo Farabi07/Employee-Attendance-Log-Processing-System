@@ -19,6 +19,9 @@ const MAP = {
   completed: { label: "Completed", fg: T.teal, bg: T.tealBg },
   failed: { label: "Failed", fg: T.coral, bg: T.coralBg },
 
+  reviewed: { label: "Reviewed", fg: T.navyDeep, bg: T.line2 },
+  accepted: { label: "Accepted", fg: T.teal, bg: T.tealBg },
+
   trialing: { label: "Trial active", fg: T.amber, bg: T.amberBg },
   active: { label: "Active", fg: T.teal, bg: T.tealBg },
   past_due: { label: "Past due", fg: T.coral, bg: T.coralBg },

@@ -77,5 +77,11 @@ export const endpoints = {
   payoutReview: (pk) => `/wallet/api/v1/payout/${pk}/review/`,
   payoutConfirm: () => `/wallet/api/v1/payout/confirm/`,
   walletTransactions: (params = "") => `/wallet/api/v1/transactions/${params}`,
+  payAdjustmentEligible: () => `/wallet/api/v1/pay_adjustment/eligible/`,
+  payAdjustmentRequest: () => `/wallet/api/v1/pay_adjustment/request/`,
+  payAdjustmentMine: () => `/wallet/api/v1/pay_adjustment/mine/`,
+  payAdjustmentAll: (params = "") => `/wallet/api/v1/pay_adjustment/all/${params}`,
+  payAdjustmentReview: (pk) => `/wallet/api/v1/pay_adjustment/${pk}/review/`,
+  payAdjustmentAccept: (pk) => `/wallet/api/v1/pay_adjustment/${pk}/accept/`,
   rateHistory: (employeeId) => `/wallet/api/v1/rate_history/${employeeId}/`,
 };

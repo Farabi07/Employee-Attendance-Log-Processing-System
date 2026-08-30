@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+export const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const TOKEN_KEY = "attendance_access_token";
 
 export function getToken() {
@@ -36,8 +36,9 @@ function extractMessage(data) {
 }
 
 async function request(path, { method = "GET", body, auth = true } = {}) {
+  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
   const headers = {};
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (body !== undefined && !isFormData) headers["Content-Type"] = "application/json";
   if (auth) {
     const token = getToken();
     if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -46,7 +47,7 @@ async function request(path, { method = "GET", body, auth = true } = {}) {
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
     headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body),
   });
 
   if (res.status === 401 && auth) {
