@@ -592,6 +592,17 @@ def reviewPayoutRequest(request, pk):
 	# No saved card yet — send the Manager to a one-off Checkout page. They
 	# can still use this to save a card for next time via "Payout card" in
 	# Payroll, independent of this particular payment.
+	#
+	# The web app always redirects back to itself; the mobile app has no
+	# web origin to return to, so it passes its own custom-scheme deep
+	# link instead (e.g. timetap://payout/success).
+	default_success = f'{settings.BILLING_RETURN_URL}/?payout=success&session_id={{CHECKOUT_SESSION_ID}}'
+	default_cancel = f'{settings.BILLING_RETURN_URL}/?payout=cancelled'
+	success_url = request.data.get('success_url') or default_success
+	cancel_url = request.data.get('cancel_url') or default_cancel
+	if '{CHECKOUT_SESSION_ID}' not in success_url:
+		success_url += ('&' if '?' in success_url else '?') + 'session_id={CHECKOUT_SESSION_ID}'
+
 	try:
 		session = stripe.checkout.Session.create(
 			mode='payment',
@@ -630,8 +641,8 @@ def reviewPayoutRequest(request, pk):
 				'metadata': {'purpose': 'payout_single', 'wallet_transaction_id': str(transaction.id)},
 			},
 			metadata={'purpose': 'payout_single', 'wallet_transaction_id': str(transaction.id)},
-			success_url=f'{settings.BILLING_RETURN_URL}/?payout=success&session_id={{CHECKOUT_SESSION_ID}}',
-			cancel_url=f'{settings.BILLING_RETURN_URL}/?payout=cancelled',
+			success_url=success_url,
+			cancel_url=cancel_url,
 		)
 	except Exception as exc:  # pragma: no cover - network/stripe errors
 		return Response({'detail': f'Could not start payment: {exc}'}, status=status.HTTP_400_BAD_REQUEST)

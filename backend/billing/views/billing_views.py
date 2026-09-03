@@ -259,12 +259,23 @@ def createPayoutCardSetupSession(request):
 		org.stripe_customer_id = customer.id
 		org.save(update_fields=['stripe_customer_id'])
 
+	# The web app always redirects back to itself; the mobile app has no
+	# web origin to return to, so it passes its own custom-scheme deep
+	# link instead (e.g. timetap://payout-card/success) — the {CHECKOUT_SESSION_ID}
+	# placeholder still gets filled in by Stripe regardless of scheme.
+	default_success = f'{settings.BILLING_RETURN_URL}/?payout_card=success&session_id={{CHECKOUT_SESSION_ID}}'
+	default_cancel = f'{settings.BILLING_RETURN_URL}/?payout_card=cancelled'
+	success_url = request.data.get('success_url') or default_success
+	cancel_url = request.data.get('cancel_url') or default_cancel
+	if '{CHECKOUT_SESSION_ID}' not in success_url:
+		success_url += ('&' if '?' in success_url else '?') + 'session_id={CHECKOUT_SESSION_ID}'
+
 	session = stripe.checkout.Session.create(
 		customer=org.stripe_customer_id,
 		mode='setup',
 		payment_method_types=['card'],
-		success_url=f'{settings.BILLING_RETURN_URL}/?payout_card=success&session_id={{CHECKOUT_SESSION_ID}}',
-		cancel_url=f'{settings.BILLING_RETURN_URL}/?payout_card=cancelled',
+		success_url=success_url,
+		cancel_url=cancel_url,
 		metadata={'purpose': 'payout_card_setup', 'organization_id': str(org.id)},
 	)
 	return Response({'checkout_url': session.url}, status=status.HTTP_200_OK)
