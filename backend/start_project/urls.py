@@ -76,6 +76,7 @@ urlpatterns = [
 	path('saas/', include('authentication.urls.signup_urls')),
 	path('billing/', include('billing.urls.billing_urls')),
 	path('wallet/', include('wallet.urls.wallet_urls')),
+	path('account/', include('authentication.urls.account_urls')),
 
 
 	# YOUR PATTERNS

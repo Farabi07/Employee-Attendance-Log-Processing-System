@@ -180,6 +180,14 @@ def createCheckoutSession(request):
 		org.stripe_customer_id = customer.id
 		org.save()
 
+	# The mobile app has no web origin to return to, so it passes its own
+	# custom-scheme deep link instead (e.g. timetap://billing/success) —
+	# same override pattern as the payout-related checkout sessions.
+	success_url = request.data.get('success_url') or settings.BILLING_SUCCESS_URL
+	cancel_url = request.data.get('cancel_url') or settings.BILLING_CANCEL_URL
+	if '{CHECKOUT_SESSION_ID}' not in success_url:
+		success_url += ('&' if '?' in success_url else '?') + 'session_id={CHECKOUT_SESSION_ID}'
+
 	session = stripe.checkout.Session.create(
 		customer=org.stripe_customer_id,
 		mode='subscription',
@@ -192,8 +200,8 @@ def createCheckoutSession(request):
 			},
 			'quantity': 1,
 		}],
-		success_url=settings.BILLING_SUCCESS_URL,
-		cancel_url=settings.BILLING_CANCEL_URL,
+		success_url=success_url,
+		cancel_url=cancel_url,
 		metadata={'organization_id': str(org.id), 'plan': plan},
 	)
 	return Response({'checkout_url': session.url}, status=status.HTTP_200_OK)
