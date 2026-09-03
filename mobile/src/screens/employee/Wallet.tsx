@@ -190,6 +190,7 @@ export default function Wallet() {
   const [connecting, setConnecting] = useState(false);
   const [eligibleAdjustments, setEligibleAdjustments] = useState<any[]>([]);
   const [myAdjustments, setMyAdjustments] = useState<any[]>([]);
+  const [confirmingCashId, setConfirmingCashId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     const [res, historyRes] = await Promise.all([api.get(endpoints.walletMe()), api.get(endpoints.rateHistory(user!.id))]);
@@ -227,6 +228,20 @@ export default function Wallet() {
       setMessage({ type: "error", text: err.message });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const confirmCashReceived = async (id: number) => {
+    setConfirmingCashId(id);
+    setMessage(null);
+    try {
+      await api.post(endpoints.payoutConfirmCash(id));
+      setMessage({ type: "success", text: "Confirmed — thanks!" });
+      await load();
+    } catch (err: any) {
+      setMessage({ type: "error", text: err.message });
+    } finally {
+      setConfirmingCashId(null);
     }
   };
 
@@ -323,11 +338,12 @@ export default function Wallet() {
           </View>
           {!wallet.payouts_available ? (
             <Text style={styles.bodyMuted}>Cash-out requests open up once your employer subscribes — currently on a free trial.</Text>
-          ) : !wallet.payouts_enabled ? (
-            <Text style={styles.bodyMuted}>Set up your payout method above first, then you can request a cash-out here.</Text>
           ) : (
             <>
-              <Text style={styles.bodyMuted}>Need cash before payday? Request an instant cash-out — your manager approves and pays it.</Text>
+              <Text style={styles.bodyMuted}>
+                Need cash before payday? Request a cash-out — your manager reviews it and pays you, via Stripe or in person.
+                {!wallet.payouts_enabled && " (You don't need a bank account connected if your manager pays in cash.)"}
+              </Text>
               <TextInput
                 value={amount}
                 onChangeText={setAmount}
@@ -357,7 +373,7 @@ export default function Wallet() {
             <View key={t.id} style={[styles.historyRow, i > 0 && styles.borderTop]}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.historyTitle}>
-                  {t.type === "earning" ? "Earned" : "Payout"}
+                  {t.type === "earning" ? "Earned" : t.payout_method === "cash" ? "Payout — cash" : "Payout"}
                   {t.note ? ` — ${t.note}` : ""}
                 </Text>
                 <Text style={styles.historyDate}>
@@ -369,6 +385,15 @@ export default function Wallet() {
                 {money(t.amount)}
               </Text>
               <StatusPill status={t.status} />
+              {t.status === "awaiting_confirmation" && (
+                <Pressable
+                  onPress={() => confirmCashReceived(t.id)}
+                  disabled={confirmingCashId === t.id}
+                  style={styles.confirmCashButton}
+                >
+                  <Text style={styles.confirmCashButtonText}>{confirmingCashId === t.id ? "Confirming…" : "I received this"}</Text>
+                </Pressable>
+              )}
             </View>
           ))}
         </Card>
@@ -467,7 +492,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   messageText: { fontFamily: fonts.body.regular, fontSize: 12, marginTop: 10, textAlign: "center" },
-  historyRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12 },
+  historyRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, flexWrap: "wrap" },
+  confirmCashButton: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 8, backgroundColor: T.teal },
+  confirmCashButtonText: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.paper },
   borderTop: { borderTopWidth: 1, borderTopColor: T.line2 },
   historyTitle: { fontFamily: fonts.body.medium, fontSize: 13.5, color: T.ink },
   historyDate: { fontFamily: fonts.mono.regular, fontSize: 11, color: T.faint },

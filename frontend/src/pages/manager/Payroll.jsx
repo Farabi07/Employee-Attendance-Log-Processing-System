@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Wallet, CheckCircle2, XCircle, ListChecks, Download, FileText, FileSpreadsheet, CreditCard } from "lucide-react";
+import { Wallet, CheckCircle2, XCircle, ListChecks, Download, FileText, FileSpreadsheet, CreditCard, Banknote } from "lucide-react";
 import { T, fontDisplay, fontBody, fontMono } from "../../theme";
 import { api, downloadFile } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
@@ -28,6 +28,8 @@ export default function ManagerPayroll() {
   const [running, setRunning] = useState(false);
   const [reviewingId, setReviewingId] = useState(null);
   const [confirmingId, setConfirmingId] = useState(null);
+  const [cashConfirmingId, setCashConfirmingId] = useState(null);
+  const [cashNote, setCashNote] = useState("");
   const [currency, setCurrency] = useState("usd");
   const [savingCurrency, setSavingCurrency] = useState(false);
   const [payoutCard, setPayoutCard] = useState(undefined);
@@ -156,6 +158,22 @@ export default function ManagerPayroll() {
       // Saved card on file — already charged synchronously, no redirect.
       setConfirmingId(null);
       setMessage({ type: "success", text: `Paid ${money(res.total_charge)} from your saved card.` });
+      await load();
+    } catch (err) {
+      setMessage({ type: "error", text: err.message });
+    } finally {
+      setReviewingId(null);
+    }
+  };
+
+  const confirmCash = async (id) => {
+    setReviewingId(id);
+    setMessage(null);
+    try {
+      await api.post(endpoints.payoutReview(id), { action: "approve", payout_method: "cash", note: cashNote || undefined });
+      setCashConfirmingId(null);
+      setCashNote("");
+      setMessage({ type: "success", text: "Marked as paid in cash — waiting for the employee to confirm they received it." });
       await load();
     } catch (err) {
       setMessage({ type: "error", text: err.message });
@@ -395,6 +413,7 @@ export default function ManagerPayroll() {
             const commissionAmount = Math.round(Number(t.amount) * commissionPercent) / 100;
             const totalCharge = Number(t.amount) + commissionAmount;
             const isConfirming = confirmingId === t.id;
+            const isCashConfirming = cashConfirmingId === t.id;
             return (
               <div key={t.id} className="row-hover" style={{ padding: "12px 4px", borderRadius: 8, borderTop: i === 0 ? "none" : `1px solid ${T.line2}` }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -408,15 +427,24 @@ export default function ManagerPayroll() {
                   </div>
                   <span style={{ fontFamily: fontMono, fontSize: 14, fontWeight: 600, color: T.ink }}>{formatMoney(t.amount, t.currency)}</span>
                   {isManager ? (
-                    <div style={{ display: "flex", gap: 8 }}>
-                      {!isConfirming && (
-                        <button
-                          onClick={() => setConfirmingId(t.id)}
-                          disabled={reviewingId === t.id || !summary.payouts_available}
-                          style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 12px", borderRadius: 8, border: "none", background: T.tealBg, color: T.tealDeep, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer", opacity: summary.payouts_available ? 1 : 0.5 }}
-                        >
-                          <CheckCircle2 size={14} /> Approve
-                        </button>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {!isConfirming && !isCashConfirming && (
+                        <>
+                          <button
+                            onClick={() => setConfirmingId(t.id)}
+                            disabled={reviewingId === t.id || !summary.payouts_available}
+                            style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 12px", borderRadius: 8, border: "none", background: T.tealBg, color: T.tealDeep, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer", opacity: summary.payouts_available ? 1 : 0.5 }}
+                          >
+                            <CheckCircle2 size={14} /> Pay via Stripe
+                          </button>
+                          <button
+                            onClick={() => setCashConfirmingId(t.id)}
+                            disabled={reviewingId === t.id || !summary.payouts_available}
+                            style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 12px", borderRadius: 8, border: "none", background: T.amberBg, color: T.amber, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer", opacity: summary.payouts_available ? 1 : 0.5 }}
+                          >
+                            <Banknote size={14} /> Pay with cash
+                          </button>
+                        </>
                       )}
                       <button
                         onClick={() => reject(t.id)}
@@ -453,6 +481,37 @@ export default function ManagerPayroll() {
                       </button>
                       <button
                         onClick={() => setConfirmingId(null)}
+                        disabled={reviewingId === t.id}
+                        style={{ padding: "8px 14px", borderRadius: 8, border: `1px solid ${T.line}`, background: T.card, color: T.muted, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {isCashConfirming && (
+                  <div style={{ marginTop: 10, padding: "12px 14px", borderRadius: 9, background: T.amberBg }}>
+                    <p style={{ fontFamily: fontBody, fontSize: 12.5, color: T.ink, margin: "0 0 10px", lineHeight: 1.5 }}>
+                      Hand {t.employee.first_name} {formatMoney(t.amount, t.currency)} in cash, then confirm below. It won't count as paid until {t.employee.first_name} confirms receiving it in their Wallet.
+                    </p>
+                    <input
+                      type="text"
+                      placeholder="Note (optional)"
+                      value={cashNote}
+                      onChange={(e) => setCashNote(e.target.value)}
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: `1px solid ${T.line}`, fontFamily: fontBody, fontSize: 12.5, marginBottom: 10, boxSizing: "border-box" }}
+                    />
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        onClick={() => confirmCash(t.id)}
+                        disabled={reviewingId === t.id}
+                        style={{ padding: "8px 14px", borderRadius: 8, border: "none", background: T.amber, color: T.paper, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
+                      >
+                        {reviewingId === t.id ? "Marking…" : "I've paid this in cash"}
+                      </button>
+                      <button
+                        onClick={() => { setCashConfirmingId(null); setCashNote(""); }}
                         disabled={reviewingId === t.id}
                         style={{ padding: "8px 14px", borderRadius: 8, border: `1px solid ${T.line}`, background: T.card, color: T.muted, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
                       >

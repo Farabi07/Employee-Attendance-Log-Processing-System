@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { View, Text, TextInput, ScrollView, Pressable, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
-import { Wallet, CheckCircle2, XCircle, ListChecks, Download, FileText, FileSpreadsheet, CreditCard } from "lucide-react-native";
+import { Wallet, CheckCircle2, XCircle, ListChecks, Download, FileText, FileSpreadsheet, CreditCard, Banknote } from "lucide-react-native";
 import { T, fonts } from "../../theme";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
@@ -47,6 +47,8 @@ export default function Payroll() {
   const [running, setRunning] = useState(false);
   const [reviewingId, setReviewingId] = useState<number | null>(null);
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
+  const [cashConfirmingId, setCashConfirmingId] = useState<number | null>(null);
+  const [cashNote, setCashNote] = useState("");
   const [currency, setCurrency] = useState("usd");
   const [savingCurrency, setSavingCurrency] = useState(false);
   const [payoutCard, setPayoutCard] = useState<any>(undefined);
@@ -160,6 +162,22 @@ export default function Payroll() {
       // Saved card on file — already charged synchronously, no redirect.
       setConfirmingId(null);
       setMessage({ type: "success", text: `Paid ${money(res.total_charge)} from your saved card.` });
+      await load();
+    } catch (err: any) {
+      setMessage({ type: "error", text: err.message });
+    } finally {
+      setReviewingId(null);
+    }
+  };
+
+  const confirmCash = async (id: number) => {
+    setReviewingId(id);
+    setMessage(null);
+    try {
+      await api.post(endpoints.payoutReview(id), { action: "approve", payout_method: "cash", note: cashNote || undefined });
+      setCashConfirmingId(null);
+      setCashNote("");
+      setMessage({ type: "success", text: "Marked as paid in cash — waiting for the employee to confirm they received it." });
       await load();
     } catch (err: any) {
       setMessage({ type: "error", text: err.message });
@@ -349,6 +367,7 @@ export default function Payroll() {
               const commissionAmount = Math.round(Number(t.amount) * commissionPercent) / 100;
               const totalCharge = Number(t.amount) + commissionAmount;
               const isConfirming = confirmingId === t.id;
+              const isCashConfirming = cashConfirmingId === t.id;
               return (
                 <View key={t.id} style={[styles.payoutRow, i > 0 && styles.borderTop]}>
                   <View style={styles.payoutRowTop}>
@@ -361,15 +380,25 @@ export default function Payroll() {
                     <Text style={styles.payoutAmount}>{formatMoney(t.amount, t.currency)}</Text>
                     {isManager ? (
                       <View style={styles.payoutActions}>
-                        {!isConfirming && (
-                          <Pressable
-                            onPress={() => setConfirmingId(t.id)}
-                            disabled={reviewingId === t.id || !summary.payouts_available}
-                            style={[styles.approveBtn, { opacity: summary.payouts_available ? 1 : 0.5 }]}
-                          >
-                            <CheckCircle2 size={14} color={T.tealDeep} />
-                            <Text style={styles.approveBtnText}>Approve</Text>
-                          </Pressable>
+                        {!isConfirming && !isCashConfirming && (
+                          <>
+                            <Pressable
+                              onPress={() => setConfirmingId(t.id)}
+                              disabled={reviewingId === t.id || !summary.payouts_available}
+                              style={[styles.approveBtn, { opacity: summary.payouts_available ? 1 : 0.5 }]}
+                            >
+                              <CheckCircle2 size={14} color={T.tealDeep} />
+                              <Text style={styles.approveBtnText}>Pay via Stripe</Text>
+                            </Pressable>
+                            <Pressable
+                              onPress={() => setCashConfirmingId(t.id)}
+                              disabled={reviewingId === t.id || !summary.payouts_available}
+                              style={[styles.cashBtn, { opacity: summary.payouts_available ? 1 : 0.5 }]}
+                            >
+                              <Banknote size={14} color={T.amber} />
+                              <Text style={styles.cashBtnText}>Cash</Text>
+                            </Pressable>
+                          </>
                         )}
                         <Pressable onPress={() => reject(t.id)} disabled={reviewingId === t.id} style={styles.rejectBtn}>
                           <XCircle size={14} color={T.coral} />
@@ -402,6 +431,34 @@ export default function Payroll() {
                           </Text>
                         </Pressable>
                         <Pressable onPress={() => setConfirmingId(null)} disabled={reviewingId === t.id} style={styles.cancelButton}>
+                          <Text style={styles.cancelButtonText}>Cancel</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  )}
+
+                  {isCashConfirming && (
+                    <View style={styles.cashConfirmBox}>
+                      <Text style={styles.cashConfirmText}>
+                        Hand {t.employee.first_name} {formatMoney(t.amount, t.currency)} in cash, then confirm below. It won't count as paid
+                        until {t.employee.first_name} confirms receiving it in their Wallet.
+                      </Text>
+                      <TextInput
+                        placeholder="Note (optional)"
+                        value={cashNote}
+                        onChangeText={setCashNote}
+                        style={styles.cashNoteInput}
+                        placeholderTextColor={T.faint}
+                      />
+                      <View style={styles.actionRow}>
+                        <Pressable onPress={() => confirmCash(t.id)} disabled={reviewingId === t.id} style={styles.cashPayButton}>
+                          <Text style={styles.cashPayButtonText}>{reviewingId === t.id ? "Marking…" : "I've paid this in cash"}</Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={() => { setCashConfirmingId(null); setCashNote(""); }}
+                          disabled={reviewingId === t.id}
+                          style={styles.cancelButton}
+                        >
                           <Text style={styles.cancelButtonText}>Cancel</Text>
                         </Pressable>
                       </View>
@@ -498,6 +555,8 @@ const styles = StyleSheet.create({
   payoutActions: { flexDirection: "row", gap: 8 },
   approveBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 8, backgroundColor: T.tealBg },
   approveBtnText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.tealDeep },
+  cashBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 8, backgroundColor: T.amberBg },
+  cashBtnText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.amber },
   rejectBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 8, backgroundColor: T.coralBg },
   rejectBtnText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.coral },
   confirmBox: { marginTop: 10, padding: 14, borderRadius: 9, backgroundColor: T.navyBg },
@@ -512,6 +571,11 @@ const styles = StyleSheet.create({
   payNowButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.paper },
   cancelButton: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: T.line },
   cancelButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.muted },
+  cashConfirmBox: { marginTop: 10, padding: 14, borderRadius: 9, backgroundColor: T.amberBg },
+  cashConfirmText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink, lineHeight: 18, marginBottom: 10 },
+  cashNoteInput: { borderWidth: 1, borderColor: T.line, borderRadius: 7, paddingVertical: 8, paddingHorizontal: 10, fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink, backgroundColor: T.card },
+  cashPayButton: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, backgroundColor: T.amber },
+  cashPayButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.paper },
   txRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 11 },
   txName: { fontFamily: fonts.body.regular, fontSize: 13, color: T.ink },
   txId: { fontFamily: fonts.mono.regular, fontSize: 10.5, color: T.faint },

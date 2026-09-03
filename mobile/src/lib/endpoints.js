@@ -79,6 +79,7 @@ export const endpoints = {
   payrollExportExcel: (params = "") => `/wallet/api/v1/payroll/export/excel/${params}`,
   payoutReview: (pk) => `/wallet/api/v1/payout/${pk}/review/`,
   payoutConfirm: () => `/wallet/api/v1/payout/confirm/`,
+  payoutConfirmCash: (pk) => `/wallet/api/v1/payout/${pk}/confirm_cash/`,
   walletTransactions: (params = "") => `/wallet/api/v1/transactions/${params}`,
   payAdjustmentEligible: () => `/wallet/api/v1/pay_adjustment/eligible/`,
   payAdjustmentRequest: () => `/wallet/api/v1/pay_adjustment/request/`,
