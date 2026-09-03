@@ -7,15 +7,19 @@ import { api } from "../lib/api";
 import { endpoints } from "../lib/endpoints";
 import Card from "./Card";
 import Avatar from "./Avatar";
-import { PrimaryButton } from "./Button";
+import { PrimaryButton, TextButton } from "./Button";
+import AccountDeletion from "../screens/settings/AccountDeletion";
 
-// Ported from frontend/src/components/ProfileModal.jsx.
+// Ported from frontend/src/components/ProfileModal.jsx, plus a
+// "Delete account" entry point (new, Apple-required — see
+// screens/settings/AccountDeletion.tsx) swapped in within the same Modal.
 export default function ProfileModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { user, isManager, isManagerOrModerator, logout } = useAuth();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
 
   if (!user) return null;
   const initials = `${(user.first_name || "?")[0]}${(user.last_name || "?")[0]}`.toUpperCase();
@@ -38,9 +42,18 @@ export default function ProfileModal({ visible, onClose }: { visible: boolean; o
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={() => (showDeleteAccount ? setShowDeleteAccount(false) : onClose())}
+    >
       <View style={styles.backdrop}>
         <Card style={styles.card}>
+          {showDeleteAccount ? (
+            <AccountDeletion onBack={() => setShowDeleteAccount(false)} />
+          ) : (
+            <>
           <View style={styles.headerRow}>
             <View style={styles.identityRow}>
               <Avatar initials={initials} size={44} />
@@ -85,6 +98,12 @@ export default function ProfileModal({ visible, onClose }: { visible: boolean; o
               <Text style={[styles.messageText, { color: message.type === "error" ? T.coral : T.teal }]}>{message.text}</Text>
             )}
           </View>
+
+          <View style={styles.deleteAccountRow}>
+            <TextButton title="Delete account" onPress={() => setShowDeleteAccount(true)} color={T.coral} />
+          </View>
+            </>
+          )}
         </Card>
       </View>
     </Modal>
@@ -114,4 +133,5 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   messageText: { fontFamily: fonts.body.regular, fontSize: 12, marginTop: 10, textAlign: "center" },
+  deleteAccountRow: { marginTop: 16, alignItems: "center" },
 });

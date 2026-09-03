@@ -23,6 +23,9 @@ export interface BillingStatus {
   moderator_can_add_employees?: boolean;
   moderator_can_manage_qr?: boolean;
   moderator_can_manage_subscription?: boolean;
+  organization_name?: string;
+  subscription_status?: "trialing" | "active" | "past_due" | "canceled";
+  trial_ends_at?: string;
   [key: string]: unknown;
 }
 
