@@ -16,6 +16,13 @@ export interface AuthUser {
 
 export interface BillingStatus {
   has_active_access: boolean;
+  currency?: string;
+  can_add_employees?: boolean;
+  can_manage_qr?: boolean;
+  can_manage_subscription?: boolean;
+  moderator_can_add_employees?: boolean;
+  moderator_can_manage_qr?: boolean;
+  moderator_can_manage_subscription?: boolean;
   [key: string]: unknown;
 }
 
