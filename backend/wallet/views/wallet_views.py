@@ -221,11 +221,18 @@ def connectOnboard(request):
 			existing = stripe.Account.retrieve(employee.stripe_connect_account_id).to_dict()
 			link_type = 'account_update' if existing.get('details_submitted') else 'account_onboarding'
 
+		# The web app always redirects back to itself; the mobile app has no
+		# web origin to return to, so it passes its own custom-scheme deep
+		# link instead (e.g. timetap://wallet/connect/success) — accepted
+		# as-is since Stripe's AccountLink supports non-https return URLs
+		# for native app integrations.
 		return_base = settings.BILLING_RETURN_URL
+		refresh_url = request.data.get('refresh_url') or f'{return_base.rstrip("/")}/?connect=refresh'
+		return_url = request.data.get('return_url') or f'{return_base.rstrip("/")}/?connect=done'
 		account_link = stripe.AccountLink.create(
 			account=employee.stripe_connect_account_id,
-			refresh_url=f'{return_base.rstrip("/")}/?connect=refresh',
-			return_url=f'{return_base.rstrip("/")}/?connect=done',
+			refresh_url=refresh_url,
+			return_url=return_url,
 			type=link_type,
 		)
 	except Exception as exc:  # pragma: no cover - network/stripe errors
