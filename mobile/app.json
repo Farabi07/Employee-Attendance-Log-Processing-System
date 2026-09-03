@@ -64,6 +64,12 @@
         "projectId": "2fc7ad99-451f-457f-a2cd-237bb0a81342"
       }
     },
-    "owner": "farabi07"
+    "owner": "farabi07",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/2fc7ad99-451f-457f-a2cd-237bb0a81342"
+    }
   }
 }
