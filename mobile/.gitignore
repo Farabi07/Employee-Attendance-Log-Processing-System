@@ -18,6 +18,12 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# Firebase/service-account secrets — never commit
+google-services.json
+GoogleService-Info.plist
+firebase-service-account.json
+*-firebase-adminsdk-*.json
+
 # Metro
 .metro-health-check*
 
