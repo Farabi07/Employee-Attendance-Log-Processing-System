@@ -51,6 +51,7 @@ export const endpoints = {
   djoserResetPasswordConfirm: () => `/djoser/auth/users/reset_password_confirm/`,
   djoserSetPassword: () => `/djoser/auth/users/set_password/`,
 
+  registerPushToken: () => `/account/api/v1/push_token/`,
   deactivateAccount: () => `/account/api/v1/deactivate/`,
 
   signup: () => `/saas/api/v1/signup/`,

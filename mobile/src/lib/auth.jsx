@@ -12,6 +12,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { api, getToken, setToken, setUnauthorizedHandler } from "./api";
 import { endpoints } from "./endpoints";
+import { registerForPushNotifications } from "./push";
 
 const AuthContext = createContext(null);
 
@@ -39,6 +40,11 @@ export function AuthProvider({ children }) {
       const me = await api.get(endpoints.djoserMe());
       setUser(me);
       await loadBilling(me);
+      // Fire-and-forget — covers both a fresh login/signup and an
+      // app restart with an existing token, in one place. Never blocks
+      // the auth flow if it fails (no EAS project id yet, permission
+      // denied, offline, etc.) — see lib/push.js.
+      registerForPushNotifications();
       return me;
     } catch {
       await setToken(null);

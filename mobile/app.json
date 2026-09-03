@@ -42,7 +42,8 @@
           "locationWhenInUsePermission": "Used to verify you're at your worksite when you check in or out. Never collected in the background."
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-notifications"
     ]
   }
 }
