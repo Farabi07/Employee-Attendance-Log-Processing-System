@@ -8,7 +8,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from drf_spectacular.utils import extend_schema
 
-from authentication.models import Organization, Employee, User
+from authentication.models import Organization, Employee, User, Role
 from authentication.permissions import IsPlatformOwner
 
 
@@ -43,7 +43,7 @@ def signupOrganization(request):
 			email=email.lower(),
 			gender=gender,
 			organization=organization,
-			org_role=Employee.OrgRole.MANAGER,
+			role=Role.objects.get(name='MANAGER'),
 		)
 		owner.set_password(password)
 		owner.save()

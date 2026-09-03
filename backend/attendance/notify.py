@@ -18,7 +18,7 @@ def notify_leave_submitted(leave_request):
 
     managers = User.objects.filter(
         organization=leave_request.employee.organization,
-        org_role__in=[User.OrgRole.MANAGER, User.OrgRole.MODERATOR],
+        role__name__in=['MANAGER', 'MODERATOR'],
     )
     employee_name = f"{leave_request.employee.first_name} {leave_request.employee.last_name}"
 

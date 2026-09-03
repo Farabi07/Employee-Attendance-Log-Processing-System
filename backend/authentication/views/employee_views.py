@@ -8,7 +8,7 @@ from rest_framework.response import Response
 
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
-from authentication.models import Employee
+from authentication.models import Employee, Role
 from authentication.serializers import EmployeeSerializer, EmployeeListSerializer
 from authentication.filters import EmployeeFilter
 from authentication.permissions import IsManager, IsManagerOrModerator, CanAddEmployees, HasActiveSubscription
@@ -146,14 +146,15 @@ def createEmployee(request):
 	# Always derive the tenant from the creator; a Manager can only ever
 	# create Employees or Moderators within their own store, never another Manager.
 	employee_data_dict['organization'] = request.user.organization_id
-	requested_role = employee_data_dict.get('org_role')
+	requested_role = employee_data_dict.pop('org_role', None)
 	if request.user.is_manager():
-		employee_data_dict['org_role'] = requested_role if requested_role in ALLOWED_CREATE_ROLES else Employee.OrgRole.EMPLOYEE
+		role_name = requested_role if requested_role in ALLOWED_CREATE_ROLES else Employee.OrgRole.EMPLOYEE
 	else:
 		# A Moderator granted "add employees" can still only ever create
 		# plain Employees — never another Moderator, regardless of what's
 		# requested. Creating Moderators stays Manager-only.
-		employee_data_dict['org_role'] = Employee.OrgRole.EMPLOYEE
+		role_name = Employee.OrgRole.EMPLOYEE
+	employee_data_dict['role'] = Role.objects.get(name=role_name.upper()).id
 
 	# Whoever sets the pay picks the currency it's paid in — defaults to
 	# the store's own currency if they don't specify one.
@@ -189,8 +190,12 @@ def updateEmployee(request, pk):
 	# Role changes are Manager-only regardless of anything else. Pay changes
 	# (rate/currency/cycle) follow the same permission as adding employees —
 	# a Moderator granted that can also adjust pay for staff they manage.
-	if not request.user.is_manager():
-		filtered_data.pop('org_role', None)
+	requested_role = filtered_data.pop('org_role', None)
+	if request.user.is_manager() and requested_role:
+		try:
+			filtered_data['role'] = Role.objects.get(name=requested_role.upper()).id
+		except Role.DoesNotExist:
+			return Response({'detail': f"'{requested_role}' is not a valid org_role"}, status=status.HTTP_400_BAD_REQUEST)
 	if not request.user.can_add_employees():
 		filtered_data.pop('hourly_rate', None)
 		filtered_data.pop('currency', None)

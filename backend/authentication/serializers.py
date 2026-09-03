@@ -164,10 +164,15 @@ class DesignationSerializer(serializers.ModelSerializer):
 
 # Djoser user serializer used in settings.py
 class UserSerializer(UserCreateSerializer):
+	org_role = serializers.SerializerMethodField()
+
 	class Meta(UserCreateSerializer.Meta):
 		model = User
 		fields = ('id', 'email', 'first_name', 'last_name', 'password', 'is_admin', 'organization', 'org_role')
-		read_only_fields = ('is_admin', 'organization', 'org_role')
+		read_only_fields = ('is_admin', 'organization')
+
+	def get_org_role(self, obj):
+		return obj.org_role_name()
 
 
 # Don't delete it
@@ -176,18 +181,22 @@ class UserSerializer(UserCreateSerializer):
 
 class AdminUserListSerializer(serializers.ModelSerializer):
 	role = serializers.SerializerMethodField()
+	org_role = serializers.SerializerMethodField()
 	thana = serializers.SerializerMethodField()
 	city = serializers.SerializerMethodField()
 	country = serializers.SerializerMethodField()
 	created_by = serializers.SerializerMethodField()
 	updated_by = serializers.SerializerMethodField()
-	
+
 	class Meta:
 		model = User
 		exclude = ['password']
-	
+
 	def get_role(self, obj):
 		return obj.role.name if obj.role else obj.role
+
+	def get_org_role(self, obj):
+		return obj.org_role_name()
 
 	def get_thana(self, obj):
 		return obj.thana.name if obj.thana else obj.thana
@@ -548,6 +557,7 @@ class DepartmentSerializer(serializers.ModelSerializer):
 
 class EmployeeListSerializer(serializers.ModelSerializer):
 	role = RoleMinimalListSerializer()
+	org_role = serializers.SerializerMethodField()
 	thana = ThanaMinimalListSerializer()
 	city = CityMinimalListSerializer()
 	country = CountryMinimalListSerializer()
@@ -558,6 +568,9 @@ class EmployeeListSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = Employee
 		exclude = ['password']
+
+	def get_org_role(self, obj):
+		return obj.org_role_name()
 
 
 
@@ -571,6 +584,8 @@ class EmployeeMinimalListSerializer(serializers.ModelSerializer):
 
 
 class EmployeeSerializer(serializers.ModelSerializer):
+	org_role = serializers.SerializerMethodField()
+
 	class Meta:
 		model = Employee
 		fields = '__all__'
@@ -581,7 +596,10 @@ class EmployeeSerializer(serializers.ModelSerializer):
 				'required': False,
 			}
 		}
-	
+
+	def get_org_role(self, obj):
+		return obj.org_role_name()
+
 	def create(self, validated_data):
 		modelObject = super().create(validated_data=validated_data)
 		modelObject.set_password(validated_data["password"])
@@ -605,6 +623,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
 
 class VendorListSerializer(serializers.ModelSerializer):
 	role = RoleMinimalListSerializer()
+	org_role = serializers.SerializerMethodField()
 	thana = ThanaMinimalListSerializer()
 	city = CityMinimalListSerializer()
 	country = CountryMinimalListSerializer()
@@ -614,6 +633,9 @@ class VendorListSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = Vendor
 		exclude = ['password', ]
+
+	def get_org_role(self, obj):
+		return obj.org_role_name()
 
 
 
@@ -627,6 +649,8 @@ class VendorMinimalListSerializer(serializers.ModelSerializer):
 
 
 class VendorSerializer(serializers.ModelSerializer):
+	org_role = serializers.SerializerMethodField()
+
 	class Meta:
 		model = Vendor
 		fields = '__all__'
@@ -637,7 +661,10 @@ class VendorSerializer(serializers.ModelSerializer):
 				'required': False,
 			}
 		}
-	
+
+	def get_org_role(self, obj):
+		return obj.org_role_name()
+
 	def create(self, validated_data):
 		modelObject = super().create(validated_data=validated_data)
 		modelObject.set_password(validated_data["password"])
@@ -709,6 +736,7 @@ class CustomerTypeSerializer(serializers.ModelSerializer):
 
 class CustomerListSerializer(serializers.ModelSerializer):
 	role = RoleMinimalListSerializer()
+	org_role = serializers.SerializerMethodField()
 	customer_type = CustomerTypeMinimalListSerializer()
 	thana = ThanaMinimalListSerializer()
 	city = CityMinimalListSerializer()
@@ -719,6 +747,9 @@ class CustomerListSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = Customer
 		exclude = ['password']
+
+	def get_org_role(self, obj):
+		return obj.org_role_name()
 
 
 
@@ -732,6 +763,8 @@ class CustomerMinimalListSerializer(serializers.ModelSerializer):
 
 
 class CustomerSerializer(serializers.ModelSerializer):
+	org_role = serializers.SerializerMethodField()
+
 	class Meta:
 		model = Customer
 		fields = '__all__'
@@ -742,7 +775,10 @@ class CustomerSerializer(serializers.ModelSerializer):
 				'required': False,
 			}
 		}
-	
+
+	def get_org_role(self, obj):
+		return obj.org_role_name()
+
 	def create(self, validated_data):
 		modelObject = super().create(validated_data=validated_data)
 		modelObject.set_password(validated_data["password"])

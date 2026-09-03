@@ -402,11 +402,12 @@ class User(AbstractBaseUser):
         MODERATOR = 'moderator', _('Moderator')
         EMPLOYEE = 'employee', _('Employee')
 
-    # Tenant boundary + in-store role for the multi-tenant SaaS. Distinct from
-    # `is_admin` (Django's own is_staff/admin-panel gate) and from the legacy
-    # `role` FK below (the old, largely-unused Permission/Role system).
+    # Tenant boundary + in-store role for the multi-tenant SaaS. The role
+    # itself is stored via the `role` FK onto the Role/Permission models
+    # below (name is always upper-cased by Role.save(), e.g. "MANAGER") —
+    # OrgRole above is kept only as the canonical set of lowercase role
+    # identifiers used at the API boundary (payloads, query params).
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True, related_name='members')
-    org_role = models.CharField(max_length=20, choices=OrgRole.choices, default=OrgRole.EMPLOYEE)
 
     role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True)
 
@@ -485,31 +486,43 @@ class User(AbstractBaseUser):
         return self.is_admin
 
     def is_manager(self):
-        return self.org_role == self.OrgRole.MANAGER
+        return bool(self.role_id) and self.role.name == self.OrgRole.MANAGER.upper()
 
     def is_moderator(self):
-        return self.org_role == self.OrgRole.MODERATOR
+        return bool(self.role_id) and self.role.name == self.OrgRole.MODERATOR.upper()
 
     def is_manager_or_moderator(self):
-        return self.org_role in (self.OrgRole.MANAGER, self.OrgRole.MODERATOR)
+        return bool(self.role_id) and self.role.name in (self.OrgRole.MANAGER.upper(), self.OrgRole.MODERATOR.upper())
 
     def is_platform_owner(self):
         return self.is_admin and self.organization_id is None
 
+    def has_role_permission(self, permission_name):
+        """Does this user's Role carry the given Permission (by name, e.g.
+        'ADD_EMPLOYEES')? Permission.save() upper-cases names, so callers
+        can pass either case."""
+        return bool(self.role_id) and self.role.permissions.filter(name=permission_name.upper()).exists()
+
     def can_add_employees(self):
-        if self.is_manager():
+        if self.has_role_permission('ADD_EMPLOYEES'):
             return True
         return self.is_moderator() and bool(self.organization_id) and self.organization.moderator_can_add_employees
 
     def can_manage_subscription(self):
-        if self.is_manager():
+        if self.has_role_permission('MANAGE_SUBSCRIPTION'):
             return True
         return self.is_moderator() and bool(self.organization_id) and self.organization.moderator_can_manage_subscription
 
     def can_manage_qr(self):
-        if self.is_manager():
+        if self.has_role_permission('MANAGE_QR'):
             return True
         return self.is_moderator() and bool(self.organization_id) and self.organization.moderator_can_manage_qr
+
+    def org_role_name(self):
+        """Lowercase role identifier for API responses — 'manager',
+        'moderator', 'employee' — matching the retired org_role field's
+        exact string values, now derived from the Role FK."""
+        return self.role.name.lower() if self.role_id else None
 
 
 

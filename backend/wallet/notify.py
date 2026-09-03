@@ -56,7 +56,7 @@ def notify_pay_adjustment_submitted(request_obj):
 	)
 	managers = User.objects.filter(
 		organization=request_obj.organization,
-		org_role__in=[User.OrgRole.MANAGER, User.OrgRole.MODERATOR],
+		role__name__in=['MANAGER', 'MODERATOR'],
 	)
 	# bulk_create bypasses the post_save signal that normally fires a push
 	# (attendance/signals.py) — so each row's push is sent explicitly here.
@@ -107,7 +107,7 @@ def notify_payout_failed(transaction):
 
 	managers = User.objects.filter(
 		organization=transaction.organization,
-		org_role__in=[User.OrgRole.MANAGER, User.OrgRole.MODERATOR],
+		role__name__in=['MANAGER', 'MODERATOR'],
 	)
 	# bulk_create bypasses the post_save signal that normally fires a push
 	# (attendance/signals.py) — so each row's push is sent explicitly here.

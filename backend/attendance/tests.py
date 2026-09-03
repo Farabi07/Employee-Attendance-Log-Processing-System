@@ -4,7 +4,7 @@ from rest_framework import status
 
 from django_currentuser.middleware import _set_current_user
 
-from authentication.models import Branch, Employee, Organization
+from authentication.models import Branch, Employee, Organization, Role
 from attendance.models import Shift, Roster, AttendanceQRToken, Attendance, LeaveType, LeaveRequest, Notification
 
 
@@ -15,7 +15,7 @@ def make_org(name):
 def make_manager(org, email, first="M", last="Manager"):
     u = Employee.objects.create(
         first_name=first, last_name=last, email=email, gender="male",
-        organization=org, org_role=Employee.OrgRole.MANAGER,
+        organization=org, role=Role.objects.get(name='MANAGER'),
     )
     u.set_password("Test@1234")
     u.save()
@@ -25,7 +25,7 @@ def make_manager(org, email, first="M", last="Manager"):
 def make_employee(org, email, first="E", last="Employee"):
     u = Employee.objects.create(
         first_name=first, last_name=last, email=email, gender="male",
-        organization=org, org_role=Employee.OrgRole.EMPLOYEE,
+        organization=org, role=Role.objects.get(name='EMPLOYEE'),
     )
     u.set_password("Test@1234")
     u.save()
@@ -257,7 +257,7 @@ class RoleRestrictionTests(APITestCase):
         self.manager = make_manager(self.org, "role.mgr@example.com")
         self.moderator = Employee.objects.create(
             first_name="Mod", last_name="Erator", email="role.mod@example.com", gender="male",
-            organization=self.org, org_role=Employee.OrgRole.MODERATOR,
+            organization=self.org, role=Role.objects.get(name='MODERATOR'),
         )
         self.moderator.set_password("Test@1234")
         self.moderator.save()
