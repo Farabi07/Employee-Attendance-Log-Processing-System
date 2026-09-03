@@ -6,9 +6,7 @@ import Shifts from "../screens/employee/Shifts";
 import Leave from "../screens/employee/Leave";
 import EmployeeWallet from "../screens/employee/Wallet";
 import Overview from "../screens/manager/Overview";
-import Team from "../screens/manager/Team";
 import Roster from "../screens/manager/Roster";
-import Approvals from "../screens/manager/Approvals";
 import Payroll from "../screens/manager/Payroll";
 import Reports from "../screens/manager/Reports";
 
@@ -25,11 +23,11 @@ export const EMP_NAV = [
   { key: "Wallet", label: "Wallet", icon: Wallet, component: EmployeeWallet },
 ];
 
+// Team and Approvals dropped as their own tabs — they now live inside
+// Overview, switched via its in-screen segmented row (see Overview.tsx).
 export const MGR_NAV = [
   { key: "Overview", label: "Overview", icon: LayoutGrid, component: Overview },
-  { key: "Team", label: "Team", icon: Users, component: Team },
   { key: "Roster", label: "Roster", icon: CalendarDays, component: Roster },
-  { key: "Approvals", label: "Approvals", icon: FileText, component: Approvals },
   { key: "Payroll", label: "Payroll & Wallets", icon: Wallet, component: Payroll },
   { key: "Reports", label: "Reports", icon: TrendingUp, component: Reports },
 ];
