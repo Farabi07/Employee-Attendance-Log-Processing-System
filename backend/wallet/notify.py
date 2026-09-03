@@ -1,4 +1,5 @@
 from attendance.models import Notification
+from attendance.push import send_expo_push_for_notification
 from commons.currencies import CURRENCY_SYMBOLS
 
 
@@ -57,7 +58,9 @@ def notify_pay_adjustment_submitted(request_obj):
 		organization=request_obj.organization,
 		org_role__in=[User.OrgRole.MANAGER, User.OrgRole.MODERATOR],
 	)
-	Notification.objects.bulk_create(
+	# bulk_create bypasses the post_save signal that normally fires a push
+	# (attendance/signals.py) — so each row's push is sent explicitly here.
+	created = Notification.objects.bulk_create(
 		[
 			Notification(
 				recipient=manager,
@@ -68,6 +71,8 @@ def notify_pay_adjustment_submitted(request_obj):
 			for manager in managers
 		]
 	)
+	for notification in created:
+		send_expo_push_for_notification(notification)
 
 
 def notify_pay_adjustment_reviewed(request_obj):
@@ -104,7 +109,9 @@ def notify_payout_failed(transaction):
 		organization=transaction.organization,
 		org_role__in=[User.OrgRole.MANAGER, User.OrgRole.MODERATOR],
 	)
-	Notification.objects.bulk_create(
+	# bulk_create bypasses the post_save signal that normally fires a push
+	# (attendance/signals.py) — so each row's push is sent explicitly here.
+	created = Notification.objects.bulk_create(
 		[
 			Notification(
 				recipient=manager,
@@ -115,3 +122,5 @@ def notify_payout_failed(transaction):
 			for manager in managers
 		]
 	)
+	for notification in created:
+		send_expo_push_for_notification(notification)

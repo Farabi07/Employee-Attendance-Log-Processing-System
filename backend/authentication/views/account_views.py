@@ -14,6 +14,21 @@ from authentication.permissions import IsManager
 @extend_schema(request=None, responses=None)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+def registerPushToken(request):
+	"""Called by the mobile app right after expo-notifications registration
+	(on login/app-start). One token per user, overwritten each time —
+	simplest v1, revisit multi-device support only if it's ever needed."""
+	token = request.data.get('expo_push_token')
+	if not token:
+		return Response({'detail': 'expo_push_token is required'}, status=status.HTTP_400_BAD_REQUEST)
+	request.user.expo_push_token = token
+	request.user.save(update_fields=['expo_push_token'])
+	return Response({'detail': 'Push token registered.'}, status=status.HTTP_200_OK)
+
+
+@extend_schema(request=None, responses=None)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def deactivateMyAccount(request):
 	"""Self-service account deletion (soft-delete, required by Apple
 	guideline 5.1.1(v)). Sets is_active=False rather than actually

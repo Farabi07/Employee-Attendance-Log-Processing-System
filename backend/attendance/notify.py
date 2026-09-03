@@ -1,4 +1,5 @@
 from attendance.models import Notification
+from attendance.push import send_expo_push_for_notification
 
 
 def notify_roster_assigned(roster, updated=False):
@@ -21,7 +22,9 @@ def notify_leave_submitted(leave_request):
     )
     employee_name = f"{leave_request.employee.first_name} {leave_request.employee.last_name}"
 
-    Notification.objects.bulk_create(
+    # bulk_create bypasses the post_save signal that normally fires a push
+    # (attendance/signals.py) — so each row's push is sent explicitly here.
+    created = Notification.objects.bulk_create(
         [
             Notification(
                 recipient=manager,
@@ -32,6 +35,8 @@ def notify_leave_submitted(leave_request):
             for manager in managers
         ]
     )
+    for notification in created:
+        send_expo_push_for_notification(notification)
 
 
 def notify_leave_reviewed(leave_request):

@@ -385,6 +385,11 @@ class User(AbstractBaseUser):
     primary_phone = PhoneNumberField(null=True, blank=True, unique=True)
     secondary_phone = PhoneNumberField(null=True, blank=True, unique=True)
 
+    # Expo push token for the mobile app — a single token per user
+    # (overwritten on each app login/registration), used to deliver real
+    # push notifications instead of the web app's 20s polling.
+    expo_push_token = models.CharField(max_length=255, null=True, blank=True)
+
     user_type = models.CharField(max_length=255, null=True, blank=True)
 
     date_of_birth = models.DateField(null=True, blank=True)
