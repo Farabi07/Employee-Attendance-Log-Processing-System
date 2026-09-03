@@ -1,0 +1,401 @@
+<title>TimeTap Privacy</title>
+<style>
+  :root {
+    --ink: #132A38;
+    --paper: #F5F9FB;
+    --card: #FFFFFF;
+    --navy: #2369A5;
+    --navy-deep: #154A78;
+    --navy-bg: #E4EFF8;
+    --teal: #0EC0B4;
+    --teal-deep: #0A8478;
+    --teal-bg: #DFF7F3;
+    --line: #DCE6ED;
+    --line2: #EBF2F6;
+    --muted: #5C7686;
+    --faint: #93A8B4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #E7EEF3;
+      --paper: #0E1B26;
+      --card: #142633;
+      --navy: #5B9BD8;
+      --navy-deep: #8FBEE8;
+      --navy-bg: #1B3348;
+      --teal: #34D6C7;
+      --teal-deep: #7EE8DC;
+      --teal-bg: #123A36;
+      --line: #23384A;
+      --line2: #1B2E3D;
+      --muted: #93AAB8;
+      --faint: #5F7887;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #E7EEF3;
+    --paper: #0E1B26;
+    --card: #142633;
+    --navy: #5B9BD8;
+    --navy-deep: #8FBEE8;
+    --navy-bg: #1B3348;
+    --teal: #34D6C7;
+    --teal-deep: #7EE8DC;
+    --teal-bg: #123A36;
+    --line: #23384A;
+    --line2: #1B2E3D;
+    --muted: #93AAB8;
+    --faint: #5F7887;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Inter', system-ui, sans-serif;
+    margin: 0;
+    line-height: 1.65;
+  }
+  .display { font-family: 'Space Grotesk', 'Inter', sans-serif; }
+  .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+
+  a { color: var(--teal-deep); text-decoration: underline; text-decoration-color: var(--teal-bg); text-underline-offset: 2px; }
+  a:hover { color: var(--teal); }
+
+  .shell {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 56px 24px 96px;
+  }
+
+  header.top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .mark {
+    width: 34px; height: 34px; border-radius: 9px;
+    background: var(--navy);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .mark svg { width: 18px; height: 18px; }
+  .wordmark { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
+
+  h1.title {
+    font-size: clamp(28px, 4vw, 40px);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin: 20px 0 6px;
+    text-wrap: balance;
+  }
+  .meta-row {
+    display: flex; gap: 18px; flex-wrap: wrap;
+    color: var(--muted); font-size: 13px;
+    margin-bottom: 40px;
+  }
+  .meta-row .mono { color: var(--faint); }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 48px;
+    align-items: start;
+  }
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.toc { display: none; }
+  }
+
+  nav.toc {
+    position: sticky;
+    top: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border-left: 1px solid var(--line);
+    padding-left: 16px;
+  }
+  nav.toc a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 13px;
+    padding: 6px 0;
+    display: flex;
+    gap: 8px;
+  }
+  nav.toc a:hover { color: var(--navy-deep); }
+  nav.toc .n { color: var(--faint); font-variant-numeric: tabular-nums; width: 18px; flex-shrink: 0; }
+
+  main { min-width: 0; }
+
+  .summary-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 24px 26px;
+    margin-bottom: 44px;
+    box-shadow: 0 1px 2px rgba(19,42,56,0.03), 0 8px 20px -14px rgba(19,42,56,0.18);
+  }
+  .summary-card h2 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--teal-deep);
+    margin: 0 0 14px;
+    font-weight: 700;
+  }
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 16px 22px;
+  }
+  .summary-item { display: flex; gap: 10px; }
+  .summary-item .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--teal);
+    margin-top: 7px;
+    flex-shrink: 0;
+  }
+  .summary-item p { margin: 0; font-size: 14px; color: var(--ink); }
+  .summary-item p b { font-weight: 600; }
+
+  section { margin-bottom: 40px; scroll-margin-top: 32px; }
+  section h2 {
+    font-size: 21px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0 0 14px;
+    text-wrap: balance;
+  }
+  section h2 .n {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    color: var(--navy);
+    font-weight: 500;
+  }
+  section p { max-width: 66ch; margin: 0 0 14px; color: var(--ink); }
+  section p.lede { color: var(--muted); }
+  section ul { max-width: 62ch; padding-left: 20px; margin: 0 0 14px; }
+  section li { margin-bottom: 8px; }
+  section li::marker { color: var(--teal-deep); }
+
+  table.data-table {
+    width: 100%;
+    max-width: 720px;
+    border-collapse: collapse;
+    margin: 4px 0 18px;
+    font-size: 13.5px;
+  }
+  table.data-table th {
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--faint);
+    font-weight: 600;
+    padding: 0 12px 8px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  table.data-table td {
+    padding: 10px 12px 10px 0;
+    border-bottom: 1px solid var(--line2);
+    vertical-align: top;
+    color: var(--ink);
+  }
+  table.data-table td:first-child { white-space: nowrap; font-weight: 500; }
+  table.data-table td.tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    color: var(--teal-deep);
+    background: var(--teal-bg);
+    padding: 2px 7px;
+    border-radius: 999px;
+    display: inline-block;
+    white-space: nowrap;
+  }
+
+  .contact-card {
+    background: var(--navy-bg);
+    border-radius: 14px;
+    padding: 26px 28px;
+    margin-top: 56px;
+  }
+  .contact-card h2 { margin-top: 0; }
+  .contact-card .field { margin-bottom: 6px; font-size: 14px; }
+  .contact-card .field b { display: inline-block; width: 92px; color: var(--muted); font-weight: 500; }
+
+  footer.foot {
+    margin-top: 64px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    color: var(--faint);
+    font-size: 12.5px;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .placeholder { background: var(--teal-bg); color: var(--teal-deep); padding: 1px 5px; border-radius: 4px; font-weight: 600; }
+</style>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<div class="shell">
+  <header class="top">
+    <div class="mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#F5F9FB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+    </div>
+    <span class="wordmark display">TimeTap</span>
+  </header>
+
+  <h1 class="title display">Privacy Policy</h1>
+  <div class="meta-row">
+    <span>Effective <span class="mono">3 September 2026</span></span>
+    <span>Applies to the TimeTap mobile app and web dashboard</span>
+  </div>
+
+  <div class="layout">
+    <nav class="toc mono" aria-label="Sections">
+      <a href="#collect"><span class="n">01</span>What we collect</a>
+      <a href="#location"><span class="n">02</span>Location</a>
+      <a href="#camera"><span class="n">03</span>Camera</a>
+      <a href="#payments"><span class="n">04</span>Payments</a>
+      <a href="#use"><span class="n">05</span>How it's used</a>
+      <a href="#sharing"><span class="n">06</span>Sharing</a>
+      <a href="#retention"><span class="n">07</span>Retention</a>
+      <a href="#rights"><span class="n">08</span>Your rights</a>
+      <a href="#children"><span class="n">09</span>Children</a>
+      <a href="#security"><span class="n">10</span>Security</a>
+      <a href="#changes"><span class="n">11</span>Changes</a>
+      <a href="#contact"><span class="n">12</span>Contact</a>
+    </nav>
+
+    <main>
+      <div class="summary-card">
+        <h2>In plain English</h2>
+        <div class="summary-grid">
+          <div class="summary-item"><span class="dot"></span><p><b>Location</b> is read only at the moment you tap check-in or check-out, and never in the background.</p></div>
+          <div class="summary-item"><span class="dot"></span><p><b>Camera</b> is used only to scan the check-in QR code — no photo or video is ever saved.</p></div>
+          <div class="summary-item"><span class="dot"></span><p><b>Card details</b> go straight to Stripe — TimeTap's servers never see or store them.</p></div>
+          <div class="summary-item"><span class="dot"></span><p><b>Attendance and pay data</b> belong to your employer's TimeTap organization, not to us.</p></div>
+          <div class="summary-item"><span class="dot"></span><p><b>Nothing is sold.</b> We don't run ads and we don't sell data to anyone.</p></div>
+          <div class="summary-item"><span class="dot"></span><p><b>Deleting your account</b> is one tap in the app, under Profile → Delete account.</p></div>
+        </div>
+      </div>
+
+      <section id="collect">
+        <h2><span class="n">01</span>What we collect</h2>
+        <p class="lede">TimeTap is workforce attendance and payroll software used by an employer (a "store" or "organization") to manage its staff. The tables below cover every category of personal data the app and dashboard handle.</p>
+
+        <table class="data-table">
+          <thead><tr><th>Category</th><th>Examples</th><th>Source</th></tr></thead>
+          <tbody>
+            <tr><td>Account details</td><td>Name, email address, role (employee, manager, moderator)</td><td class="tag">you or your employer</td></tr>
+            <tr><td>Attendance records</td><td>Check-in/check-out timestamps, worked hours, shift and roster assignments</td><td class="tag">app usage</td></tr>
+            <tr><td>Location (at check-in only)</td><td>GPS coordinates captured the instant you check in or out</td><td class="tag">device sensor</td></tr>
+            <tr><td>Payroll &amp; wallet data</td><td>Hourly rate, currency, earnings, payout and cash-out history</td><td class="tag">app usage</td></tr>
+            <tr><td>Payment data</td><td>Card details, bank account details for payouts</td><td class="tag">processed by Stripe</td></tr>
+            <tr><td>Device push token</td><td>An Expo push token, so the app can notify you of approvals, roster changes, etc.</td><td class="tag">device, on login</td></tr>
+            <tr><td>Documents you attach</td><td>Optional files attached to leave or pay-adjustment requests (e.g. a doctor's note)</td><td class="tag">you, optional</td></tr>
+          </tbody>
+        </table>
+        <p>We do not collect advertising identifiers, browsing history outside the app, or any data unrelated to attendance and payroll.</p>
+      </section>
+
+      <section id="location">
+        <h2><span class="n">02</span>Location</h2>
+        <p>TimeTap uses your device's location for exactly one purpose: to confirm you're at (or near) your workplace when you check in or check out. The app requests <b>"When In Use"</b> permission only — location is read once, at the moment of that action, and is never tracked continuously or collected while the app is in the background or closed.</p>
+        <p>If your employer has set up a geofence for your branch, your coordinates at check-in are compared against that radius; otherwise they're simply recorded alongside the attendance entry for your employer's records.</p>
+      </section>
+
+      <section id="camera">
+        <h2><span class="n">03</span>Camera</h2>
+        <p>The camera is used only to scan the rotating QR code displayed at your workplace for check-in/check-out. The camera feed is processed on-device to read the code; no photo, video, or camera frame is ever saved, uploaded, or stored — by TimeTap or by your employer.</p>
+      </section>
+
+      <section id="payments">
+        <h2><span class="n">04</span>Payments</h2>
+        <p>All card and bank account details are collected and stored directly by <a href="https://stripe.com/privacy" target="_blank" rel="noreferrer">Stripe</a>, our payment processor — they pass through TimeTap's servers only as tokenized references, never as raw card or account numbers. Employers subscribe to TimeTap via Stripe Checkout; employees who opt in to digital payouts complete identity verification directly with Stripe (Stripe Connect) to receive funds.</p>
+      </section>
+
+      <section id="use">
+        <h2><span class="n">05</span>How your data is used</h2>
+        <ul>
+          <li>To record attendance, calculate hours worked, and run payroll for your employer.</li>
+          <li>To let your manager review leave requests, overtime/shortfall claims, and cash-out requests.</li>
+          <li>To send you notifications (push and in-app) about things that need your attention — a roster change, an approval, a payment.</li>
+          <li>To keep the service secure and diagnose technical problems.</li>
+        </ul>
+        <p>We do not use your data for advertising, and we do not build behavioral profiles for any purpose beyond the attendance/payroll features described here.</p>
+      </section>
+
+      <section id="sharing">
+        <h2><span class="n">06</span>Who we share it with</h2>
+        <p>Attendance, roster, and payroll data is visible to your own employer's managers and moderators — that's the core function of the product. Beyond your employer, we share data only with the service providers that make TimeTap work, each bound to use it solely to provide their service to us:</p>
+        <ul>
+          <li><b>Stripe</b> — payment processing, subscription billing, and payouts.</li>
+          <li><b>Expo</b> — delivery of push notifications to your device.</li>
+          <li>Our hosting and database providers, who store the data on our behalf.</li>
+        </ul>
+        <p>We never sell personal data, and we never share it with data brokers or advertisers.</p>
+      </section>
+
+      <section id="retention">
+        <h2><span class="n">07</span>How long we keep it</h2>
+        <p>Attendance and payroll records are retained for as long as your employer's TimeTap account is active, and for a period afterward as required for payroll, tax, and accounting record-keeping. If you delete your own account in the app, your login is deactivated immediately, but your historical attendance and wallet records remain on file under your employer's organization — this is standard practice for payroll systems and mirrors how employment records are legally required to be kept regardless of the software used.</p>
+      </section>
+
+      <section id="rights">
+        <h2><span class="n">08</span>Your rights &amp; choices</h2>
+        <ul>
+          <li><b>Delete your account</b> any time from Profile → Delete account in the app. This deactivates your login immediately; ask your manager if you need it reversed.</li>
+          <li><b>Access or correct</b> your account details from your Profile, or by asking your manager for anything you can't edit yourself.</li>
+          <li><b>Location and camera permissions</b> can be reviewed or revoked at any time in your device's Settings — note that check-in/out won't function without them.</li>
+          <li><b>Push notifications</b> can be turned off in your device's notification settings; you'll still see updates inside the app.</li>
+        </ul>
+        <p>Depending on where you live, you may have additional rights under laws such as the GDPR or CCPA — contact us using the details below to exercise them.</p>
+      </section>
+
+      <section id="children">
+        <h2><span class="n">09</span>Children's privacy</h2>
+        <p>TimeTap is a workplace tool intended for employees of working age and is not directed at children. We do not knowingly collect personal data from anyone under 16.</p>
+      </section>
+
+      <section id="security">
+        <h2><span class="n">10</span>Security</h2>
+        <p>Data is encrypted in transit (HTTPS/TLS) between the app and our servers. Access to attendance and payroll data is scoped to your own employer's organization — no other business using TimeTap can see it. Passwords are stored using industry-standard hashing, and no employee of TimeTap can read your password.</p>
+      </section>
+
+      <section id="changes">
+        <h2><span class="n">11</span>Changes to this policy</h2>
+        <p>If we make a material change to how we handle personal data, we'll update the effective date above and, where the change is significant, notify you in the app.</p>
+      </section>
+
+      <section id="contact">
+        <h2><span class="n">12</span>Contact</h2>
+        <p>Questions about this policy or your data can be sent to:</p>
+      </section>
+
+      <div class="contact-card">
+        <h2 class="display" style="font-size:16px;">Get in touch</h2>
+        <div class="field mono"><b>Product</b> TimeTap</div>
+        <div class="field mono"><b>Operator</b> <span class="placeholder">Your registered business name</span></div>
+        <div class="field mono"><b>Email</b> <a href="mailto:tecnobzitteam@gmail.com">tecnobzitteam@gmail.com</a></div>
+        <div class="field mono"><b>Address</b> <span class="placeholder">Your business address, if required in your jurisdiction</span></div>
+      </div>
+
+      <footer class="foot">
+        <span>© 2026 TimeTap</span>
+        <span>Last reviewed 3 September 2026</span>
+      </footer>
+    </main>
+  </div>
+</div>
