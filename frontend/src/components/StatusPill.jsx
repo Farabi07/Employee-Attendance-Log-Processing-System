@@ -18,6 +18,7 @@ const MAP = {
 
   completed: { label: "Completed", fg: T.teal, bg: T.tealBg },
   failed: { label: "Failed", fg: T.coral, bg: T.coralBg },
+  awaiting_confirmation: { label: "Awaiting confirmation", fg: T.amber, bg: T.amberBg },
 
   reviewed: { label: "Reviewed", fg: T.navyDeep, bg: T.line2 },
   accepted: { label: "Accepted", fg: T.teal, bg: T.tealBg },

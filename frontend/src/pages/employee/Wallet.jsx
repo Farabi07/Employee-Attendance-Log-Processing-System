@@ -175,6 +175,7 @@ export default function EmployeeWallet() {
   const [connecting, setConnecting] = useState(false);
   const [eligibleAdjustments, setEligibleAdjustments] = useState([]);
   const [myAdjustments, setMyAdjustments] = useState([]);
+  const [confirmingCashId, setConfirmingCashId] = useState(null);
 
   const load = useCallback(async () => {
     const [res, historyRes] = await Promise.all([
@@ -216,6 +217,20 @@ export default function EmployeeWallet() {
       setMessage({ type: "error", text: err.message });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const confirmCashReceived = async (id) => {
+    setConfirmingCashId(id);
+    setMessage(null);
+    try {
+      await api.post(endpoints.payoutConfirmCash(id));
+      setMessage({ type: "success", text: "Confirmed — thanks!" });
+      await load();
+    } catch (err) {
+      setMessage({ type: "error", text: err.message });
+    } finally {
+      setConfirmingCashId(null);
     }
   };
 
@@ -309,14 +324,11 @@ export default function EmployeeWallet() {
             <p style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted, margin: 0 }}>
               Cash-out requests open up once your employer subscribes — currently on a free trial.
             </p>
-          ) : !wallet.payouts_enabled ? (
-            <p style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted, margin: 0 }}>
-              Set up your payout method above first, then you can request a cash-out here.
-            </p>
           ) : (
             <>
               <p style={{ fontFamily: fontBody, fontSize: 12, color: T.muted, margin: "0 0 14px" }}>
-                Need cash before payday? Request an instant cash-out — your manager approves and pays it.
+                Need cash before payday? Request a cash-out — your manager reviews it and pays you, via Stripe or in person.
+                {!wallet.payouts_enabled && " (You don't need a bank account connected if your manager pays in cash.)"}
               </p>
               <form onSubmit={handleRequest}>
                 <input
@@ -370,11 +382,11 @@ export default function EmployeeWallet() {
           {wallet.history.map((t, i) => (
             <div
               key={t.id}
-              style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 4px", borderTop: i === 0 ? "none" : `1px solid ${T.line2}`, minWidth: 420 }}
+              style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 4px", borderTop: i === 0 ? "none" : `1px solid ${T.line2}`, minWidth: 420, flexWrap: "wrap" }}
             >
               <div style={{ flex: 1 }}>
                 <p style={{ fontFamily: fontBody, fontSize: 13.5, fontWeight: 500, color: T.ink, margin: 0 }}>
-                  {t.type === "earning" ? "Earned" : "Payout"}
+                  {t.type === "earning" ? "Earned" : t.payout_method === "cash" ? "Payout — cash" : "Payout"}
                   {t.note ? ` — ${t.note}` : ""}
                 </p>
                 <p style={{ fontFamily: fontMono, fontSize: 11, color: T.faint, margin: 0 }}>
@@ -393,6 +405,15 @@ export default function EmployeeWallet() {
                 {t.type === "earning" ? "+" : "-"}{money(t.amount)}
               </span>
               <StatusPill status={t.status} />
+              {t.status === "awaiting_confirmation" && (
+                <button
+                  onClick={() => confirmCashReceived(t.id)}
+                  disabled={confirmingCashId === t.id}
+                  style={{ padding: "7px 12px", borderRadius: 8, border: "none", background: T.teal, color: T.paper, fontFamily: fontBody, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                >
+                  {confirmingCashId === t.id ? "Confirming…" : "I received this"}
+                </button>
+              )}
             </div>
           ))}
         </div>
