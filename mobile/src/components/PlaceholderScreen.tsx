@@ -8,7 +8,7 @@ import { T, fonts } from "../theme";
 // the real screen content lands.
 export default function PlaceholderScreen({ title }: { title: string }) {
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <SafeAreaView style={styles.safe} edges={[]}>
       <View style={styles.container}>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.subtitle}>Coming soon</Text>

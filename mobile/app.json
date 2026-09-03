@@ -29,7 +29,20 @@
       "expo-web-browser",
       "expo-sharing",
       "expo-font",
-      "expo-splash-screen"
+      "expo-splash-screen",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Used to scan the QR code at check-in/check-out — no photos are taken or stored."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Used to verify you're at your worksite when you check in or out. Never collected in the background."
+        }
+      ],
+      "@react-native-community/datetimepicker"
     ]
   }
 }

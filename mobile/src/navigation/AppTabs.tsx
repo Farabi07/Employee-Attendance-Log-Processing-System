@@ -2,6 +2,7 @@ import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { T, fonts } from "../theme";
 import { EMP_NAV, MGR_NAV } from "./navConfig";
+import AppHeader from "../components/AppHeader";
 
 const Tab = createBottomTabNavigator();
 
@@ -16,7 +17,6 @@ export default function AppTabs({ role }: { role: "employee" | "manager" }) {
   return (
     <Tab.Navigator
       screenOptions={{
-        headerShown: false,
         tabBarActiveTintColor: T.tealDeep,
         tabBarInactiveTintColor: T.muted,
         tabBarStyle: { borderTopColor: T.line },
@@ -30,6 +30,7 @@ export default function AppTabs({ role }: { role: "employee" | "manager" }) {
           component={item.component}
           options={{
             title: item.label,
+            header: () => <AppHeader title={item.label} />,
             tabBarIcon: ({ color, size }) => <item.icon color={color} size={size ?? 20} strokeWidth={1.8} />,
           }}
         />
