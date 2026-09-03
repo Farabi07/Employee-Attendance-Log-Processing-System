@@ -25,6 +25,7 @@ from wallet.serializers import WalletTransactionSerializer, RateHistorySerialize
 from wallet.notify import (
 	notify_payout_completed, notify_payout_failed,
 	notify_pay_adjustment_submitted, notify_pay_adjustment_reviewed,
+	notify_cash_payout_pending, notify_cash_payout_confirmed,
 )
 from wallet.reports import build_payroll_report_rows
 from wallet.exporters import render_csv, render_pdf, render_excel
@@ -291,11 +292,10 @@ def requestPayout(request):
 			status=status.HTTP_402_PAYMENT_REQUIRED,
 		)
 
-	if not _connect_payouts_enabled(employee):
-		return Response(
-			{'detail': 'Add a bank account or card to receive your payout before requesting one.'},
-			status=status.HTTP_400_BAD_REQUEST,
-		)
+	# No Stripe Connect requirement here — the employee doesn't choose a
+	# payout method when requesting, the manager does when reviewing (Stripe
+	# or cash). Requiring a connected bank account up front would block
+	# exactly the employees who'd want to be paid cash instead.
 
 	try:
 		amount = Decimal(str(request.data.get('amount')))
@@ -501,6 +501,7 @@ def runPayrollNow(request):
 			status=WalletTransaction.Status.PENDING,
 			amount=balance,
 			batch_id=batch_id,
+			payout_method=WalletTransaction.PayoutMethod.STRIPE,
 			created_by=request.user,
 			note='Manual payroll run',
 		)
@@ -543,6 +544,10 @@ def reviewPayoutRequest(request, pk):
 		transaction.mark_failed(reason)
 		return Response(WalletTransactionSerializer(transaction).data, status=status.HTTP_200_OK)
 
+	payout_method = request.data.get('payout_method', WalletTransaction.PayoutMethod.STRIPE)
+	if payout_method not in (WalletTransaction.PayoutMethod.STRIPE, WalletTransaction.PayoutMethod.CASH):
+		return Response({'detail': "payout_method must be 'stripe' or 'cash'"}, status=status.HTTP_400_BAD_REQUEST)
+
 	organization = request.user.organization
 
 	if not organization.has_paid_subscription():
@@ -555,6 +560,21 @@ def reviewPayoutRequest(request, pk):
 	# stripe_connect_account_id/currency only exist on the Employee subclass,
 	# so it has to be fetched explicitly rather than read straight off the FK.
 	employee = Employee.objects.get(pk=transaction.employee_id)
+
+	if payout_method == WalletTransaction.PayoutMethod.CASH:
+		# No Stripe involved at all — the manager hands over physical cash,
+		# and the payout only finalizes once the employee confirms receipt
+		# (confirmCashPayout), since there's no third party like Stripe to
+		# confirm the money actually moved.
+		transaction.payout_method = WalletTransaction.PayoutMethod.CASH
+		transaction.status = WalletTransaction.Status.AWAITING_CASH_CONFIRMATION
+		note = request.data.get('note')
+		if note:
+			transaction.note = note
+		transaction.save(update_fields=['payout_method', 'status', 'note'])
+		notify_cash_payout_pending(transaction)
+		return Response({'transaction': WalletTransactionSerializer(transaction).data}, status=status.HTTP_200_OK)
+
 	if not _connect_payouts_enabled(employee):
 		return Response(
 			{'detail': f'{employee.first_name} has not finished setting up a payout method yet.'},
@@ -563,6 +583,8 @@ def reviewPayoutRequest(request, pk):
 
 	if not (_stripe_connect_configured() and organization.stripe_customer_id):
 		return Response({'detail': 'Payments are not configured for this store yet.'}, status=status.HTTP_400_BAD_REQUEST)
+
+	transaction.payout_method = WalletTransaction.PayoutMethod.STRIPE
 
 	commission_percent = organization.effective_commission_percent()
 	commission_amount = (transaction.amount * commission_percent / Decimal('100')).quantize(Decimal('0.01'))
@@ -648,7 +670,7 @@ def reviewPayoutRequest(request, pk):
 		return Response({'detail': f'Could not start payment: {exc}'}, status=status.HTTP_400_BAD_REQUEST)
 
 	transaction.note = f'Awaiting card payment from manager — {commission_percent}% platform fee ({employee.currency.upper()} {commission_amount}) added on top'
-	transaction.save(update_fields=['note'])
+	transaction.save(update_fields=['note', 'payout_method'])
 
 	return Response(
 		{
@@ -660,6 +682,31 @@ def reviewPayoutRequest(request, pk):
 		},
 		status=status.HTTP_200_OK,
 	)
+
+
+
+
+@extend_schema(request=None, responses=None)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def confirmCashPayout(request, pk):
+	"""The employee's half of the cash-payout flow: the manager already
+	marked this request 'paying with cash' (reviewPayoutRequest), and now
+	the employee confirms they actually received it in hand. Only then does
+	it finalize as Completed and count toward payout-cycle history — until
+	confirmed it stays reserved out of their available balance but isn't
+	treated as settled."""
+	try:
+		transaction = WalletTransaction.objects.get(
+			pk=pk, employee=request.user, type=WalletTransaction.Type.PAYOUT,
+			status=WalletTransaction.Status.AWAITING_CASH_CONFIRMATION,
+		)
+	except ObjectDoesNotExist:
+		return Response({'detail': "No cash payout awaiting your confirmation with that id"}, status=status.HTTP_404_NOT_FOUND)
+
+	transaction.mark_completed()
+	notify_cash_payout_confirmed(transaction)
+	return Response(WalletTransactionSerializer(transaction).data, status=status.HTTP_200_OK)
 
 
 

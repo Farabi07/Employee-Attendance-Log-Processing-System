@@ -18,7 +18,7 @@ class WalletTransactionSerializer(serializers.ModelSerializer):
 		model = WalletTransaction
 		fields = [
 			'id', 'transaction_id', 'employee', 'type', 'status', 'amount', 'currency',
-			'related_attendance', 'batch_id', 'stripe_transfer_id', 'failure_reason',
+			'related_attendance', 'batch_id', 'payout_method', 'stripe_transfer_id', 'failure_reason',
 			'note', 'created_at', 'processed_at',
 		]
 

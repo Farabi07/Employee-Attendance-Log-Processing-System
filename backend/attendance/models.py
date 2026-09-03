@@ -236,6 +236,8 @@ class Notification(models.Model):
         RATE_CHANGED = 'rate_changed', 'Pay rate changed'
         PAY_ADJUSTMENT_SUBMITTED = 'pay_adjustment_submitted', 'Pay adjustment requested'
         PAY_ADJUSTMENT_REVIEWED = 'pay_adjustment_reviewed', 'Pay adjustment reviewed'
+        CASH_PAYOUT_PENDING = 'cash_payout_pending', 'Cash payout awaiting your confirmation'
+        CASH_PAYOUT_CONFIRMED = 'cash_payout_confirmed', 'Cash payout confirmed'
         GENERAL = 'general', 'General'
 
     recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications')

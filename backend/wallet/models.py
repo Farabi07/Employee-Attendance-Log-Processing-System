@@ -18,8 +18,16 @@ class WalletTransaction(models.Model):
 
 	class Status(models.TextChoices):
 		PENDING = 'pending', _('Pending')
+		# Manager has handed over cash and marked it paid, but the payout only
+		# counts as settled once the employee confirms they actually got it —
+		# unlike Stripe, there's no third party confirming the money moved.
+		AWAITING_CASH_CONFIRMATION = 'awaiting_confirmation', _('Awaiting employee confirmation')
 		COMPLETED = 'completed', _('Completed')
 		FAILED = 'failed', _('Failed')
+
+	class PayoutMethod(models.TextChoices):
+		STRIPE = 'stripe', _('Stripe')
+		CASH = 'cash', _('Cash')
 
 	transaction_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
 
@@ -27,11 +35,16 @@ class WalletTransaction(models.Model):
 	organization = models.ForeignKey('authentication.Organization', on_delete=models.CASCADE, related_name='wallet_transactions')
 
 	type = models.CharField(max_length=20, choices=Type.choices)
-	status = models.CharField(max_length=20, choices=Status.choices, default=Status.COMPLETED)
+	status = models.CharField(max_length=25, choices=Status.choices, default=Status.COMPLETED)
 	amount = models.DecimalField(max_digits=10, decimal_places=2)
 
 	related_attendance = models.ForeignKey('attendance.Attendance', on_delete=models.SET_NULL, null=True, blank=True, related_name='wallet_transactions')
 	batch_id = models.UUIDField(null=True, blank=True)
+
+	# Only meaningful for PAYOUT rows — which of the two settlement paths
+	# this went through. Null for older payouts recorded before this field
+	# existed, and for EARNING rows (which are never "paid out" themselves).
+	payout_method = models.CharField(max_length=20, choices=PayoutMethod.choices, null=True, blank=True)
 
 	stripe_transfer_id = models.CharField(max_length=255, null=True, blank=True)
 	failure_reason = models.TextField(null=True, blank=True)
@@ -112,7 +125,11 @@ def wallet_balance(employee):
 	outgoing = WalletTransaction.objects.filter(
 		employee=employee,
 		type=WalletTransaction.Type.PAYOUT,
-		status__in=[WalletTransaction.Status.PENDING, WalletTransaction.Status.COMPLETED],
+		status__in=[
+			WalletTransaction.Status.PENDING,
+			WalletTransaction.Status.AWAITING_CASH_CONFIRMATION,
+			WalletTransaction.Status.COMPLETED,
+		],
 	).aggregate(s=Sum('amount'))['s'] or 0
 
 	return earnings - outgoing
@@ -120,9 +137,11 @@ def wallet_balance(employee):
 
 def wallet_pending_payout(employee):
 	"""Money that's already been requested/queued for payout but hasn't
-	settled to the employee's bank yet."""
+	settled to the employee's bank (or hand) yet."""
 	return WalletTransaction.objects.filter(
-		employee=employee, type=WalletTransaction.Type.PAYOUT, status=WalletTransaction.Status.PENDING
+		employee=employee,
+		type=WalletTransaction.Type.PAYOUT,
+		status__in=[WalletTransaction.Status.PENDING, WalletTransaction.Status.AWAITING_CASH_CONFIRMATION],
 	).aggregate(s=Sum('amount'))['s'] or 0
 
 

@@ -16,6 +16,7 @@ urlpatterns = [
 	path('api/v1/payroll/export/excel/', views.exportPayrollExcel),
 	path('api/v1/payout/<int:pk>/review/', views.reviewPayoutRequest),
 	path('api/v1/payout/confirm/', views.confirmPayoutCheckout),
+	path('api/v1/payout/<int:pk>/confirm_cash/', views.confirmCashPayout),
 
 	path('api/v1/transactions/', views.listTransactions),
 
