@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { View, Text, TextInput, ScrollView, Pressable, Linking, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Check, X, Clock3, Paperclip } from "lucide-react-native";
+import { Check, X, Clock3, Paperclip, Repeat } from "lucide-react-native";
 import { T, fonts } from "../../theme";
 import { api, BASE_URL } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
@@ -116,6 +116,9 @@ export default function Approvals() {
   const [decidingId, setDecidingId] = useState<number | null>(null);
   const [payAdjustments, setPayAdjustments] = useState<any[]>([]);
   const [loadingAdjustments, setLoadingAdjustments] = useState(true);
+  const [swapRequests, setSwapRequests] = useState<any[]>([]);
+  const [loadingSwaps, setLoadingSwaps] = useState(true);
+  const [decidingSwapId, setDecidingSwapId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     const res = await api.get(endpoints.leaveRequestAll("?status=pending&size=100"));
@@ -127,10 +130,16 @@ export default function Approvals() {
     setPayAdjustments(res.requests || []);
   }, []);
 
+  const loadSwaps = useCallback(async () => {
+    const res = await api.get(endpoints.shiftSwapAll());
+    setSwapRequests(res.pending || []);
+  }, []);
+
   useEffect(() => {
     load().finally(() => setLoading(false));
     loadAdjustments().finally(() => setLoadingAdjustments(false));
-  }, [load, loadAdjustments]);
+    loadSwaps().finally(() => setLoadingSwaps(false));
+  }, [load, loadAdjustments, loadSwaps]);
 
   const decide = async (id: number, status: string) => {
     setDecidingId(id);
@@ -139,6 +148,16 @@ export default function Approvals() {
       await load();
     } finally {
       setDecidingId(null);
+    }
+  };
+
+  const decideSwap = async (id: number, action: "approve" | "reject") => {
+    setDecidingSwapId(id);
+    try {
+      await api.post(endpoints.shiftSwapReview(id), { action });
+      await loadSwaps();
+    } finally {
+      setDecidingSwapId(null);
     }
   };
 
@@ -193,6 +212,44 @@ export default function Approvals() {
           <View style={{ gap: 12 }}>
             {payAdjustments.map((r) => (
               <PayAdjustmentRow key={r.id} request={r} onDecided={loadAdjustments} />
+            ))}
+          </View>
+        </Card>
+
+        <Card style={styles.card}>
+          <View style={styles.iconTitleRow}>
+            <Repeat size={16} color={T.ink} />
+            <Text style={styles.cardTitle}>Shift swap approvals</Text>
+          </View>
+          <Text style={styles.cardSubtitle}>
+            {loadingSwaps ? "Loading…" : `${swapRequests.length} awaiting your review`} — a colleague already agreed to take
+            the shift, this finalizes it.
+          </Text>
+          {!loadingSwaps && swapRequests.length === 0 && <Text style={styles.emptyText}>Nothing pending here either.</Text>}
+          <View style={{ gap: 12 }}>
+            {swapRequests.map((s) => (
+              <View key={s.id} style={styles.rowCard}>
+                <View style={styles.rowTop}>
+                  <Avatar initials={initialsOf(s.requested_by)} size={38} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.name}>
+                      {s.requested_by?.first_name} {s.requested_by?.last_name} → {s.claimed_by?.first_name} {s.claimed_by?.last_name}
+                    </Text>
+                    <Text style={styles.meta}>
+                      {s.roster?.shift?.name || "Shift"} · {s.roster?.date}
+                    </Text>
+                    {!!s.reason && <Text style={styles.reasonText}>"{s.reason}"</Text>}
+                  </View>
+                  <View style={styles.leaveActions}>
+                    <Pressable onPress={() => decideSwap(s.id, "reject")} disabled={decidingSwapId === s.id} style={styles.rejectButton}>
+                      <X size={16} color={T.coral} />
+                    </Pressable>
+                    <Pressable onPress={() => decideSwap(s.id, "approve")} disabled={decidingSwapId === s.id} style={styles.approveButton}>
+                      <Check size={16} color="#fff" />
+                    </Pressable>
+                  </View>
+                </View>
+              </View>
             ))}
           </View>
         </Card>

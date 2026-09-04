@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, ScrollView, TextInput, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, TextInput, StyleSheet, ActivityIndicator, Switch } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
+import { CalendarClock } from "lucide-react-native";
 import { T, fonts } from "../../theme";
 import { useAuth } from "../../lib/auth";
 import { api } from "../../lib/api";
@@ -9,7 +10,14 @@ import { endpoints } from "../../lib/endpoints";
 import Card from "../../components/Card";
 import StatusPill from "../../components/StatusPill";
 import DateField from "../../components/DateField";
+import TimeField from "../../components/TimeField";
 import { PrimaryButton } from "../../components/Button";
+
+const DAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+function defaultWeek() {
+  return DAY_LABELS.map((_, i) => ({ day_of_week: i, is_available: true, start_time: "", end_time: "" }));
+}
 
 // Ported from frontend/src/pages/employee/Leave.jsx. The web version's
 // side-by-side (request form | history) grid becomes one scrollable
@@ -27,20 +35,53 @@ export default function Leave() {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  const [availability, setAvailability] = useState(defaultWeek());
+  const [savingAvailability, setSavingAvailability] = useState(false);
+  const [availabilityMessage, setAvailabilityMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
   const load = useCallback(async () => {
-    const [typesRes, historyRes] = await Promise.all([
+    const [typesRes, historyRes, availabilityRes] = await Promise.all([
       api.get(endpoints.leaveTypesAll()),
       api.get(endpoints.leaveRequestByEmployee(user!.id, "?size=100")),
+      api.get(endpoints.availabilityMine()),
     ]);
     const types = typesRes.leave_types || [];
     setLeaveTypes(types);
     setHistory(historyRes.leave_requests || []);
     setLeaveTypeId((current) => current || (types.length ? String(types[0].id) : ""));
+
+    const byDay: Record<number, any> = {};
+    for (const row of availabilityRes.availability || []) byDay[row.day_of_week] = row;
+    setAvailability(
+      defaultWeek().map((d) => {
+        const saved = byDay[d.day_of_week];
+        return saved
+          ? { day_of_week: d.day_of_week, is_available: saved.is_available, start_time: saved.start_time || "", end_time: saved.end_time || "" }
+          : d;
+      })
+    );
   }, [user!.id]);
 
   useEffect(() => {
     load().finally(() => setLoading(false));
   }, [load]);
+
+  const updateDay = (dayOfWeek: number, patch: Partial<{ is_available: boolean; start_time: string; end_time: string }>) => {
+    setAvailability((week) => week.map((d) => (d.day_of_week === dayOfWeek ? { ...d, ...patch } : d)));
+  };
+
+  const saveAvailability = async () => {
+    setSavingAvailability(true);
+    setAvailabilityMessage(null);
+    try {
+      await api.put(endpoints.availabilityMineUpdate(), { days: availability });
+      setAvailabilityMessage({ type: "success", text: "Availability saved." });
+    } catch (err: any) {
+      setAvailabilityMessage({ type: "error", text: err.message });
+    } finally {
+      setSavingAvailability(false);
+    }
+  };
 
   const handleSubmit = async () => {
     setMessage(null);
@@ -123,6 +164,39 @@ export default function Leave() {
             </View>
           ))}
         </Card>
+
+        <Card style={styles.card}>
+          <View style={styles.iconTitleRow}>
+            <CalendarClock size={16} color={T.ink} />
+            <Text style={styles.title}>Weekly availability</Text>
+          </View>
+          <Text style={styles.availabilityHint}>
+            Let your manager know which days you're generally free to work — advisory only, it doesn't block them from rostering you outside it.
+          </Text>
+          {availability.map((d) => (
+            <View key={d.day_of_week} style={[styles.availRow, d.day_of_week > 0 && styles.historyRowBorder]}>
+              <Text style={styles.availDay}>{DAY_LABELS[d.day_of_week]}</Text>
+              <Switch
+                value={d.is_available}
+                onValueChange={(v) => updateDay(d.day_of_week, { is_available: v })}
+                trackColor={{ false: T.line, true: T.tealBg }}
+                thumbColor={d.is_available ? T.teal : T.faint}
+              />
+              <TimeField value={d.start_time} onChange={(v) => updateDay(d.day_of_week, { start_time: v })} disabled={!d.is_available} />
+              <TimeField value={d.end_time} onChange={(v) => updateDay(d.day_of_week, { end_time: v })} disabled={!d.is_available} />
+            </View>
+          ))}
+          <PrimaryButton
+            title={savingAvailability ? "Saving…" : "Save availability"}
+            onPress={saveAvailability}
+            loading={savingAvailability}
+          />
+          {availabilityMessage && (
+            <Text style={[styles.messageText, { color: availabilityMessage.type === "error" ? T.coral : T.teal }]}>
+              {availabilityMessage.text}
+            </Text>
+          )}
+        </Card>
       </ScrollView>
     </SafeAreaView>
   );
@@ -154,4 +228,8 @@ const styles = StyleSheet.create({
   historyRowBorder: { borderTopWidth: 1, borderTopColor: T.line2 },
   historyType: { fontFamily: fonts.body.medium, fontSize: 13.5, color: T.ink, marginBottom: 3 },
   historyDates: { fontFamily: fonts.mono.regular, fontSize: 12, color: T.muted },
+  iconTitleRow: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 6 },
+  availabilityHint: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 14, lineHeight: 18 },
+  availRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 9 },
+  availDay: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink, width: 78 },
 });

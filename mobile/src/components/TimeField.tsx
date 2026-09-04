@@ -11,10 +11,12 @@ export default function TimeField({
   label,
   value,
   onChange,
+  disabled,
 }: {
   label?: string;
   value: string; // "HH:MM"
   onChange: (hhmm: string) => void;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -37,10 +39,12 @@ export default function TimeField({
   return (
     <View style={{ flex: 1 }}>
       {!!label && <Text style={styles.label}>{label}</Text>}
-      <Pressable style={styles.input} onPress={() => setOpen(true)}>
-        <Text style={styles.valueText}>{value || "--:--"}</Text>
+      <Pressable style={[styles.input, disabled && styles.inputDisabled]} onPress={() => !disabled && setOpen(true)}>
+        <Text style={[styles.valueText, disabled && styles.valueTextDisabled]}>{value || "--:--"}</Text>
       </Pressable>
-      {open && <DateTimePicker value={toDate()} mode="time" is24Hour display={Platform.OS === "ios" ? "spinner" : "default"} onChange={handleChange} />}
+      {open && !disabled && (
+        <DateTimePicker value={toDate()} mode="time" is24Hour display={Platform.OS === "ios" ? "spinner" : "default"} onChange={handleChange} />
+      )}
     </View>
   );
 }
@@ -48,5 +52,7 @@ export default function TimeField({
 const styles = StyleSheet.create({
   label: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 6 },
   input: { paddingVertical: 9, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: T.line },
+  inputDisabled: { opacity: 0.4 },
   valueText: { fontFamily: fonts.body.regular, fontSize: 13.5, color: T.ink },
+  valueTextDisabled: { color: T.faint },
 });

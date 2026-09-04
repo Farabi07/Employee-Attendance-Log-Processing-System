@@ -6,9 +6,10 @@ import { T, fonts } from "../../theme";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import { downloadAndShare, writeAndShareText } from "../../lib/download";
-import { weekDates, formatDayLabel, formatDuration, todayISO } from "../../lib/dates";
+import { weekDates, formatDayLabel, formatDuration, formatTime, todayISO } from "../../lib/dates";
 import Card from "../../components/Card";
 import DateField from "../../components/DateField";
+import StatusPill from "../../components/StatusPill";
 
 // Ported from frontend/src/pages/manager/Reports.jsx. The client-side CSV
 // export (Blob + <a download>) becomes writeAndShareText (see lib/download.js).
@@ -36,6 +37,11 @@ export default function Reports() {
   const [absentBusy, setAbsentBusy] = useState(false);
   const [absentMsg, setAbsentMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  const [view, setView] = useState<"summary" | "timesheet">("summary");
+  const [timesheetRows, setTimesheetRows] = useState<any[]>([]);
+  const [timesheetLoading, setTimesheetLoading] = useState(true);
+  const [timesheetExporting, setTimesheetExporting] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     setLoading(true);
     const [attRes, leaveRes] = await Promise.all([
@@ -47,9 +53,30 @@ export default function Reports() {
     setLoading(false);
   }, [dateFrom, dateTo]);
 
+  const loadTimesheet = useCallback(async () => {
+    setTimesheetLoading(true);
+    const res = await api.get(endpoints.timesheet(`?date_from=${dateFrom}&date_to=${dateTo}`));
+    setTimesheetRows(res.rows || []);
+    setTimesheetLoading(false);
+  }, [dateFrom, dateTo]);
+
   useEffect(() => {
     load();
-  }, [load]);
+    loadTimesheet();
+  }, [load, loadTimesheet]);
+
+  const exportTimesheet = async (kind: "csv" | "pdf" | "excel") => {
+    setTimesheetExporting(kind);
+    try {
+      const params = `?date_from=${dateFrom}&date_to=${dateTo}`;
+      const filename = `timesheet_${dateFrom}_to_${dateTo}`;
+      if (kind === "csv") await downloadAndShare(endpoints.timesheetExportCsv(params), `${filename}.csv`);
+      else if (kind === "pdf") await downloadAndShare(endpoints.timesheetExportPdf(params), `${filename}.pdf`);
+      else await downloadAndShare(endpoints.timesheetExportExcel(params), `${filename}.xlsx`);
+    } finally {
+      setTimesheetExporting(null);
+    }
+  };
 
   const rows = useMemo(() => {
     const byEmployee: Record<number, { name: string; days: number; hours: number; leaveDays: number }> = {};
@@ -116,7 +143,7 @@ export default function Reports() {
     <SafeAreaView style={styles.safe} edges={[]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Card style={styles.card}>
-          <Text style={styles.cardTitle}>Attendance report</Text>
+          <Text style={styles.cardTitle}>{view === "summary" ? "Attendance report" : "Timesheet"}</Text>
           <Text style={styles.subtitle}>
             {formatDayLabel(dateFrom)} – {formatDayLabel(dateTo)}
           </Text>
@@ -126,49 +153,118 @@ export default function Reports() {
             <DateField label="To" value={dateTo} onChange={setDateTo} />
           </View>
 
-          <View style={styles.exportRow}>
-            <Pressable onPress={exportCsv} disabled={rows.length === 0 || exporting !== null} style={styles.exportButton}>
-              <Download size={14} color={T.navyDeep} />
-              <Text style={styles.exportButtonText}>{exporting === "csv" ? "Preparing…" : "CSV"}</Text>
-            </Pressable>
-            <Pressable onPress={() => exportServer("pdf")} disabled={exporting !== null} style={styles.exportButton}>
-              <FileText size={14} color={T.navyDeep} />
-              <Text style={styles.exportButtonText}>{exporting === "pdf" ? "Preparing…" : "PDF"}</Text>
-            </Pressable>
-            <Pressable onPress={() => exportServer("excel")} disabled={exporting !== null} style={styles.exportButton}>
-              <FileSpreadsheet size={14} color={T.navyDeep} />
-              <Text style={styles.exportButtonText}>{exporting === "excel" ? "Preparing…" : "Excel"}</Text>
-            </Pressable>
+          <View style={styles.viewToggleRow}>
+            {(
+              [
+                { key: "summary", label: "Summary" },
+                { key: "timesheet", label: "Timesheet" },
+              ] as const
+            ).map((v) => (
+              <Pressable
+                key={v.key}
+                onPress={() => setView(v.key)}
+                style={[styles.viewToggle, { backgroundColor: view === v.key ? T.navy : T.navyBg }]}
+              >
+                <Text style={[styles.viewToggleText, { color: view === v.key ? T.paper : T.navyDeep }]}>{v.label}</Text>
+              </Pressable>
+            ))}
           </View>
 
-          {loading ? (
-            <ActivityIndicator color={T.navy} />
-          ) : rows.length === 0 ? (
-            <Text style={styles.bodyMuted}>No attendance or leave records in this range.</Text>
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View>
-                <View style={styles.tableHeaderRow}>
-                  {["Employee", "Days present", "Hours worked", "Leave days"].map((h) => (
-                    <Text key={h} style={[styles.tableHeaderCell, { width: reportColumnWidths[h] }]}>
-                      {h}
-                    </Text>
-                  ))}
-                </View>
-                {rows.map((r) => (
-                  <View key={r.name} style={styles.tableRow}>
-                    <Text style={[styles.tableCell, { width: reportColumnWidths.Employee }]}>{r.name}</Text>
-                    <Text style={[styles.tableCellMono, { width: reportColumnWidths["Days present"] }]}>
-                      {r.days} / {totalDays}
-                    </Text>
-                    <Text style={[styles.tableCellMono, { width: reportColumnWidths["Hours worked"] }]}>{formatDuration(r.hours)}</Text>
-                    <Text style={[styles.tableCellMono, { width: reportColumnWidths["Leave days"], color: r.leaveDays ? T.amber : T.faint }]}>
-                      {r.leaveDays}
-                    </Text>
-                  </View>
-                ))}
+          {view === "summary" ? (
+            <>
+              <View style={styles.exportRow}>
+                <Pressable onPress={exportCsv} disabled={rows.length === 0 || exporting !== null} style={styles.exportButton}>
+                  <Download size={14} color={T.navyDeep} />
+                  <Text style={styles.exportButtonText}>{exporting === "csv" ? "Preparing…" : "CSV"}</Text>
+                </Pressable>
+                <Pressable onPress={() => exportServer("pdf")} disabled={exporting !== null} style={styles.exportButton}>
+                  <FileText size={14} color={T.navyDeep} />
+                  <Text style={styles.exportButtonText}>{exporting === "pdf" ? "Preparing…" : "PDF"}</Text>
+                </Pressable>
+                <Pressable onPress={() => exportServer("excel")} disabled={exporting !== null} style={styles.exportButton}>
+                  <FileSpreadsheet size={14} color={T.navyDeep} />
+                  <Text style={styles.exportButtonText}>{exporting === "excel" ? "Preparing…" : "Excel"}</Text>
+                </Pressable>
               </View>
-            </ScrollView>
+
+              {loading ? (
+                <ActivityIndicator color={T.navy} />
+              ) : rows.length === 0 ? (
+                <Text style={styles.bodyMuted}>No attendance or leave records in this range.</Text>
+              ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View>
+                    <View style={styles.tableHeaderRow}>
+                      {["Employee", "Days present", "Hours worked", "Leave days"].map((h) => (
+                        <Text key={h} style={[styles.tableHeaderCell, { width: reportColumnWidths[h] }]}>
+                          {h}
+                        </Text>
+                      ))}
+                    </View>
+                    {rows.map((r) => (
+                      <View key={r.name} style={styles.tableRow}>
+                        <Text style={[styles.tableCell, { width: reportColumnWidths.Employee }]}>{r.name}</Text>
+                        <Text style={[styles.tableCellMono, { width: reportColumnWidths["Days present"] }]}>
+                          {r.days} / {totalDays}
+                        </Text>
+                        <Text style={[styles.tableCellMono, { width: reportColumnWidths["Hours worked"] }]}>{formatDuration(r.hours)}</Text>
+                        <Text style={[styles.tableCellMono, { width: reportColumnWidths["Leave days"], color: r.leaveDays ? T.amber : T.faint }]}>
+                          {r.leaveDays}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </ScrollView>
+              )}
+            </>
+          ) : (
+            <>
+              <View style={styles.exportRow}>
+                <Pressable onPress={() => exportTimesheet("csv")} disabled={timesheetExporting !== null} style={styles.exportButton}>
+                  <Download size={14} color={T.navyDeep} />
+                  <Text style={styles.exportButtonText}>{timesheetExporting === "csv" ? "Preparing…" : "CSV"}</Text>
+                </Pressable>
+                <Pressable onPress={() => exportTimesheet("pdf")} disabled={timesheetExporting !== null} style={styles.exportButton}>
+                  <FileText size={14} color={T.navyDeep} />
+                  <Text style={styles.exportButtonText}>{timesheetExporting === "pdf" ? "Preparing…" : "PDF"}</Text>
+                </Pressable>
+                <Pressable onPress={() => exportTimesheet("excel")} disabled={timesheetExporting !== null} style={styles.exportButton}>
+                  <FileSpreadsheet size={14} color={T.navyDeep} />
+                  <Text style={styles.exportButtonText}>{timesheetExporting === "excel" ? "Preparing…" : "Excel"}</Text>
+                </Pressable>
+              </View>
+
+              {timesheetLoading ? (
+                <ActivityIndicator color={T.navy} />
+              ) : timesheetRows.length === 0 ? (
+                <Text style={styles.bodyMuted}>No clock-in/out records in this range.</Text>
+              ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View>
+                    <View style={styles.tableHeaderRow}>
+                      {["Employee", "Date", "Scheduled", "Check-in", "Check-out", "Hours", "Status"].map((h) => (
+                        <Text key={h} style={[styles.tableHeaderCell, { width: timesheetColumnWidths[h] }]}>
+                          {h}
+                        </Text>
+                      ))}
+                    </View>
+                    {timesheetRows.map((r, i) => (
+                      <View key={i} style={styles.tableRow}>
+                        <Text style={[styles.tableCell, { width: timesheetColumnWidths.Employee }]}>{r.name}</Text>
+                        <Text style={[styles.tableCellMono, { width: timesheetColumnWidths.Date }]}>{r.date}</Text>
+                        <Text style={[styles.tableCell, { width: timesheetColumnWidths.Scheduled }]}>{r.scheduled_shift || "—"}</Text>
+                        <Text style={[styles.tableCellMono, { width: timesheetColumnWidths["Check-in"] }]}>{formatTime(r.check_in)}</Text>
+                        <Text style={[styles.tableCellMono, { width: timesheetColumnWidths["Check-out"] }]}>{formatTime(r.check_out)}</Text>
+                        <Text style={[styles.tableCellMono, { width: timesheetColumnWidths.Hours }]}>{formatDuration(r.worked_hours)}</Text>
+                        <View style={{ width: timesheetColumnWidths.Status }}>
+                          <StatusPill status={r.status} />
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </ScrollView>
+              )}
+            </>
           )}
         </Card>
 
@@ -205,6 +301,16 @@ const reportColumnWidths: Record<string, number> = {
   "Leave days": 100,
 };
 
+const timesheetColumnWidths: Record<string, number> = {
+  Employee: 150,
+  Date: 90,
+  Scheduled: 110,
+  "Check-in": 80,
+  "Check-out": 80,
+  Hours: 80,
+  Status: 130,
+};
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: T.paper },
   scrollContent: { padding: 16, gap: 16 },
@@ -214,6 +320,9 @@ const styles = StyleSheet.create({
   iconTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
   bodyMuted: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 14 },
   dateRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
+  viewToggleRow: { flexDirection: "row", gap: 8, marginBottom: 14 },
+  viewToggle: { paddingVertical: 7, paddingHorizontal: 14, borderRadius: 8 },
+  viewToggleText: { fontFamily: fonts.body.semibold, fontSize: 12.5 },
   exportRow: { flexDirection: "row", gap: 8, flexWrap: "wrap", marginBottom: 18 },
   exportButton: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 9, paddingHorizontal: 14, borderRadius: 9, backgroundColor: T.navyBg },
   exportButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.navyDeep },

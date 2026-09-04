@@ -16,6 +16,11 @@ import InlinePicker from "../../components/InlinePicker";
 import { PrimaryButton } from "../../components/Button";
 import LiveQrDisplay from "../../components/LiveQrDisplay";
 
+function dayOfWeekFromDate(isoDate: string) {
+  const jsDay = new Date(`${isoDate}T00:00:00`).getDay(); // 0=Sun..6=Sat
+  return (jsDay + 6) % 7; // 0=Mon..6=Sun, matching the backend's DayOfWeek
+}
+
 // Ported from frontend/src/pages/manager/Roster.jsx. `window.confirm` for
 // shift/leave-type deletion becomes `Alert.alert` with a destructive
 // confirm action. LiveQrDisplay is imported as its own RN port (see
@@ -29,6 +34,7 @@ export default function Roster() {
   const [branches, setBranches] = useState<any[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<any[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
+  const [availabilityByEmployee, setAvailabilityByEmployee] = useState<Record<string, Record<number, any>>>({});
   const [loading, setLoading] = useState(true);
 
   const [employeeId, setEmployeeId] = useState("");
@@ -62,12 +68,13 @@ export default function Roster() {
   const [geoMsg, setGeoMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const load = useCallback(async () => {
-    const [empRes, shiftRes, branchRes, leaveTypeRes, rosterRes] = await Promise.all([
+    const [empRes, shiftRes, branchRes, leaveTypeRes, rosterRes, availabilityRes] = await Promise.all([
       api.get(endpoints.employeesAll()),
       api.get(endpoints.shiftsAll()),
       api.get(endpoints.branchesAll()),
       api.get(endpoints.leaveTypesAll()),
       api.get(endpoints.rosterAll("?size=50")),
+      api.get(endpoints.availabilityAll()),
     ]);
     const emps = empRes.employees || [];
     const shiftList = shiftRes.shifts || [];
@@ -78,6 +85,14 @@ export default function Roster() {
     setBranches(branchList);
     setLeaveTypes(leaveTypeRes.leave_types || []);
     setAssignments((rosterRes.rosters || []).filter((r: any) => r.date >= todayISO()).sort((a: any, b: any) => a.date.localeCompare(b.date)));
+
+    const availByEmp: Record<string, Record<number, any>> = {};
+    for (const row of availabilityRes.availability || []) {
+      const empId = row.employee?.id;
+      if (!empId) continue;
+      (availByEmp[empId] ||= {})[row.day_of_week] = row;
+    }
+    setAvailabilityByEmployee(availByEmp);
 
     setEmployeeId((cur) => cur || (emps.length ? String(emps[0].id) : ""));
     setShiftId((cur) => cur || (shiftList.length ? String(shiftList[0].id) : ""));
@@ -277,6 +292,16 @@ export default function Roster() {
           />
 
           <DateField label="Date" value={date} onChange={setDate} />
+          {(() => {
+            const day = availabilityByEmployee[employeeId]?.[dayOfWeekFromDate(date)];
+            if (!day) return null;
+            const hours = day.start_time && day.end_time ? ` (${day.start_time.slice(0, 5)}–${day.end_time.slice(0, 5)})` : "";
+            return (
+              <Text style={[styles.availabilityHint, { color: day.is_available ? T.tealDeep : T.coral }]}>
+                {day.is_available ? `✓ Usually available${hours}` : "⚠ Marked unavailable this day"}
+              </Text>
+            );
+          })()}
 
           <View style={{ marginTop: 14, marginBottom: 14 }}>
             <Text style={styles.label}>Shift</Text>
@@ -535,6 +560,7 @@ const styles = StyleSheet.create({
   bodyMuted: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 12 },
   errorText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.coral, marginBottom: 12 },
   messageText: { fontFamily: fonts.body.regular, fontSize: 12.5, marginTop: 10, textAlign: "center" },
+  availabilityHint: { fontFamily: fonts.body.regular, fontSize: 11.5, marginTop: 6 },
   rowHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
   linkText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.teal },
   shiftRow: { flexDirection: "row", alignItems: "center", paddingVertical: 8, borderTopWidth: 1, borderTopColor: T.line2, gap: 4 },
