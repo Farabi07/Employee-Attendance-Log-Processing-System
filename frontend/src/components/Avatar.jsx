@@ -1,7 +1,7 @@
 import React from "react";
 import { T, fontDisplay } from "../theme";
 
-export default function Avatar({ initials, size = 38 }) {
+export default function Avatar({ initials, size = 38, src }) {
   return (
     <div
       style={{
@@ -17,9 +17,10 @@ export default function Avatar({ initials, size = 38 }) {
         fontWeight: 600,
         fontSize: size * 0.36,
         flexShrink: 0,
+        overflow: "hidden",
       }}
     >
-      {initials}
+      {src ? <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initials}
     </div>
   );
 }

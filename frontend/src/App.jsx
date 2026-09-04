@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { LogOut } from "lucide-react";
 import { T, fontDisplay, fontBody } from "./theme";
+import { BASE_URL } from "./lib/api";
 import { useAuth } from "./lib/auth";
 import { useIsMobile } from "./lib/useMediaQuery";
 import Sidebar, { EMP_NAV, MGR_NAV } from "./components/Sidebar";
@@ -74,7 +75,7 @@ function Shell() {
                 style={{ display: "flex", alignItems: "center", gap: 10, border: "none", background: "transparent", cursor: "pointer", padding: 0 }}
                 aria-label="Profile"
               >
-                <Avatar initials={initials} size={34} />
+                <Avatar initials={initials} size={34} src={user.image ? `${BASE_URL}${user.image}` : undefined} />
                 {!isMobile && (
                   <div style={{ textAlign: "left" }}>
                     <p style={{ fontFamily: fontBody, fontSize: 13, fontWeight: 600, color: T.ink, margin: 0 }}>
