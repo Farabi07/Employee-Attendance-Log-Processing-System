@@ -11,7 +11,7 @@ export const T = {
   ink: "#132A38",
   paper: "#F5F9FB",
   card: "#FFFFFF",
-  line: "#DCE6ED",
+  line: "#C6D8E3",
   line2: "#EBF2F6",
   muted: "#5C7686",
   faint: "#93A8B4",
