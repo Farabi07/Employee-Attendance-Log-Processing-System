@@ -71,6 +71,8 @@ urlpatterns = [
 	path('leave_request/', include('attendance.urls.leave_request_urls')),
 	path('attendance/', include('attendance.urls.attendance_urls')),
 	path('notification/', include('attendance.urls.notification_urls')),
+	path('availability/', include('attendance.urls.availability_urls')),
+	path('shift_swap/', include('attendance.urls.shift_swap_urls')),
 
 	# Multi-tenant SaaS: signup + platform owner
 	path('saas/', include('authentication.urls.signup_urls')),

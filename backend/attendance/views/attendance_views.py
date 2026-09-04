@@ -22,8 +22,8 @@ from attendance.models import Attendance, AttendanceQRToken, Roster, QR_CODE_PER
 from attendance.serializers import AttendanceSerializer, AttendanceListSerializer, AttendanceQRTokenSerializer
 from attendance.filters import AttendanceFilter
 from attendance.geo import distance_meters
-from attendance.reports import build_report_rows
-from attendance.exporters import render_pdf, render_excel
+from attendance.reports import build_report_rows, build_timesheet_rows
+from attendance.exporters import render_pdf, render_excel, render_timesheet_csv, render_timesheet_pdf, render_timesheet_excel
 from attendance.absentee import mark_absent_for_date
 
 from commons.pagination import Pagination
@@ -614,3 +614,86 @@ def runMarkAbsent(request):
 
 	marked = mark_absent_for_date(target_date, organization=request.user.organization)
 	return Response({'detail': f'Marked {len(marked)} employee(s) absent for {target_date}', 'date': str(target_date), 'count': len(marked)}, status=status.HTTP_200_OK)
+
+
+
+
+def _timesheet_rows_for_request(request, date_from, date_to):
+	"""Manager/Moderator: everyone in the store, or one employee via
+	?employee_id=. Plain employee: always just their own — employee_id in
+	the query string is ignored for them, not honored."""
+	if request.user.is_manager_or_moderator():
+		employee_id = request.query_params.get('employee_id')
+		return build_timesheet_rows(date_from, date_to, request.user.organization, employee_id=employee_id)
+	return build_timesheet_rows(date_from, date_to, request.user.organization, employee_id=request.user.id)
+
+
+
+
+@extend_schema(
+	parameters=[OpenApiParameter("date_from"), OpenApiParameter("date_to"), OpenApiParameter("employee_id")],
+	request=None, responses=None,
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, HasActiveSubscription])
+def getTimesheet(request):
+	date_from, date_to, error = _parse_report_range(request)
+	if error:
+		return error
+
+	rows = _timesheet_rows_for_request(request, date_from, date_to)
+	return Response({'rows': rows}, status=status.HTTP_200_OK)
+
+
+
+
+@extend_schema(request=None, responses=None)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, HasActiveSubscription])
+def exportTimesheetCsv(request):
+	date_from, date_to, error = _parse_report_range(request)
+	if error:
+		return error
+
+	rows = _timesheet_rows_for_request(request, date_from, date_to)
+	csv_bytes = render_timesheet_csv(rows)
+
+	response = HttpResponse(csv_bytes, content_type='text/csv')
+	response['Content-Disposition'] = f'attachment; filename="timesheet_{date_from}_to_{date_to}.csv"'
+	return response
+
+
+
+
+@extend_schema(request=None, responses=None)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, HasActiveSubscription])
+def exportTimesheetPdf(request):
+	date_from, date_to, error = _parse_report_range(request)
+	if error:
+		return error
+
+	rows = _timesheet_rows_for_request(request, date_from, date_to)
+	pdf_bytes = render_timesheet_pdf(rows, date_from, date_to)
+
+	response = HttpResponse(pdf_bytes, content_type='application/pdf')
+	response['Content-Disposition'] = f'attachment; filename="timesheet_{date_from}_to_{date_to}.pdf"'
+	return response
+
+
+
+
+@extend_schema(request=None, responses=None)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, HasActiveSubscription])
+def exportTimesheetExcel(request):
+	date_from, date_to, error = _parse_report_range(request)
+	if error:
+		return error
+
+	rows = _timesheet_rows_for_request(request, date_from, date_to)
+	excel_bytes = render_timesheet_excel(rows, date_from, date_to)
+
+	response = HttpResponse(excel_bytes, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+	response['Content-Disposition'] = f'attachment; filename="timesheet_{date_from}_to_{date_to}.xlsx"'
+	return response

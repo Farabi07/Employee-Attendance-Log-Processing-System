@@ -228,6 +228,83 @@ class LeaveRequest(models.Model):
 
 
 
+class Availability(models.Model):
+    """One row per employee per weekday — their recurring 'generally free
+    to work' pattern, distinct from LeaveRequest (a specific date range
+    they're explicitly off). Managers read this when building the Roster;
+    it's advisory only, nothing blocks a manager from scheduling outside it."""
+
+    class DayOfWeek(models.IntegerChoices):
+        MONDAY = 0, 'Monday'
+        TUESDAY = 1, 'Tuesday'
+        WEDNESDAY = 2, 'Wednesday'
+        THURSDAY = 3, 'Thursday'
+        FRIDAY = 4, 'Friday'
+        SATURDAY = 5, 'Saturday'
+        SUNDAY = 6, 'Sunday'
+
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='availability')
+    day_of_week = models.PositiveSmallIntegerField(choices=DayOfWeek.choices)
+    is_available = models.BooleanField(default=True)
+    # Null start/end with is_available=True means "available all day".
+    start_time = models.TimeField(null=True, blank=True)
+    end_time = models.TimeField(null=True, blank=True)
+    note = models.CharField(max_length=255, null=True, blank=True)
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ('day_of_week',)
+        unique_together = ('employee', 'day_of_week')
+        verbose_name_plural = 'Availability'
+
+    def __str__(self):
+        return f"{self.employee} - {self.get_day_of_week_display()}"
+
+
+
+
+class ShiftSwapRequest(models.Model):
+    """An employee giving up one of their own upcoming Roster shifts —
+    either to a named colleague, or left open for anyone in the store to
+    claim. Two gates before the shift actually changes hands: a peer has to
+    accept/claim it, then a Manager/Moderator has to approve — at which
+    point the Roster row itself is reassigned."""
+
+    class Status(models.TextChoices):
+        PENDING_PEER = 'pending_peer', 'Awaiting a colleague'
+        PENDING_MANAGER = 'pending_manager', 'Awaiting manager approval'
+        APPROVED = 'approved', 'Approved'
+        REJECTED = 'rejected', 'Rejected'
+        CANCELLED = 'cancelled', 'Cancelled'
+
+    roster = models.ForeignKey(Roster, on_delete=models.CASCADE, related_name='swap_requests')
+    requested_by = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='swap_requests_made')
+    # Null = open request, any teammate in the store can claim it.
+    proposed_to = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, blank=True, related_name='swap_requests_received')
+    # Whoever actually accepted — same as proposed_to for a targeted
+    # request, or whoever claimed an open one.
+    claimed_by = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, blank=True, related_name='swap_requests_claimed')
+
+    reason = models.CharField(max_length=255, null=True, blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING_PEER)
+
+    manager_note = models.CharField(max_length=255, null=True, blank=True)
+    reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ('-created_at',)
+
+    def __str__(self):
+        return f"{self.requested_by} - {self.roster.date} ({self.status})"
+
+
+
+
 class Notification(models.Model):
     class NotificationType(models.TextChoices):
         ROSTER_ASSIGNED = 'roster_assigned', 'Roster assigned'
@@ -238,6 +315,9 @@ class Notification(models.Model):
         PAY_ADJUSTMENT_REVIEWED = 'pay_adjustment_reviewed', 'Pay adjustment reviewed'
         CASH_PAYOUT_PENDING = 'cash_payout_pending', 'Cash payout awaiting your confirmation'
         CASH_PAYOUT_CONFIRMED = 'cash_payout_confirmed', 'Cash payout confirmed'
+        SWAP_REQUESTED = 'swap_requested', 'Shift swap requested'
+        SWAP_CLAIMED = 'swap_claimed', 'Shift swap claimed'
+        SWAP_REVIEWED = 'swap_reviewed', 'Shift swap reviewed'
         GENERAL = 'general', 'General'
 
     recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications')

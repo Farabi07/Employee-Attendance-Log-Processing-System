@@ -31,6 +31,14 @@ urlpatterns = [
 
 	path('api/v1/attendance/export/excel/', views.exportAttendanceExcel),
 
+	path('api/v1/timesheet/', views.getTimesheet),
+
+	path('api/v1/timesheet/export/csv/', views.exportTimesheetCsv),
+
+	path('api/v1/timesheet/export/pdf/', views.exportTimesheetPdf),
+
+	path('api/v1/timesheet/export/excel/', views.exportTimesheetExcel),
+
 	path('api/v1/attendance/mark_absent/', views.runMarkAbsent),
 
 	path('api/v1/attendance/<int:pk>', views.getAAttendance),

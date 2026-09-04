@@ -5,7 +5,7 @@ from rest_framework import status
 from django_currentuser.middleware import _set_current_user
 
 from authentication.models import Branch, Employee, Organization, Role
-from attendance.models import Shift, Roster, AttendanceQRToken, Attendance, LeaveType, LeaveRequest, Notification
+from attendance.models import Shift, Roster, AttendanceQRToken, Attendance, LeaveType, LeaveRequest, Notification, Availability, ShiftSwapRequest
 
 
 def make_org(name):
@@ -296,3 +296,121 @@ class RoleRestrictionTests(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
         self.assertEqual(resp.data['org_role'], 'moderator')
         self.assertEqual(resp.data['organization'], self.org.id)
+
+
+class AvailabilityTests(APITestCase):
+    def setUp(self):
+        _set_current_user(None)
+        self.org = make_org("Availability Org")
+        self.manager = make_manager(self.org, "avail.mgr@example.com")
+        self.employee = make_employee(self.org, "avail.emp@example.com")
+
+    def test_employee_can_set_and_view_own_availability(self):
+        self.client.force_authenticate(user=self.employee)
+        resp = self.client.put(
+            '/availability/api/v1/mine/update/',
+            {
+                'days': [
+                    {'day_of_week': 0, 'is_available': True, 'start_time': '09:00', 'end_time': '17:00'},
+                    {'day_of_week': 1, 'is_available': False},
+                ]
+            },
+            format='json',
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(Availability.objects.filter(employee=self.employee).count(), 2)
+
+        resp = self.client.get('/availability/api/v1/mine/')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(resp.data['availability']), 2)
+
+    def test_manager_can_view_all_availability(self):
+        Availability.objects.create(employee=self.employee, day_of_week=0, is_available=True)
+        self.client.force_authenticate(user=self.manager)
+        resp = self.client.get('/availability/api/v1/all/')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(resp.data['availability']), 1)
+
+
+class TimesheetTests(APITestCase):
+    def setUp(self):
+        _set_current_user(None)
+        self.org = make_org("Timesheet Org")
+        self.manager = make_manager(self.org, "ts.mgr@example.com")
+        self.employee = make_employee(self.org, "ts.emp@example.com")
+        today = timezone.localdate()
+        Attendance.objects.create(
+            employee=self.employee, date=today,
+            check_in_time=timezone.now(), check_out_time=timezone.now(),
+            worked_hours=8, status='present',
+        )
+
+    def test_employee_sees_only_own_timesheet(self):
+        self.client.force_authenticate(user=self.employee)
+        today = timezone.localdate()
+        resp = self.client.get(f'/attendance/api/v1/timesheet/?date_from={today}&date_to={today}')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(resp.data['rows']), 1)
+
+    def test_manager_sees_org_timesheet(self):
+        self.client.force_authenticate(user=self.manager)
+        today = timezone.localdate()
+        resp = self.client.get(f'/attendance/api/v1/timesheet/?date_from={today}&date_to={today}')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(resp.data['rows']), 1)
+
+
+class ShiftSwapTests(APITestCase):
+    def setUp(self):
+        _set_current_user(None)
+        self.org = make_org("Swap Org")
+        self.manager = make_manager(self.org, "swap.mgr@example.com")
+        self.employee_a = make_employee(self.org, "swap.a@example.com", first="A")
+        self.employee_b = make_employee(self.org, "swap.b@example.com", first="B")
+        self.shift = Shift.objects.create(name="Morning", start_time="09:00", end_time="17:00", organization=self.org)
+        self.roster = Roster.objects.create(
+            employee=self.employee_a, shift=self.shift, date=timezone.localdate() + timezone.timedelta(days=1)
+        )
+
+    def test_targeted_swap_full_flow_reassigns_roster(self):
+        self.client.force_authenticate(user=self.employee_a)
+        resp = self.client.post(
+            '/shift_swap/api/v1/request/',
+            {'roster': self.roster.id, 'proposed_to': self.employee_b.id, 'reason': 'Doctor appointment'},
+            format='json',
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        swap_id = resp.data['id']
+        self.assertTrue(Notification.objects.filter(recipient=self.employee_b, notification_type='swap_requested').exists())
+
+        self.client.force_authenticate(user=self.employee_b)
+        resp = self.client.post(f'/shift_swap/api/v1/{swap_id}/respond/', {'action': 'accept'}, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data['status'], 'pending_manager')
+        self.assertTrue(Notification.objects.filter(recipient=self.manager, notification_type='swap_claimed').exists())
+
+        self.client.force_authenticate(user=self.manager)
+        resp = self.client.post(f'/shift_swap/api/v1/{swap_id}/review/', {'action': 'approve'}, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.roster.refresh_from_db()
+        self.assertEqual(self.roster.employee_id, self.employee_b.id)
+        self.assertTrue(Notification.objects.filter(recipient=self.employee_a, notification_type='swap_reviewed').exists())
+        self.assertTrue(Notification.objects.filter(recipient=self.employee_b, notification_type='swap_reviewed').exists())
+
+    def test_cannot_request_swap_for_someone_elses_shift(self):
+        self.client.force_authenticate(user=self.employee_b)
+        resp = self.client.post('/shift_swap/api/v1/request/', {'roster': self.roster.id}, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_open_request_claimed_by_anyone(self):
+        self.client.force_authenticate(user=self.employee_a)
+        resp = self.client.post('/shift_swap/api/v1/request/', {'roster': self.roster.id}, format='json')
+        swap_id = resp.data['id']
+
+        self.client.force_authenticate(user=self.employee_b)
+        resp = self.client.get('/shift_swap/api/v1/mine/')
+        self.assertEqual(len(resp.data['open']), 1)
+
+        resp = self.client.post(f'/shift_swap/api/v1/{swap_id}/respond/', {'action': 'accept'}, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data['status'], 'pending_manager')

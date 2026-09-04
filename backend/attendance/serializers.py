@@ -258,6 +258,42 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
 
 
 
+class AvailabilitySerializer(serializers.ModelSerializer):
+	class Meta:
+		model = Availability
+		fields = ['id', 'employee', 'day_of_week', 'is_available', 'start_time', 'end_time', 'note', 'updated_at']
+		read_only_fields = ['employee']
+
+
+
+
+class AvailabilityListSerializer(serializers.ModelSerializer):
+	employee = EmployeeMinimalListSerializer()
+
+	class Meta:
+		model = Availability
+		fields = ['id', 'employee', 'day_of_week', 'is_available', 'start_time', 'end_time', 'note', 'updated_at']
+
+
+
+
+class ShiftSwapRequestListSerializer(serializers.ModelSerializer):
+	roster = RosterListSerializer()
+	requested_by = EmployeeMinimalListSerializer()
+	proposed_to = EmployeeMinimalListSerializer()
+	claimed_by = EmployeeMinimalListSerializer()
+	reviewed_by = serializers.SerializerMethodField()
+
+	class Meta:
+		model = ShiftSwapRequest
+		fields = '__all__'
+
+	def get_reviewed_by(self, obj):
+		return obj.reviewed_by.email if obj.reviewed_by else obj.reviewed_by
+
+
+
+
 class NotificationSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = Notification
