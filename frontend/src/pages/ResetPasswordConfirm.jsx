@@ -4,6 +4,7 @@ import { T, fontDisplay, fontBody } from "../theme";
 import { api } from "../lib/api";
 import { endpoints } from "../lib/endpoints";
 import Card from "../components/Card";
+import PasswordInput from "../components/PasswordInput";
 
 export default function ResetPasswordConfirm({ uid, token, onDone }) {
   const [newPassword, setNewPassword] = useState("");
@@ -52,13 +53,12 @@ export default function ResetPasswordConfirm({ uid, token, onDone }) {
         ) : (
           <form onSubmit={handleSubmit}>
             <p style={{ fontFamily: fontBody, fontSize: 13, color: T.muted, margin: "0 0 16px" }}>Choose a new password for your account.</p>
-            <input
-              type="password"
+            <PasswordInput
               required
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="New password"
-              style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: `1px solid ${T.line}`, fontFamily: fontBody, fontSize: 13.5, marginBottom: 14 }}
+              style={{ padding: "10px 12px", borderRadius: 8, border: `1px solid ${T.line}`, fontFamily: fontBody, fontSize: 13.5, marginBottom: 14 }}
             />
             {error && <p style={{ fontFamily: fontBody, fontSize: 12.5, color: T.coral, margin: "0 0 14px" }}>{error}</p>}
             <button

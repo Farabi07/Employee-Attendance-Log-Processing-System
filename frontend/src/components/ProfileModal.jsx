@@ -6,6 +6,7 @@ import { api, mediaUrl } from "../lib/api";
 import { endpoints } from "../lib/endpoints";
 import Card from "./Card";
 import Avatar from "./Avatar";
+import PasswordInput from "./PasswordInput";
 
 export default function ProfileModal({ onClose }) {
   const { user, isManager, logout, refreshUser } = useAuth();
@@ -146,16 +147,14 @@ export default function ProfileModal({ onClose }) {
         <div style={{ borderTop: `1px solid ${T.line2}`, paddingTop: 16 }}>
           <h3 style={{ fontFamily: fontDisplay, fontSize: 13.5, fontWeight: 600, color: T.ink, margin: "0 0 12px" }}>Change password</h3>
           <form onSubmit={handleSubmit}>
-            <input
-              type="password"
+            <PasswordInput
               required
               placeholder="Current password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               style={inputStyle}
             />
-            <input
-              type="password"
+            <PasswordInput
               required
               placeholder="New password"
               value={newPassword}

@@ -3,6 +3,7 @@ import { Clock } from "lucide-react";
 import { T, fontDisplay, fontBody } from "../theme";
 import { useAuth } from "../lib/auth";
 import Card from "../components/Card";
+import PasswordInput from "../components/PasswordInput";
 
 const inputStyle = { width: "100%", padding: "10px 12px", borderRadius: 8, border: `1px solid ${T.line}`, fontFamily: fontBody, fontSize: 13.5, marginBottom: 14 };
 const labelStyle = { fontFamily: fontBody, fontSize: 12.5, color: T.muted, display: "block", marginBottom: 6 };
@@ -70,7 +71,7 @@ export default function Signup({ onBackToLogin }) {
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required style={inputStyle} placeholder="you@yourstore.com" />
 
           <label style={labelStyle}>Password</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required style={inputStyle} placeholder="••••••••" />
+          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} required style={inputStyle} placeholder="••••••••" />
 
           {error && <p style={{ fontFamily: fontBody, fontSize: 12.5, color: T.coral, margin: "0 0 14px" }}>{error}</p>}
 

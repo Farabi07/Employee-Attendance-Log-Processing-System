@@ -30,6 +30,10 @@ export default function ManagerPayroll() {
   const [confirmingId, setConfirmingId] = useState(null);
   const [cashConfirmingId, setCashConfirmingId] = useState(null);
   const [cashNote, setCashNote] = useState("");
+  const [payingCashEmployeeId, setPayingCashEmployeeId] = useState(null);
+  const [directCashAmount, setDirectCashAmount] = useState("");
+  const [directCashNote, setDirectCashNote] = useState("");
+  const [payingCashBusy, setPayingCashBusy] = useState(false);
   const [currency, setCurrency] = useState("usd");
   const [savingCurrency, setSavingCurrency] = useState(false);
   const [payoutCard, setPayoutCard] = useState(undefined);
@@ -179,6 +183,28 @@ export default function ManagerPayroll() {
       setMessage({ type: "error", text: err.message });
     } finally {
       setReviewingId(null);
+    }
+  };
+
+  const openPayCash = (row) => {
+    setPayingCashEmployeeId(row.employee.id);
+    setDirectCashAmount(String(row.current_balance));
+    setDirectCashNote("");
+    setMessage(null);
+  };
+
+  const submitPayCash = async (row) => {
+    setPayingCashBusy(true);
+    setMessage(null);
+    try {
+      await api.post(endpoints.payoutPayCash(row.employee.id), { amount: directCashAmount, note: directCashNote || undefined });
+      setMessage({ type: "success", text: `Marked as paid in cash — waiting for ${row.employee.first_name} to confirm.` });
+      setPayingCashEmployeeId(null);
+      await load();
+    } catch (err) {
+      setMessage({ type: "error", text: err.message });
+    } finally {
+      setPayingCashBusy(false);
     }
   };
 
@@ -362,7 +388,7 @@ export default function ManagerPayroll() {
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 560 }}>
             <thead>
               <tr>
-                {["Employee", "Rate", "Cycle", "Next due", "This week", "Balance", "Pending"].map((h) => (
+                {["Employee", "Rate", "Cycle", "Next due", "This week", "Balance", "Pending", ""].map((h) => (
                   <th key={h} style={{ textAlign: "left", fontFamily: fontBody, fontSize: 11.5, color: T.faint, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.3, padding: "0 8px 10px", borderBottom: `1px solid ${T.line}` }}>
                     {h}
                   </th>
@@ -371,7 +397,8 @@ export default function ManagerPayroll() {
             </thead>
             <tbody>
               {summary.employees.map((row) => (
-                <tr key={row.employee.id} className="row-hover">
+                <React.Fragment key={row.employee.id}>
+                <tr className="row-hover">
                   <td style={{ padding: "10px 8px", borderBottom: `1px solid ${T.line2}`, fontFamily: fontBody, fontSize: 13, color: T.ink }}>
                     {row.employee.first_name} {row.employee.last_name}
                   </td>
@@ -393,7 +420,58 @@ export default function ManagerPayroll() {
                   <td style={{ padding: "10px 8px", borderBottom: `1px solid ${T.line2}`, fontFamily: fontMono, fontSize: 12.5, color: T.amber }}>
                     {Number(row.pending_payout) > 0 ? formatMoney(row.pending_payout, row.currency) : "—"}
                   </td>
+                  <td style={{ padding: "10px 8px", borderBottom: `1px solid ${T.line2}`, whiteSpace: "nowrap" }}>
+                    {Number(row.current_balance) > 0 && payingCashEmployeeId !== row.employee.id && (
+                      <button
+                        onClick={() => openPayCash(row)}
+                        style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 11px", borderRadius: 7, border: "none", background: T.amberBg, color: T.amber, fontFamily: fontBody, fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}
+                      >
+                        <Banknote size={12} /> Pay cash
+                      </button>
+                    )}
+                  </td>
                 </tr>
+                {payingCashEmployeeId === row.employee.id && (
+                  <tr>
+                    <td colSpan={8} style={{ padding: "0 8px 14px", borderBottom: `1px solid ${T.line2}` }}>
+                      <div style={{ padding: "12px 14px", borderRadius: 9, background: T.amberBg, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+                        <div>
+                          <label style={{ display: "block", fontFamily: fontBody, fontSize: 11, color: T.ink, marginBottom: 4 }}>Amount</label>
+                          <input
+                            type="number" step="0.01" min="0" max={row.current_balance}
+                            value={directCashAmount}
+                            onChange={(e) => setDirectCashAmount(e.target.value)}
+                            style={{ width: 110, padding: "7px 9px", borderRadius: 7, border: `1px solid ${T.line}`, fontFamily: fontMono, fontSize: 12.5 }}
+                          />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 160 }}>
+                          <label style={{ display: "block", fontFamily: fontBody, fontSize: 11, color: T.ink, marginBottom: 4 }}>Note (optional)</label>
+                          <input
+                            type="text"
+                            value={directCashNote}
+                            onChange={(e) => setDirectCashNote(e.target.value)}
+                            style={{ width: "100%", padding: "7px 9px", borderRadius: 7, border: `1px solid ${T.line}`, fontFamily: fontBody, fontSize: 12.5, boxSizing: "border-box" }}
+                          />
+                        </div>
+                        <button
+                          onClick={() => submitPayCash(row)}
+                          disabled={payingCashBusy}
+                          style={{ padding: "8px 14px", borderRadius: 8, border: "none", background: T.amber, color: T.paper, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
+                        >
+                          {payingCashBusy ? "Marking…" : "I've paid this in cash"}
+                        </button>
+                        <button
+                          onClick={() => setPayingCashEmployeeId(null)}
+                          disabled={payingCashBusy}
+                          style={{ padding: "8px 14px", borderRadius: 8, border: `1px solid ${T.line}`, background: T.card, color: T.muted, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>
