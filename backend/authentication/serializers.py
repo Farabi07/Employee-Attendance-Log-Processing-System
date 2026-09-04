@@ -168,8 +168,8 @@ class UserSerializer(UserCreateSerializer):
 
 	class Meta(UserCreateSerializer.Meta):
 		model = User
-		fields = ('id', 'email', 'first_name', 'last_name', 'password', 'is_admin', 'organization', 'org_role')
-		read_only_fields = ('is_admin', 'organization')
+		fields = ('id', 'email', 'first_name', 'last_name', 'password', 'is_admin', 'organization', 'org_role', 'image')
+		read_only_fields = ('is_admin', 'organization', 'image')
 
 	def get_org_role(self, obj):
 		return obj.org_role_name()
