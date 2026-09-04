@@ -12,6 +12,7 @@ from authentication.models import Employee, Role
 from authentication.serializers import EmployeeSerializer, EmployeeListSerializer, EmployeeMinimalListSerializer
 from authentication.filters import EmployeeFilter
 from authentication.permissions import IsManager, IsManagerOrModerator, CanAddEmployees, HasActiveSubscription
+from authentication.emails import send_employee_credentials_email
 
 from commons.pagination import Pagination
 
@@ -161,6 +162,8 @@ def createEmployee(request):
 	if employee_data_dict.get('hourly_rate') and not employee_data_dict.get('currency'):
 		employee_data_dict['currency'] = request.user.organization.currency
 
+	plaintext_password = employee_data_dict.get('password')
+
 	serializer = EmployeeSerializer(data=employee_data_dict, many=False)
 
 	if serializer.is_valid():
@@ -170,6 +173,8 @@ def createEmployee(request):
 				employee, old_rate=None, new_rate=employee.hourly_rate,
 				old_currency=None, new_currency=employee.currency, changed_by=request.user,
 			)
+		if plaintext_password:
+			send_employee_credentials_email(employee, plaintext_password)
 		return Response(serializer.data, status=status.HTTP_201_CREATED)
 	else:
 		return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

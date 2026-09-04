@@ -5,4 +5,6 @@ urlpatterns = [
 	path('api/v1/push_token/', views.registerPushToken),
 	path('api/v1/deactivate/', views.deactivateMyAccount),
 	path('api/v1/reactivate/<int:pk>/', views.reactivateAccount),
+	path('api/v1/me/', views.getMyProfile),
+	path('api/v1/me/update/', views.updateMyProfile),
 ]

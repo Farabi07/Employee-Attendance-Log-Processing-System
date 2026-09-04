@@ -1,7 +1,8 @@
 from django.core.exceptions import ObjectDoesNotExist
 
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, parser_classes
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -9,6 +10,26 @@ from drf_spectacular.utils import extend_schema
 
 from authentication.models import User
 from authentication.permissions import IsManager
+
+PROFILE_EDITABLE_FIELDS = [
+	'first_name', 'last_name', 'primary_phone', 'secondary_phone',
+	'street_address_one', 'street_address_two', 'postal_code',
+]
+
+
+def _serialize_profile(user):
+	return {
+		'id': user.id,
+		'first_name': user.first_name,
+		'last_name': user.last_name,
+		'email': user.email,
+		'primary_phone': str(user.primary_phone) if user.primary_phone else None,
+		'secondary_phone': str(user.secondary_phone) if user.secondary_phone else None,
+		'street_address_one': user.street_address_one,
+		'street_address_two': user.street_address_two,
+		'postal_code': user.postal_code,
+		'image': user.image.url if user.image else None,
+	}
 
 
 @extend_schema(request=None, responses=None)
@@ -63,3 +84,36 @@ def reactivateAccount(request, pk):
 	target.is_active = True
 	target.save(update_fields=['is_active'])
 	return Response({'detail': f'{target.first_name} {target.last_name} has been reactivated.'}, status=status.HTTP_200_OK)
+
+
+@extend_schema(request=None, responses=None)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def getMyProfile(request):
+	return Response(_serialize_profile(request.user), status=status.HTTP_200_OK)
+
+
+@extend_schema(request=None, responses=None)
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser, JSONParser])
+def updateMyProfile(request):
+	"""Self-service profile edit — name, contact details, and photo. Never
+	touches email/org_role/organization/pay fields or is_admin: those stay
+	Manager-only via updateEmployee, or are simply not editable at all."""
+	user = request.user
+	updated_fields = []
+
+	for field in PROFILE_EDITABLE_FIELDS:
+		if field in request.data and request.data[field] not in (None, ''):
+			setattr(user, field, request.data[field])
+			updated_fields.append(field)
+
+	if 'image' in request.FILES:
+		user.image = request.FILES['image']
+		updated_fields.append('image')
+
+	if updated_fields:
+		user.save(update_fields=updated_fields)
+
+	return Response(_serialize_profile(user), status=status.HTTP_200_OK)

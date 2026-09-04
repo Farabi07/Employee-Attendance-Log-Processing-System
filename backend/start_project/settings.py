@@ -191,17 +191,27 @@ MEDIA_URL = '/media/' # media files retrieve directory
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST='smtp.titan.email'
-EMAIL_PORT= 587
-EMAIL_HOST_USER= "noreply@dreamtourism.it"
-EMAIL_HOST_PASSWORD = 'Dream@2023~'
-EMAIL_USE_TLS = True
+# Read from the environment, never hardcoded — set EMAIL_HOST_USER/
+# EMAIL_HOST_PASSWORD (e.g. a Gmail App Password, or any real SMTP account)
+# on the server once you have one. Until then, with no EMAIL_HOST_USER set,
+# this falls back to Django's console backend — emails are printed to the
+# server log instead of actually sending, so the send-email code paths
+# (employee-created credentials, password reset, etc.) can be verified
+# without a real mailbox.
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+EMAIL_BACKEND = os.environ.get(
+    'EMAIL_BACKEND',
+    'django.core.mail.backends.smtp.EmailBackend' if EMAIL_HOST_USER else 'django.core.mail.backends.console.EmailBackend',
+)
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
 
-ADMIN_EMAIL = "noreply@dreamtourism.it"
-SUPPORT_EMAIL = "noreply@dreamtourism.it"
-DEFAULT_FROM_EMAIL = ADMIN_EMAIL
-SERVER_EMAIL = ADMIN_EMAIL
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'noreply@timetap.app')
+ADMIN_EMAIL = DEFAULT_FROM_EMAIL
+SUPPORT_EMAIL = DEFAULT_FROM_EMAIL
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 
 
