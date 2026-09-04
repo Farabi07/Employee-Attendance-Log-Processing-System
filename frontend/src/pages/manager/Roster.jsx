@@ -9,6 +9,11 @@ import { useAuth } from "../../lib/auth";
 import Card from "../../components/Card";
 import LiveQrDisplay from "../../components/LiveQrDisplay";
 
+function dayOfWeekFromDate(isoDate) {
+  const jsDay = new Date(`${isoDate}T00:00:00`).getDay(); // 0=Sun..6=Sat
+  return (jsDay + 6) % 7; // 0=Mon..6=Sun, matching the backend's DayOfWeek
+}
+
 const inputStyle = {
   width: "100%",
   padding: "9px 10px",
@@ -33,6 +38,7 @@ export default function ManagerRoster() {
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [availabilityByEmployee, setAvailabilityByEmployee] = useState({});
 
   const [employeeId, setEmployeeId] = useState("");
   const [date, setDate] = useState(todayISO());
@@ -65,12 +71,13 @@ export default function ManagerRoster() {
   const [geoMsg, setGeoMsg] = useState(null);
 
   const load = useCallback(async () => {
-    const [empRes, shiftRes, branchRes, leaveTypeRes, rosterRes] = await Promise.all([
+    const [empRes, shiftRes, branchRes, leaveTypeRes, rosterRes, availabilityRes] = await Promise.all([
       api.get(endpoints.employeesAll()),
       api.get(endpoints.shiftsAll()),
       api.get(endpoints.branchesAll()),
       api.get(endpoints.leaveTypesAll()),
       api.get(endpoints.rosterAll("?size=50")),
+      api.get(endpoints.availabilityAll()),
     ]);
     const emps = empRes.employees || [];
     const shiftList = shiftRes.shifts || [];
@@ -81,6 +88,14 @@ export default function ManagerRoster() {
     setBranches(branchList);
     setLeaveTypes(leaveTypeRes.leave_types || []);
     setAssignments((rosterRes.rosters || []).filter((r) => r.date >= todayISO()).sort((a, b) => a.date.localeCompare(b.date)));
+
+    const availByEmp = {};
+    for (const row of availabilityRes.availability || []) {
+      const empId = row.employee?.id;
+      if (!empId) continue;
+      (availByEmp[empId] ||= {})[row.day_of_week] = row;
+    }
+    setAvailabilityByEmployee(availByEmp);
 
     if (emps.length && !employeeId) setEmployeeId(String(emps[0].id));
     if (shiftList.length && !shiftId) setShiftId(String(shiftList[0].id));
@@ -265,7 +280,17 @@ export default function ManagerRoster() {
             </select>
 
             <label style={labelStyle}>Date</label>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={inputStyle} />
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ ...inputStyle, marginBottom: 6 }} />
+            {(() => {
+              const day = availabilityByEmployee[employeeId]?.[dayOfWeekFromDate(date)];
+              if (!day) return null;
+              const hours = day.start_time && day.end_time ? ` (${day.start_time.slice(0, 5)}–${day.end_time.slice(0, 5)})` : "";
+              return (
+                <p style={{ fontFamily: fontBody, fontSize: 11.5, color: day.is_available ? T.tealDeep : T.coral, margin: "0 0 14px" }}>
+                  {day.is_available ? `✓ Usually available${hours}` : "⚠ Marked unavailable this day"}
+                </p>
+              );
+            })()}
 
             <label style={labelStyle}>Shift</label>
             {shifts.length === 0 ? (

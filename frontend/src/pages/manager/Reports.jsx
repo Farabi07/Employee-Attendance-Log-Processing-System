@@ -3,9 +3,10 @@ import { Download, FileText, FileSpreadsheet, UserX } from "lucide-react";
 import { T, fontDisplay, fontBody, fontMono } from "../../theme";
 import { api, downloadFile } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
-import { weekDates, formatDayLabel, formatDuration, todayISO } from "../../lib/dates";
+import { weekDates, formatDayLabel, formatDuration, formatTime, todayISO } from "../../lib/dates";
 
 import Card from "../../components/Card";
+import StatusPill from "../../components/StatusPill";
 
 function daysBetweenInclusive(a, b) {
   return Math.round((new Date(b) - new Date(a)) / 86400000) + 1;
@@ -31,6 +32,11 @@ export default function ManagerReports() {
   const [absentBusy, setAbsentBusy] = useState(false);
   const [absentMsg, setAbsentMsg] = useState(null);
 
+  const [view, setView] = useState("summary"); // "summary" | "timesheet"
+  const [timesheetRows, setTimesheetRows] = useState([]);
+  const [timesheetLoading, setTimesheetLoading] = useState(true);
+  const [timesheetExporting, setTimesheetExporting] = useState(null); // "csv" | "pdf" | "excel" | null
+
   const load = useCallback(async () => {
     setLoading(true);
     const [attRes, leaveRes] = await Promise.all([
@@ -42,9 +48,30 @@ export default function ManagerReports() {
     setLoading(false);
   }, [dateFrom, dateTo]);
 
+  const loadTimesheet = useCallback(async () => {
+    setTimesheetLoading(true);
+    const res = await api.get(endpoints.timesheet(`?date_from=${dateFrom}&date_to=${dateTo}`));
+    setTimesheetRows(res.rows || []);
+    setTimesheetLoading(false);
+  }, [dateFrom, dateTo]);
+
   useEffect(() => {
     load();
-  }, [load]);
+    loadTimesheet();
+  }, [load, loadTimesheet]);
+
+  const exportTimesheet = async (kind) => {
+    setTimesheetExporting(kind);
+    try {
+      const params = `?date_from=${dateFrom}&date_to=${dateTo}`;
+      const filename = `timesheet_${dateFrom}_to_${dateTo}`;
+      if (kind === "csv") await downloadFile(endpoints.timesheetExportCsv(params), `${filename}.csv`);
+      else if (kind === "pdf") await downloadFile(endpoints.timesheetExportPdf(params), `${filename}.pdf`);
+      else await downloadFile(endpoints.timesheetExportExcel(params), `${filename}.xlsx`);
+    } finally {
+      setTimesheetExporting(null);
+    }
+  };
 
   const rows = useMemo(() => {
     const byEmployee = {};
@@ -118,9 +145,11 @@ export default function ManagerReports() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <Card style={{ padding: "22px 24px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 12 }}>
           <div>
-            <h3 style={{ fontFamily: fontDisplay, fontSize: 16, fontWeight: 600, color: T.ink, margin: "0 0 4px" }}>Attendance report</h3>
+            <h3 style={{ fontFamily: fontDisplay, fontSize: 16, fontWeight: 600, color: T.ink, margin: "0 0 4px" }}>
+              {view === "summary" ? "Attendance report" : "Timesheet"}
+            </h3>
             <p style={{ fontFamily: fontBody, fontSize: 13, color: T.muted, margin: 0 }}>
               {formatDayLabel(dateFrom)} – {formatDayLabel(dateTo)}
             </p>
@@ -132,42 +161,104 @@ export default function ManagerReports() {
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
-          <button onClick={exportCsv} disabled={rows.length === 0} style={exportBtnStyle}>
-            <Download size={14} /> CSV
-          </button>
-          <button onClick={() => exportServer("pdf")} disabled={exporting !== null} style={exportBtnStyle}>
-            <FileText size={14} /> {exporting === "pdf" ? "Preparing…" : "PDF"}
-          </button>
-          <button onClick={() => exportServer("excel")} disabled={exporting !== null} style={exportBtnStyle}>
-            <FileSpreadsheet size={14} /> {exporting === "excel" ? "Preparing…" : "Excel"}
-          </button>
+        <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+          {[
+            { key: "summary", label: "Summary" },
+            { key: "timesheet", label: "Timesheet" },
+          ].map((v) => (
+            <button
+              key={v.key}
+              onClick={() => setView(v.key)}
+              style={{ padding: "7px 14px", borderRadius: 8, border: "none", background: view === v.key ? T.navy : T.navyBg, color: view === v.key ? T.paper : T.navyDeep, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
+            >
+              {v.label}
+            </button>
+          ))}
         </div>
 
-        {loading ? (
-          <p style={{ fontFamily: fontBody, color: T.muted }}>Loading…</p>
-        ) : rows.length === 0 ? (
-          <p style={{ fontFamily: fontBody, fontSize: 13, color: T.muted, margin: 0 }}>No attendance or leave records in this range.</p>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-          <div style={{ minWidth: 480 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", padding: "0 4px 10px", borderBottom: `1px solid ${T.line}` }}>
-              {["Employee", "Days present", "Hours worked", "Leave days"].map((h) => (
-                <span key={h} style={{ fontFamily: fontBody, fontSize: 11.5, fontWeight: 600, color: T.faint, textTransform: "uppercase", letterSpacing: 0.4 }}>
-                  {h}
-                </span>
-              ))}
+        {view === "summary" ? (
+          <>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
+              <button onClick={exportCsv} disabled={rows.length === 0} style={exportBtnStyle}>
+                <Download size={14} /> CSV
+              </button>
+              <button onClick={() => exportServer("pdf")} disabled={exporting !== null} style={exportBtnStyle}>
+                <FileText size={14} /> {exporting === "pdf" ? "Preparing…" : "PDF"}
+              </button>
+              <button onClick={() => exportServer("excel")} disabled={exporting !== null} style={exportBtnStyle}>
+                <FileSpreadsheet size={14} /> {exporting === "excel" ? "Preparing…" : "Excel"}
+              </button>
             </div>
-            {rows.map((r) => (
-              <div key={r.name} className="row-hover" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", alignItems: "center", padding: "12px 4px", borderRadius: 8, borderBottom: `1px solid ${T.line2}` }}>
-                <span style={{ fontFamily: fontBody, fontSize: 13.5, color: T.ink }}>{r.name}</span>
-                <span style={{ fontFamily: fontMono, fontSize: 13, color: T.muted }}>{r.days} / {totalDays}</span>
-                <span style={{ fontFamily: fontMono, fontSize: 13, color: T.muted }}>{formatDuration(r.hours)}</span>
-                <span style={{ fontFamily: fontMono, fontSize: 13, color: r.leaveDays ? T.amber : T.faint }}>{r.leaveDays}</span>
+
+            {loading ? (
+              <p style={{ fontFamily: fontBody, color: T.muted }}>Loading…</p>
+            ) : rows.length === 0 ? (
+              <p style={{ fontFamily: fontBody, fontSize: 13, color: T.muted, margin: 0 }}>No attendance or leave records in this range.</p>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+              <div style={{ minWidth: 480 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", padding: "0 4px 10px", borderBottom: `1px solid ${T.line}` }}>
+                  {["Employee", "Days present", "Hours worked", "Leave days"].map((h) => (
+                    <span key={h} style={{ fontFamily: fontBody, fontSize: 11.5, fontWeight: 600, color: T.faint, textTransform: "uppercase", letterSpacing: 0.4 }}>
+                      {h}
+                    </span>
+                  ))}
+                </div>
+                {rows.map((r) => (
+                  <div key={r.name} className="row-hover" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", alignItems: "center", padding: "12px 4px", borderRadius: 8, borderBottom: `1px solid ${T.line2}` }}>
+                    <span style={{ fontFamily: fontBody, fontSize: 13.5, color: T.ink }}>{r.name}</span>
+                    <span style={{ fontFamily: fontMono, fontSize: 13, color: T.muted }}>{r.days} / {totalDays}</span>
+                    <span style={{ fontFamily: fontMono, fontSize: 13, color: T.muted }}>{formatDuration(r.hours)}</span>
+                    <span style={{ fontFamily: fontMono, fontSize: 13, color: r.leaveDays ? T.amber : T.faint }}>{r.leaveDays}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
+              <button onClick={() => exportTimesheet("csv")} disabled={timesheetExporting !== null} style={exportBtnStyle}>
+                <Download size={14} /> {timesheetExporting === "csv" ? "Preparing…" : "CSV"}
+              </button>
+              <button onClick={() => exportTimesheet("pdf")} disabled={timesheetExporting !== null} style={exportBtnStyle}>
+                <FileText size={14} /> {timesheetExporting === "pdf" ? "Preparing…" : "PDF"}
+              </button>
+              <button onClick={() => exportTimesheet("excel")} disabled={timesheetExporting !== null} style={exportBtnStyle}>
+                <FileSpreadsheet size={14} /> {timesheetExporting === "excel" ? "Preparing…" : "Excel"}
+              </button>
+            </div>
+
+            {timesheetLoading ? (
+              <p style={{ fontFamily: fontBody, color: T.muted }}>Loading…</p>
+            ) : timesheetRows.length === 0 ? (
+              <p style={{ fontFamily: fontBody, fontSize: 13, color: T.muted, margin: 0 }}>No clock-in/out records in this range.</p>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+              <div style={{ minWidth: 720 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "2fr 1.4fr 1fr 1fr 1fr 1fr 1fr", padding: "0 4px 10px", borderBottom: `1px solid ${T.line}` }}>
+                  {["Employee", "Date", "Scheduled", "Check-in", "Check-out", "Hours", "Status"].map((h) => (
+                    <span key={h} style={{ fontFamily: fontBody, fontSize: 11.5, fontWeight: 600, color: T.faint, textTransform: "uppercase", letterSpacing: 0.4 }}>
+                      {h}
+                    </span>
+                  ))}
+                </div>
+                {timesheetRows.map((r, i) => (
+                  <div key={i} className="row-hover" style={{ display: "grid", gridTemplateColumns: "2fr 1.4fr 1fr 1fr 1fr 1fr 1fr", alignItems: "center", padding: "10px 4px", borderRadius: 8, borderBottom: `1px solid ${T.line2}` }}>
+                    <span style={{ fontFamily: fontBody, fontSize: 13, color: T.ink }}>{r.name}</span>
+                    <span style={{ fontFamily: fontMono, fontSize: 12, color: T.muted }}>{r.date}</span>
+                    <span style={{ fontFamily: fontBody, fontSize: 12, color: T.muted }}>{r.scheduled_shift || "—"}</span>
+                    <span style={{ fontFamily: fontMono, fontSize: 12, color: T.muted }}>{formatTime(r.check_in)}</span>
+                    <span style={{ fontFamily: fontMono, fontSize: 12, color: T.muted }}>{formatTime(r.check_out)}</span>
+                    <span style={{ fontFamily: fontMono, fontSize: 12.5, color: T.ink }}>{formatDuration(r.worked_hours)}</span>
+                    <StatusPill status={r.status} />
+                  </div>
+                ))}
+              </div>
+              </div>
+            )}
+          </>
         )}
       </Card>
 

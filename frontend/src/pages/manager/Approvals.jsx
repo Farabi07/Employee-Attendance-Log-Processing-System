@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Check, X, Clock3, Paperclip } from "lucide-react";
+import { Check, X, Clock3, Paperclip, Repeat } from "lucide-react";
 import { T, fontDisplay, fontBody, fontMono } from "../../theme";
 import { api, BASE_URL } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
@@ -141,6 +141,9 @@ export default function ManagerApprovals() {
   const [decidingId, setDecidingId] = useState(null);
   const [payAdjustments, setPayAdjustments] = useState([]);
   const [loadingAdjustments, setLoadingAdjustments] = useState(true);
+  const [swapRequests, setSwapRequests] = useState([]);
+  const [loadingSwaps, setLoadingSwaps] = useState(true);
+  const [decidingSwapId, setDecidingSwapId] = useState(null);
 
   const load = useCallback(async () => {
     const res = await api.get(endpoints.leaveRequestAll("?status=pending&size=100"));
@@ -152,10 +155,16 @@ export default function ManagerApprovals() {
     setPayAdjustments(res.requests || []);
   }, []);
 
+  const loadSwaps = useCallback(async () => {
+    const res = await api.get(endpoints.shiftSwapAll());
+    setSwapRequests(res.pending || []);
+  }, []);
+
   useEffect(() => {
     load().finally(() => setLoading(false));
     loadAdjustments().finally(() => setLoadingAdjustments(false));
-  }, [load, loadAdjustments]);
+    loadSwaps().finally(() => setLoadingSwaps(false));
+  }, [load, loadAdjustments, loadSwaps]);
 
   const decide = async (id, status) => {
     setDecidingId(id);
@@ -164,6 +173,16 @@ export default function ManagerApprovals() {
       await load();
     } finally {
       setDecidingId(null);
+    }
+  };
+
+  const decideSwap = async (id, action) => {
+    setDecidingSwapId(id);
+    try {
+      await api.post(endpoints.shiftSwapReview(id), { action });
+      await loadSwaps();
+    } finally {
+      setDecidingSwapId(null);
     }
   };
 
@@ -229,6 +248,52 @@ export default function ManagerApprovals() {
           )}
           {payAdjustments.map((r) => (
             <PayAdjustmentRow key={r.id} request={r} onDecided={loadAdjustments} />
+          ))}
+        </div>
+      </Card>
+
+      <Card style={{ padding: "22px 24px" }}>
+        <h3 style={{ fontFamily: fontDisplay, fontSize: 16, fontWeight: 600, color: T.ink, margin: "0 0 4px", display: "flex", alignItems: "center", gap: 8 }}>
+          <Repeat size={16} /> Shift swap approvals
+        </h3>
+        <p style={{ fontFamily: fontBody, fontSize: 13, color: T.muted, margin: "0 0 18px" }}>
+          {loadingSwaps ? "Loading…" : `${swapRequests.length} awaiting your review`} — a colleague already agreed to take the shift, this finalizes it.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {!loadingSwaps && swapRequests.length === 0 && (
+            <p style={{ fontFamily: fontBody, fontSize: 13, color: T.muted, margin: 0 }}>Nothing pending here either.</p>
+          )}
+          {swapRequests.map((s) => (
+            <div key={s.id} style={{ border: `1px solid ${T.line}`, borderRadius: 12, padding: "16px 18px", display: "flex", alignItems: "flex-start", gap: 14 }}>
+              <Avatar initials={initialsOf(s.requested_by)} size={38} />
+              <div style={{ flex: 1 }}>
+                <p style={{ fontFamily: fontBody, fontSize: 14, fontWeight: 600, color: T.ink, margin: "0 0 4px" }}>
+                  {s.requested_by?.first_name} {s.requested_by?.last_name} → {s.claimed_by?.first_name} {s.claimed_by?.last_name}
+                </p>
+                <p style={{ fontFamily: fontMono, fontSize: 12, color: T.muted, margin: "0 0 6px" }}>
+                  {s.roster?.shift?.name || "Shift"} · {s.roster?.date}
+                </p>
+                {s.reason && <p style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted, margin: 0, lineHeight: 1.5 }}>"{s.reason}"</p>}
+              </div>
+              <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                <button
+                  onClick={() => decideSwap(s.id, "reject")}
+                  disabled={decidingSwapId === s.id}
+                  style={{ width: 34, height: 34, borderRadius: 9, border: `1px solid ${T.line}`, background: T.card, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                  aria-label="Reject"
+                >
+                  <X size={16} color={T.coral} />
+                </button>
+                <button
+                  onClick={() => decideSwap(s.id, "approve")}
+                  disabled={decidingSwapId === s.id}
+                  style={{ width: 34, height: 34, borderRadius: 9, border: "none", background: T.teal, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                  aria-label="Approve"
+                >
+                  <Check size={16} color="#fff" />
+                </button>
+              </div>
+            </div>
           ))}
         </div>
       </Card>
