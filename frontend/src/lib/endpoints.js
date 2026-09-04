@@ -17,9 +17,26 @@ export const endpoints = {
   exportExcel: (params = "") => `/attendance/api/v1/attendance/export/excel/${params}`,
   markAbsent: (params = "") => `/attendance/api/v1/attendance/mark_absent/${params}`,
 
+  timesheet: (params = "") => `/attendance/api/v1/timesheet/${params}`,
+  timesheetExportCsv: (params = "") => `/attendance/api/v1/timesheet/export/csv/${params}`,
+  timesheetExportPdf: (params = "") => `/attendance/api/v1/timesheet/export/pdf/${params}`,
+  timesheetExportExcel: (params = "") => `/attendance/api/v1/timesheet/export/excel/${params}`,
+
   rosterByEmployee: (id, params = "") => `/roster/api/v1/roster/get_all_by_employee_id/${id}${params}`,
   rosterAll: (params = "") => `/roster/api/v1/roster/all/${params}`,
   rosterCreate: () => `/roster/api/v1/roster/create/`,
+
+  availabilityMine: () => `/availability/api/v1/mine/`,
+  availabilityMineUpdate: () => `/availability/api/v1/mine/update/`,
+  availabilityByEmployee: (id) => `/availability/api/v1/employee/${id}/`,
+  availabilityAll: () => `/availability/api/v1/all/`,
+
+  shiftSwapRequest: () => `/shift_swap/api/v1/request/`,
+  shiftSwapMine: () => `/shift_swap/api/v1/mine/`,
+  shiftSwapRespond: (pk) => `/shift_swap/api/v1/${pk}/respond/`,
+  shiftSwapCancel: (pk) => `/shift_swap/api/v1/${pk}/cancel/`,
+  shiftSwapAll: () => `/shift_swap/api/v1/all/`,
+  shiftSwapReview: (pk) => `/shift_swap/api/v1/${pk}/review/`,
 
   shiftsAll: () => `/shift/api/v1/shift/without_pagination/all/`,
   shiftCreate: () => `/shift/api/v1/shift/create/`,
@@ -36,6 +53,7 @@ export const endpoints = {
   leaveRequestReview: (pk) => `/leave_request/api/v1/leave_request/review/${pk}`,
 
   employeesAll: () => `/employee/api/v1/employee/without_paginaiton/all/`,
+  teammatesAll: () => `/employee/api/v1/employee/teammates/`,
   employeeCreate: () => `/employee/api/v1/employee/create/`,
   employeeUpdate: (pk) => `/employee/api/v1/employee/update/${pk}`,
 
