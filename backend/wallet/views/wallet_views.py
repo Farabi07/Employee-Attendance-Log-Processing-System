@@ -713,6 +713,56 @@ def confirmCashPayout(request, pk):
 
 @extend_schema(request=None, responses=None)
 @api_view(['POST'])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
+def payEmployeeCash(request, employee_id):
+	"""Manager-initiated cash payout — unlike reviewPayoutRequest, there's
+	no employee-created request to approve first. A manager can pay an
+	employee's current balance (or a smaller amount) in cash any time,
+	marking it paid immediately; the employee still has to confirm receipt
+	before it settles, exactly like the request-then-approve cash flow."""
+	try:
+		employee = Employee.objects.get(pk=employee_id, organization=request.user.organization)
+	except ObjectDoesNotExist:
+		return Response({'detail': f"Employee id - {employee_id} doesn't exist"}, status=status.HTTP_400_BAD_REQUEST)
+
+	organization = request.user.organization
+	if not organization.has_paid_subscription():
+		return Response(
+			{'detail': "Paying out real money isn't available during the free trial — subscribe to unlock it."},
+			status=status.HTTP_402_PAYMENT_REQUIRED,
+		)
+
+	balance = wallet_balance(employee)
+	amount_raw = request.data.get('amount')
+	try:
+		amount = Decimal(str(amount_raw)) if amount_raw not in (None, '') else balance
+	except InvalidOperation:
+		return Response({'detail': 'A valid amount is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+	if amount <= 0:
+		return Response({'detail': 'Amount must be greater than zero'}, status=status.HTTP_400_BAD_REQUEST)
+	if amount > balance:
+		return Response({'detail': f'{employee.first_name} only has {balance} available'}, status=status.HTTP_400_BAD_REQUEST)
+
+	transaction = WalletTransaction.objects.create(
+		employee=employee,
+		organization=organization,
+		type=WalletTransaction.Type.PAYOUT,
+		status=WalletTransaction.Status.AWAITING_CASH_CONFIRMATION,
+		amount=amount,
+		payout_method=WalletTransaction.PayoutMethod.CASH,
+		created_by=request.user,
+		note=request.data.get('note') or 'Paid directly in cash by manager',
+	)
+	notify_cash_payout_pending(transaction)
+
+	return Response(WalletTransactionSerializer(transaction).data, status=status.HTTP_201_CREATED)
+
+
+
+
+@extend_schema(request=None, responses=None)
+@api_view(['POST'])
 @permission_classes([IsManagerOrModerator])
 def confirmPayoutCheckout(request):
 	"""Fallback for local dev (no public URL for Stripe's webhook to reach)

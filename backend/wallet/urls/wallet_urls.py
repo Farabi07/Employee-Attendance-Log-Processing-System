@@ -17,6 +17,7 @@ urlpatterns = [
 	path('api/v1/payout/<int:pk>/review/', views.reviewPayoutRequest),
 	path('api/v1/payout/confirm/', views.confirmPayoutCheckout),
 	path('api/v1/payout/<int:pk>/confirm_cash/', views.confirmCashPayout),
+	path('api/v1/payout/pay_cash/<int:employee_id>/', views.payEmployeeCash),
 
 	path('api/v1/transactions/', views.listTransactions),
 

@@ -1,3 +1,4 @@
+import os
 from enum import unique
 from operator import truediv
 from statistics import mode
@@ -17,6 +18,27 @@ from PIL import Image
 from rest_framework.serializers import BaseSerializer
 
 from commons.currencies import CURRENCY_CHOICES
+
+
+def _resize_image_if_needed(image_field, max_width=750, max_height=1000):
+    """Best-effort thumbnail shrink — the source file can be missing (e.g.
+    an ephemeral filesystem lost it since upload) or unreadable; this is a
+    nice-to-have optimization, never something that should crash the
+    save() call it's attached to. That matters a lot here specifically:
+    SIMPLE_JWT's UPDATE_LAST_LOGIN calls User.save() on every successful
+    login, so an unguarded crash here used to take down login itself for
+    any account with a since-vanished image file."""
+    try:
+        path = image_field.path
+        if not os.path.exists(path):
+            return
+        image = Image.open(path)
+        width, height = image.size
+        if width > max_width or height > max_height:
+            w_h = (1000, 750) if width >= height else (750, 1000)
+            image.resize(w_h).save(path)
+    except Exception:
+        pass
 
 
 
@@ -442,17 +464,7 @@ class User(AbstractBaseUser):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         if self.image:
-            max_width, max_height = 750, 1000
-            path = self.image.path
-            image = Image.open(path)
-            width, height = image.size
-            if width > max_width or height > max_height:
-                if width > height:
-                    w_h = (1000, 750)
-                elif height > width:
-                    w_h = (750, 1000)
-                img = image.resize(w_h)
-                img.save(path)  
+            _resize_image_if_needed(self.image)  
 
 
     def has_perm(self, perm, obj=None):
@@ -582,17 +594,7 @@ class Employee(User):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         if self.image:
-            max_width, max_height = 750, 1000
-            path = self.image.path
-            image = Image.open(path)
-            width, height = image.size
-            if width > max_width or height > max_height:
-                if width > height:
-                    w_h = (1000, 750)
-                elif height > width:
-                    w_h = (750, 1000)
-                img = image.resize(w_h)
-                img.save(path) 
+            _resize_image_if_needed(self.image) 
 
 
 
@@ -609,17 +611,7 @@ class Vendor(User):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         if self.image:
-            max_width, max_height = 750, 1000
-            path = self.image.path
-            image = Image.open(path)
-            width, height = image.size
-            if width > max_width or height > max_height:
-                if width > height:
-                    w_h = (1000, 750)
-                elif height > width:
-                    w_h = (750, 1000)
-                img = image.resize(w_h)
-                img.save(path) 
+            _resize_image_if_needed(self.image) 
 
 
 
@@ -654,17 +646,7 @@ class Customer(User):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         if self.image:
-            max_width, max_height = 750, 1000
-            path = self.image.path
-            image = Image.open(path)
-            width, height = image.size
-            if width > max_width or height > max_height:
-                if width > height:
-                    w_h = (1000, 750)
-                elif height > width:
-                    w_h = (750, 1000)
-                img = image.resize(w_h)
-                img.save(path) 
+            _resize_image_if_needed(self.image) 
 
 
 
@@ -707,17 +689,7 @@ class Qualification(models.Model):
         if self.image_doc_four:
             img_list.append(self.image_doc_four)
         for imge in img_list:
-            max_width, max_height = 750, 1000
-            path = imge.path
-            image = Image.open(path)
-            width, height = image.size
-            if width > max_width or height > max_height:
-                if width > height:
-                    w_h = (1000, 750)
-                elif height > width:
-                    w_h = (750, 1000)
-                img = image.resize(w_h)
-                img.save(path)  
+            _resize_image_if_needed(imge)
 
 
 

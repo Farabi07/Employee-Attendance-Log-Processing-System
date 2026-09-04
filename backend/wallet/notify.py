@@ -102,19 +102,26 @@ def notify_pay_adjustment_reviewed(request_obj):
 def notify_cash_payout_pending(transaction):
 	"""Manager marked a payout request as 'paying with cash' — the employee
 	needs to confirm they actually received it before it counts as settled."""
+	from authentication.models import Employee
+
+	# transaction.employee is a plain User (the FK targets AUTH_USER_MODEL) —
+	# currency only exists on the Employee subclass, so it has to be looked
+	# up explicitly rather than read straight off the FK.
+	currency = Employee.objects.filter(pk=transaction.employee_id).values_list('currency', flat=True).first()
 	Notification.objects.create(
 		recipient=transaction.employee,
 		notification_type=Notification.NotificationType.CASH_PAYOUT_PENDING,
 		title="Cash payout — please confirm",
-		message=f"Your manager marked {_money(transaction.amount, transaction.employee.currency)} as paid in cash. Confirm in your Wallet once you've received it.",
+		message=f"Your manager marked {_money(transaction.amount, currency)} as paid in cash. Confirm in your Wallet once you've received it.",
 	)
 
 
 def notify_cash_payout_confirmed(transaction):
 	"""Employee confirmed they received the cash — tell the managers/
 	moderators who can see this so the payout is visibly closed out."""
-	from authentication.models import User
+	from authentication.models import User, Employee
 
+	currency = Employee.objects.filter(pk=transaction.employee_id).values_list('currency', flat=True).first()
 	employee_name = f"{transaction.employee.first_name} {transaction.employee.last_name}"
 	managers = User.objects.filter(
 		organization=transaction.organization,
@@ -126,7 +133,7 @@ def notify_cash_payout_confirmed(transaction):
 				recipient=manager,
 				notification_type=Notification.NotificationType.CASH_PAYOUT_CONFIRMED,
 				title="Cash payout confirmed",
-				message=f"{employee_name} confirmed receiving {_money(transaction.amount, transaction.employee.currency)} in cash.",
+				message=f"{employee_name} confirmed receiving {_money(transaction.amount, currency)} in cash.",
 			)
 			for manager in managers
 		]

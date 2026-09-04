@@ -94,7 +94,12 @@ def getMyProfile(request):
 
 
 @extend_schema(request=None, responses=None)
-@api_view(['PUT'])
+# Both methods on purpose: PUT works fine for the web app's fetch(), but
+# React Native's Android networking layer has a long-standing bug where a
+# PUT request with a multipart FormData body throws "Unsupported
+# FormDataPart implementation" — POST with the exact same body works. The
+# mobile app uses POST here; the web app keeps using PUT.
+@api_view(['PUT', 'POST'])
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 def updateMyProfile(request):
