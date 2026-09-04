@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { X, Camera } from "lucide-react";
 import { T, fontBody, fontDisplay } from "../theme";
 import { useAuth } from "../lib/auth";
-import { api, BASE_URL } from "../lib/api";
+import { api, mediaUrl } from "../lib/api";
 import { endpoints } from "../lib/endpoints";
 import Card from "./Card";
 import Avatar from "./Avatar";
@@ -37,7 +37,7 @@ export default function ProfileModal({ onClose }) {
   }, []);
 
   const initials = `${(firstName || "?")[0]}${(lastName || "?")[0]}`.toUpperCase();
-  const avatarSrc = imagePreview || (profile?.image ? `${BASE_URL}${profile.image}` : undefined);
+  const avatarSrc = imagePreview || mediaUrl(profile?.image);
 
   const pickImage = (e) => {
     const file = e.target.files?.[0];

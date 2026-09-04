@@ -81,3 +81,12 @@ export const api = {
   del: (path) => request(path, { method: "DELETE" }),
   login: (email, password) => request("/djoser/auth/jwt/create/", { method: "POST", body: { email, password }, auth: false }),
 };
+
+// Some endpoints (Djoser's /me, which DRF builds with request context) return
+// an already-absolute image URL; others (our own hand-rolled /account/me/)
+// return a bare MEDIA_URL-relative path. Normalize both to a usable Image
+// source instead of assuming one shape and silently breaking on the other.
+export function mediaUrl(path) {
+  if (!path) return undefined;
+  return /^https?:\/\//.test(path) ? path : `${BASE_URL}${path}`;
+}

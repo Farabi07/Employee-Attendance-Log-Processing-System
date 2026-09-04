@@ -4,7 +4,7 @@ import * as DocumentPicker from "expo-document-picker";
 import { X, Camera } from "lucide-react-native";
 import { T, fonts } from "../theme";
 import { useAuth } from "../lib/auth";
-import { api, BASE_URL } from "../lib/api";
+import { api, mediaUrl } from "../lib/api";
 import { endpoints } from "../lib/endpoints";
 import Card from "./Card";
 import Avatar from "./Avatar";
@@ -49,7 +49,7 @@ export default function ProfileModal({ visible, onClose }: { visible: boolean; o
   if (!user) return null;
   const initials = `${(firstName || user.first_name || "?")[0]}${(lastName || user.last_name || "?")[0]}`.toUpperCase();
   const roleLabel = isManager ? "Manager" : isManagerOrModerator ? "Moderator" : "Employee";
-  const avatarSrc = pickedImage?.uri || (profile?.image ? `${BASE_URL}${profile.image}` : undefined);
+  const avatarSrc = pickedImage?.uri || mediaUrl(profile?.image);
 
   const pickImage = async () => {
     const result = await DocumentPicker.getDocumentAsync({ type: "image/*" });

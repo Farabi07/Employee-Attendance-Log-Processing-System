@@ -81,6 +81,15 @@ export async function fetchBlobUrl(path) {
   return URL.createObjectURL(blob);
 }
 
+// Some endpoints (Djoser's /me, which DRF builds with request context) return
+// an already-absolute image URL; others (our own hand-rolled /account/me/)
+// return a bare MEDIA_URL-relative path. Normalize both to a usable <img src>
+// instead of assuming one shape and silently breaking on the other.
+export function mediaUrl(path) {
+  if (!path) return undefined;
+  return /^https?:\/\//.test(path) ? path : `${BASE_URL}${path}`;
+}
+
 export async function downloadFile(path, filename) {
   const token = getToken();
   const res = await fetch(`${BASE_URL}${path}`, {
