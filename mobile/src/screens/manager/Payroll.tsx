@@ -49,6 +49,10 @@ export default function Payroll() {
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
   const [cashConfirmingId, setCashConfirmingId] = useState<number | null>(null);
   const [cashNote, setCashNote] = useState("");
+  const [payingCashEmployee, setPayingCashEmployee] = useState<any>(null);
+  const [directCashAmount, setDirectCashAmount] = useState("");
+  const [directCashNote, setDirectCashNote] = useState("");
+  const [payingCashBusy, setPayingCashBusy] = useState(false);
   const [currency, setCurrency] = useState("usd");
   const [savingCurrency, setSavingCurrency] = useState(false);
   const [payoutCard, setPayoutCard] = useState<any>(undefined);
@@ -183,6 +187,32 @@ export default function Payroll() {
       setMessage({ type: "error", text: err.message });
     } finally {
       setReviewingId(null);
+    }
+  };
+
+  const openPayCash = (row: any) => {
+    setPayingCashEmployee(row);
+    setDirectCashAmount(String(row.current_balance));
+    setDirectCashNote("");
+    setMessage(null);
+  };
+
+  const submitPayCash = async () => {
+    if (!payingCashEmployee) return;
+    setPayingCashBusy(true);
+    setMessage(null);
+    try {
+      await api.post(endpoints.payoutPayCash(payingCashEmployee.employee.id), {
+        amount: directCashAmount,
+        note: directCashNote || undefined,
+      });
+      setMessage({ type: "success", text: `Marked as paid in cash — waiting for ${payingCashEmployee.employee.first_name} to confirm.` });
+      setPayingCashEmployee(null);
+      await load();
+    } catch (err: any) {
+      setMessage({ type: "error", text: err.message });
+    } finally {
+      setPayingCashBusy(false);
     }
   };
 
@@ -327,7 +357,7 @@ export default function Payroll() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View>
               <View style={styles.tableHeaderRow}>
-                {["Employee", "Rate", "Cycle", "Next due", "This week", "Balance", "Pending"].map((h) => (
+                {["Employee", "Rate", "Cycle", "Next due", "This week", "Balance", "Pending", "Action"].map((h) => (
                   <Text key={h} style={[styles.tableHeaderCell, { width: columnWidths[h] }]}>
                     {h}
                   </Text>
@@ -350,11 +380,47 @@ export default function Payroll() {
                   <Text style={[styles.tableCellMono, { width: columnWidths.Pending, color: T.amber }]}>
                     {Number(row.pending_payout) > 0 ? formatMoney(row.pending_payout, row.currency) : "—"}
                   </Text>
+                  <View style={{ width: columnWidths.Action }}>
+                    {Number(row.current_balance) > 0 && (
+                      <Pressable onPress={() => openPayCash(row)} style={styles.payCashBtn}>
+                        <Banknote size={12} color={T.amber} />
+                        <Text style={styles.payCashBtnText}>Pay cash</Text>
+                      </Pressable>
+                    )}
+                  </View>
                 </View>
               ))}
             </View>
           </ScrollView>
         </Card>
+
+        {payingCashEmployee && (
+          <Card style={styles.card}>
+            <Text style={styles.cardTitle}>
+              Pay {payingCashEmployee.employee.first_name} in cash
+            </Text>
+            <Text style={styles.bodyMuted}>
+              Hand them the cash, then confirm below. It won't count as paid until they confirm receiving it in their Wallet.
+            </Text>
+            <Text style={styles.confirmLabel}>Amount</Text>
+            <TextInput
+              value={directCashAmount}
+              onChangeText={setDirectCashAmount}
+              keyboardType="decimal-pad"
+              style={[styles.cashNoteInput, { marginBottom: 10 }]}
+            />
+            <Text style={styles.confirmLabel}>Note (optional)</Text>
+            <TextInput value={directCashNote} onChangeText={setDirectCashNote} style={styles.cashNoteInput} />
+            <View style={[styles.exportButtonRow, { marginTop: 12 }]}>
+              <Pressable onPress={submitPayCash} disabled={payingCashBusy} style={styles.cashPayButton}>
+                <Text style={styles.cashPayButtonText}>{payingCashBusy ? "Marking…" : "I've paid this in cash"}</Text>
+              </Pressable>
+              <Pressable onPress={() => setPayingCashEmployee(null)} disabled={payingCashBusy} style={styles.exportButton}>
+                <Text style={styles.exportButtonText}>Cancel</Text>
+              </Pressable>
+            </View>
+          </Card>
+        )}
 
         {summary.pending_requests.length > 0 && (
           <Card style={styles.card}>
@@ -505,6 +571,7 @@ const columnWidths: Record<string, number> = {
   "This week": 90,
   Balance: 90,
   Pending: 90,
+  Action: 100,
 };
 
 const styles = StyleSheet.create({
@@ -576,6 +643,8 @@ const styles = StyleSheet.create({
   cashNoteInput: { borderWidth: 1, borderColor: T.line, borderRadius: 7, paddingVertical: 8, paddingHorizontal: 10, fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink, backgroundColor: T.card },
   cashPayButton: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, backgroundColor: T.amber },
   cashPayButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.paper },
+  payCashBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 6, paddingHorizontal: 9, borderRadius: 7, backgroundColor: T.amberBg, alignSelf: "flex-start" },
+  payCashBtnText: { fontFamily: fonts.body.semibold, fontSize: 11, color: T.amber },
   txRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 11 },
   txName: { fontFamily: fonts.body.regular, fontSize: 13, color: T.ink },
   txId: { fontFamily: fonts.mono.regular, fontSize: 10.5, color: T.faint },

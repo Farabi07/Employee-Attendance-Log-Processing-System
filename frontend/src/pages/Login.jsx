@@ -3,6 +3,7 @@ import { Clock } from "lucide-react";
 import { T, fontDisplay, fontBody } from "../theme";
 import { useAuth } from "../lib/auth";
 import Card from "../components/Card";
+import PasswordInput from "../components/PasswordInput";
 import ForgotPassword from "./ForgotPassword";
 
 export default function Login({ onSignup }) {
@@ -65,13 +66,12 @@ export default function Login({ onSignup }) {
               />
 
               <label style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted, display: "block", marginBottom: 6 }}>Password</label>
-              <input
-                type="password"
+              <PasswordInput
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: `1px solid ${T.line}`, fontFamily: fontBody, fontSize: 13.5, marginBottom: 10 }}
+                style={{ padding: "10px 12px", borderRadius: 8, border: `1px solid ${T.line}`, fontFamily: fontBody, fontSize: 13.5, marginBottom: 10 }}
               />
 
               <div style={{ textAlign: "right", marginBottom: 18 }}>

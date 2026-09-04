@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, TextInput, Pressable, Modal, StyleSheet } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
-import { X, Camera } from "lucide-react-native";
+import { X, Camera, Eye, EyeOff } from "lucide-react-native";
 import { T, fonts } from "../theme";
 import { useAuth } from "../lib/auth";
 import { api, mediaUrl } from "../lib/api";
@@ -22,6 +22,8 @@ export default function ProfileModal({ visible, onClose }: { visible: boolean; o
   const { user, isManager, isManagerOrModerator, logout, refreshUser } = useAuth();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
@@ -72,7 +74,10 @@ export default function ProfileModal({ visible, onClose }: { visible: boolean; o
           type: pickedImage.mimeType || "image/jpeg",
         } as any);
       }
-      const res = await api.put(endpoints.profileUpdate(), form);
+      // POST, not PUT — React Native's Android networking layer throws
+      // "Unsupported FormDataPart implementation" for PUT + multipart
+      // bodies. The backend accepts both; the web app still uses PUT.
+      const res = await api.post(endpoints.profileUpdate(), form);
       setProfile(res);
       setPickedImage(null);
       setProfileMessage({ type: "success", text: "Profile updated." });
@@ -164,22 +169,32 @@ export default function ProfileModal({ visible, onClose }: { visible: boolean; o
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Change password</Text>
-            <TextInput
-              secureTextEntry
-              placeholder="Current password"
-              placeholderTextColor={T.faint}
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-              style={styles.input}
-            />
-            <TextInput
-              secureTextEntry
-              placeholder="New password"
-              placeholderTextColor={T.faint}
-              value={newPassword}
-              onChangeText={setNewPassword}
-              style={styles.input}
-            />
+            <View style={styles.passwordInputWrap}>
+              <TextInput
+                secureTextEntry={!showCurrentPassword}
+                placeholder="Current password"
+                placeholderTextColor={T.faint}
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                style={[styles.input, styles.inputWithIcon]}
+              />
+              <Pressable onPress={() => setShowCurrentPassword((s) => !s)} style={styles.eyeButton} hitSlop={8}>
+                {showCurrentPassword ? <EyeOff size={16} color={T.faint} /> : <Eye size={16} color={T.faint} />}
+              </Pressable>
+            </View>
+            <View style={styles.passwordInputWrap}>
+              <TextInput
+                secureTextEntry={!showNewPassword}
+                placeholder="New password"
+                placeholderTextColor={T.faint}
+                value={newPassword}
+                onChangeText={setNewPassword}
+                style={[styles.input, styles.inputWithIcon]}
+              />
+              <Pressable onPress={() => setShowNewPassword((s) => !s)} style={styles.eyeButton} hitSlop={8}>
+                {showNewPassword ? <EyeOff size={16} color={T.faint} /> : <Eye size={16} color={T.faint} />}
+              </Pressable>
+            </View>
             <PrimaryButton
               title={submitting ? "Updating…" : "Update password"}
               onPress={handleSubmit}
@@ -240,4 +255,7 @@ const styles = StyleSheet.create({
   },
   messageText: { fontFamily: fonts.body.regular, fontSize: 12, marginTop: 10, textAlign: "center" },
   deleteAccountRow: { marginTop: 16, alignItems: "center" },
+  passwordInputWrap: { position: "relative", justifyContent: "center" },
+  inputWithIcon: { paddingRight: 40 },
+  eyeButton: { position: "absolute", right: 10, top: 9 },
 });

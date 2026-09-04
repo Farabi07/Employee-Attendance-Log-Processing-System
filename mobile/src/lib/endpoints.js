@@ -100,6 +100,7 @@ export const endpoints = {
   payoutReview: (pk) => `/wallet/api/v1/payout/${pk}/review/`,
   payoutConfirm: () => `/wallet/api/v1/payout/confirm/`,
   payoutConfirmCash: (pk) => `/wallet/api/v1/payout/${pk}/confirm_cash/`,
+  payoutPayCash: (employeeId) => `/wallet/api/v1/payout/pay_cash/${employeeId}/`,
   walletTransactions: (params = "") => `/wallet/api/v1/transactions/${params}`,
   payAdjustmentEligible: () => `/wallet/api/v1/pay_adjustment/eligible/`,
   payAdjustmentRequest: () => `/wallet/api/v1/pay_adjustment/request/`,

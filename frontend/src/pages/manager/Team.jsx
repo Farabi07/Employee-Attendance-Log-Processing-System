@@ -8,6 +8,7 @@ import { useAuth } from "../../lib/auth";
 import { currencySymbol, formatMoney, CURRENCIES } from "../../lib/currency";
 import Card from "../../components/Card";
 import Avatar from "../../components/Avatar";
+import PasswordInput from "../../components/PasswordInput";
 
 const inputStyle = {
   width: "100%",
@@ -195,7 +196,7 @@ export default function ManagerTeam() {
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required style={inputStyle} />
 
               <label style={labelStyle}>Temporary password</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required style={inputStyle} />
+              <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} required style={inputStyle} />
 
               {isManager ? (
                 <>
