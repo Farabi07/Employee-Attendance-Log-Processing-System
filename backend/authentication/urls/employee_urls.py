@@ -7,6 +7,8 @@ urlpatterns = [
 
 	path('api/v1/employee/without_paginaiton/all/', views.getAllEmployeeWithoutPagination),
 
+	path('api/v1/employee/teammates/', views.getTeammates),
+
 	path('api/v1/employee/<int:pk>', views.getAEmployee),
 
 	path('api/v1/employee/search/', views.searchEmployee),

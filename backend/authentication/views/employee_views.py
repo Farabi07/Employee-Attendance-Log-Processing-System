@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from authentication.models import Employee, Role
-from authentication.serializers import EmployeeSerializer, EmployeeListSerializer
+from authentication.serializers import EmployeeSerializer, EmployeeListSerializer, EmployeeMinimalListSerializer
 from authentication.filters import EmployeeFilter
 from authentication.permissions import IsManager, IsManagerOrModerator, CanAddEmployees, HasActiveSubscription
 
@@ -240,3 +240,17 @@ def deleteEmployee(request, pk):
 		return Response({'detail': f'Employee id - {pk} is deleted successfully'}, status=status.HTTP_200_OK)
 	except ObjectDoesNotExist:
 		return Response({'detail': f"Employee id - {pk} doesn't exists"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+@extend_schema(request=None, responses=EmployeeMinimalListSerializer)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, HasActiveSubscription])
+def getTeammates(request):
+	"""Minimal id/name list of everyone else in the caller's own store —
+	unlike getAllEmployee this is open to plain employees too (not just
+	Manager/Moderator), since they need it to pick a colleague when
+	requesting a shift swap."""
+	employees = Employee.objects.filter(organization=request.user.organization).exclude(pk=request.user.id)
+	return Response({'employees': EmployeeMinimalListSerializer(employees, many=True).data}, status=status.HTTP_200_OK)
