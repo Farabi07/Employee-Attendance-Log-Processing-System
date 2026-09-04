@@ -71,6 +71,8 @@ export const endpoints = {
 
   registerPushToken: () => `/account/api/v1/push_token/`,
   deactivateAccount: () => `/account/api/v1/deactivate/`,
+  profileMe: () => `/account/api/v1/me/`,
+  profileUpdate: () => `/account/api/v1/me/update/`,
 
   signup: () => `/saas/api/v1/signup/`,
   organizationsAll: () => `/saas/api/v1/organizations/`,

@@ -103,6 +103,7 @@ export function AuthProvider({ children }) {
     login,
     signup,
     logout,
+    refreshUser: loadMe,
     refreshBilling: () => loadBilling(user),
     isAuthenticated: !!user,
     isPlatformOwner,

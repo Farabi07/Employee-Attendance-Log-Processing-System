@@ -11,6 +11,7 @@ export interface AuthUser {
   org_role?: "manager" | "moderator" | "employee";
   is_admin?: boolean;
   organization?: number | null;
+  image?: string | null;
   [key: string]: unknown;
 }
 
@@ -36,6 +37,7 @@ export interface AuthContextValue {
   login: (email: string, password: string) => Promise<AuthUser>;
   signup: (payload: Record<string, unknown>) => Promise<AuthUser>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<AuthUser | null>;
   refreshBilling: () => Promise<void>;
   isAuthenticated: boolean;
   isPlatformOwner: boolean;

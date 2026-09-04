@@ -1,19 +1,23 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, Image, StyleSheet } from "react-native";
 import { T, fonts } from "../theme";
 
 // Ported from frontend/src/components/Avatar.jsx. `borderRadius: "50%"`
 // (a CSS string) doesn't exist in RN — needs the numeric half-of-size
 // instead, computed from the same `size` prop.
-export default function Avatar({ initials, size = 38 }: { initials: string; size?: number }) {
+export default function Avatar({ initials, size = 38, src }: { initials: string; size?: number; src?: string | null }) {
   return (
     <View
       style={[
         styles.circle,
-        { width: size, height: size, borderRadius: size / 2 },
+        { width: size, height: size, borderRadius: size / 2, overflow: "hidden" },
       ]}
     >
-      <Text style={[styles.initials, { fontSize: size * 0.36 }]}>{initials}</Text>
+      {src ? (
+        <Image source={{ uri: src }} style={{ width: size, height: size }} resizeMode="cover" />
+      ) : (
+        <Text style={[styles.initials, { fontSize: size * 0.36 }]}>{initials}</Text>
+      )}
     </View>
   );
 }

@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LogOut } from "lucide-react-native";
 import { T, fonts } from "../theme";
 import { useAuth } from "../lib/auth";
+import { BASE_URL } from "../lib/api";
 import Avatar from "./Avatar";
 import NotificationBell from "./NotificationBell";
 import ProfileModal from "./ProfileModal";
@@ -28,7 +29,7 @@ export default function AppHeader({ title }: { title: string }) {
         <View style={styles.actions}>
           <NotificationBell />
           <Pressable onPress={() => setShowProfile(true)} hitSlop={4}>
-            <Avatar initials={initials} size={32} />
+            <Avatar initials={initials} size={32} src={user.image ? `${BASE_URL}${user.image}` : undefined} />
           </Pressable>
           <Pressable onPress={logout} style={styles.logoutButton}>
             <LogOut size={15} color={T.muted} />
