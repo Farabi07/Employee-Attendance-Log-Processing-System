@@ -8,6 +8,7 @@ import { mediaUrl } from "../lib/api";
 import Avatar from "./Avatar";
 import NotificationBell from "./NotificationBell";
 import ProfileModal from "./ProfileModal";
+import GradientBackground from "./GradientBackground";
 
 // Ported from the header bar inside frontend/src/App.jsx's Shell(). Used
 // as each AppTabs screen's `header` (see navigation/AppTabs.tsx) so every
@@ -22,24 +23,21 @@ export default function AppHeader({ title }: { title: string }) {
 
   return (
     <SafeAreaView edges={["top"]} style={styles.safe}>
+      <GradientBackground />
       <View style={styles.row}>
-        <View style={styles.titleRow}>
-          <View style={styles.titleDot} />
-          <Text style={styles.title} numberOfLines={1}>
-            {title}
-          </Text>
-        </View>
+        <Text style={styles.title} numberOfLines={1}>
+          {title}
+        </Text>
         <View style={styles.actions}>
           <NotificationBell />
           <Pressable onPress={() => setShowProfile(true)} hitSlop={4} style={styles.avatarRing}>
             <Avatar initials={initials} size={30} src={mediaUrl(user.image)} />
           </Pressable>
           <Pressable onPress={logout} style={styles.logoutButton}>
-            <LogOut size={15} color={T.muted} />
+            <LogOut size={15} color="#fff" />
           </Pressable>
         </View>
       </View>
-      <View style={styles.accentLine} />
       <ProfileModal visible={showProfile} onClose={() => setShowProfile(false)} />
     </SafeAreaView>
   );
@@ -47,10 +45,11 @@ export default function AppHeader({ title }: { title: string }) {
 
 const styles = StyleSheet.create({
   safe: {
-    backgroundColor: T.card,
+    backgroundColor: T.navyDeep,
+    overflow: "hidden",
     shadowColor: T.ink,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 4,
   },
@@ -62,22 +61,19 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 10,
   },
-  titleRow: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1, minWidth: 0 },
-  titleDot: { width: 8, height: 8, borderRadius: 3, backgroundColor: T.teal },
-  title: { fontFamily: fonts.display.semibold, fontSize: 17, color: T.navyDeep, flex: 1 },
+  title: { fontFamily: fonts.display.semibold, fontSize: 17, color: "#fff", flex: 1 },
   actions: { flexDirection: "row", alignItems: "center", gap: 10 },
   avatarRing: {
     borderRadius: 17,
     borderWidth: 2,
-    borderColor: T.tealBg,
+    borderColor: "rgba(255,255,255,0.55)",
   },
   logoutButton: {
     width: 34,
     height: 34,
     borderRadius: 9,
-    backgroundColor: T.line2,
+    backgroundColor: "rgba(255,255,255,0.16)",
     alignItems: "center",
     justifyContent: "center",
   },
-  accentLine: { height: 3, backgroundColor: T.teal },
 });

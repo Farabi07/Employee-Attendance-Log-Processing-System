@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { T, fonts } from "../theme";
 import { EMP_NAV, MGR_NAV } from "./navConfig";
 import AppHeader from "../components/AppHeader";
+import GradientBackground from "../components/GradientBackground";
 
 const Tab = createBottomTabNavigator();
 
@@ -18,10 +19,11 @@ export default function AppTabs({ role }: { role: "employee" | "manager" }) {
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: T.tealDeep,
-        tabBarInactiveTintColor: T.muted,
+        tabBarActiveTintColor: "#fff",
+        tabBarInactiveTintColor: "rgba(255,255,255,0.62)",
         tabBarStyle: styles.tabBar,
         tabBarItemStyle: styles.tabItem,
+        tabBarBackground: () => <GradientBackground />,
         tabBarLabelStyle: { fontFamily: fonts.body.medium, fontSize: 10.5 },
       }}
     >
@@ -36,7 +38,7 @@ export default function AppTabs({ role }: { role: "employee" | "manager" }) {
             tabBarIcon: ({ focused, color, size }) => (
               <View style={[styles.iconPill, focused && styles.iconPillActive]}>
                 {focused && <View style={styles.activeDot} />}
-                <item.icon color={focused ? T.tealDeep : color} size={size ?? 19} strokeWidth={focused ? 2.2 : 1.8} />
+                <item.icon color={focused ? "#fff" : color} size={size ?? 19} strokeWidth={focused ? 2.2 : 1.8} />
               </View>
             ),
             tabBarLabel: ({ focused, color }) => (
@@ -60,17 +62,17 @@ export default function AppTabs({ role }: { role: "employee" | "manager" }) {
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: T.card,
-    borderTopWidth: 3,
-    borderTopColor: T.teal,
+    backgroundColor: T.navyDeep,
+    borderTopWidth: 0,
     height: 68,
     paddingTop: 8,
     paddingBottom: 10,
+    overflow: "hidden",
     ...Platform.select({
       ios: {
         shadowColor: T.ink,
         shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.08,
+        shadowOpacity: 0.15,
         shadowRadius: 10,
       },
       android: { elevation: 14 },
@@ -85,9 +87,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   iconPillActive: {
-    backgroundColor: T.tealBg,
-    borderWidth: 1,
-    borderColor: T.teal,
+    backgroundColor: "rgba(255,255,255,0.22)",
   },
   activeDot: {
     position: "absolute",
@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: T.teal,
+    backgroundColor: "#fff",
   },
   label: {
     fontFamily: fonts.body.medium,
