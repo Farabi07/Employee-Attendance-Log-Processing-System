@@ -5,6 +5,7 @@ import { Picker } from "@react-native-picker/picker";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { PieChart, Paperclip } from "lucide-react-native";
+import IconChip from "../../components/IconChip";
 import { T, fonts } from "../../theme";
 import { useAuth } from "../../lib/auth";
 import { api, BASE_URL, getToken, mediaUrl } from "../../lib/api";
@@ -155,7 +156,9 @@ export default function Leave() {
 
         <Card style={styles.card}>
           <View style={styles.iconTitleRow}>
-            <PieChart size={16} color={T.ink} />
+            <IconChip bg={T.amberBg}>
+              <PieChart size={15} color={T.amber} />
+            </IconChip>
             <Text style={styles.title}>Leave balance</Text>
           </View>
           <Text style={styles.balanceSubtitle}>

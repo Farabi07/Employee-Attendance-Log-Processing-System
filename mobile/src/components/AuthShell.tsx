@@ -13,15 +13,18 @@ export default function AuthShell({ children, maxWidth = 360 }: { children: Reac
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <Card style={[styles.card, { maxWidth }]}>
-          <View style={styles.logoRow}>
-            <View style={styles.logoMark}>
-              <Clock size={16} color={T.paper} strokeWidth={2} />
+        <View style={[styles.cardWrap, { maxWidth }]}>
+          <View style={styles.topAccent} />
+          <Card style={styles.card}>
+            <View style={styles.logoRow}>
+              <View style={styles.logoMark}>
+                <Clock size={16} color={T.paper} strokeWidth={2} />
+              </View>
+              <Text style={styles.logoText}>TimeTap</Text>
             </View>
-            <Text style={styles.logoText}>TimeTap</Text>
-          </View>
-          {children}
-        </Card>
+            {children}
+          </Card>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -35,15 +38,28 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 16,
   },
-  card: { width: "100%", padding: 28 },
+  cardWrap: { width: "100%" },
+  topAccent: {
+    height: 6,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+    backgroundColor: T.teal,
+    marginHorizontal: 10,
+  },
+  card: { width: "100%", padding: 28, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
   logoRow: { flexDirection: "row", alignItems: "center", gap: 9, marginBottom: 26 },
   logoMark: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
+    width: 34,
+    height: 34,
+    borderRadius: 9,
     backgroundColor: T.navy,
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: T.navyDeep,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
   },
   logoText: {
     fontFamily: fonts.display.semibold,

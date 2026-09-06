@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Download, FileText, FileSpreadsheet, UserX } from "lucide-react-native";
+import { Download, FileText, FileSpreadsheet, UserX, ClipboardList } from "lucide-react-native";
 import { T, fonts } from "../../theme";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import { downloadAndShare, writeAndShareText } from "../../lib/download";
 import { weekDates, formatDayLabel, formatDuration, formatTime, todayISO } from "../../lib/dates";
 import Card from "../../components/Card";
+import IconChip from "../../components/IconChip";
 import DateField from "../../components/DateField";
 import StatusPill from "../../components/StatusPill";
 
@@ -143,7 +144,12 @@ export default function Reports() {
     <SafeAreaView style={styles.safe} edges={[]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Card style={styles.card}>
-          <Text style={styles.cardTitle}>{view === "summary" ? "Attendance report" : "Timesheet"}</Text>
+          <View style={styles.iconTitleRow}>
+            <IconChip bg={T.navyBg}>
+              <ClipboardList size={14} color={T.navyDeep} />
+            </IconChip>
+            <Text style={styles.cardTitle}>{view === "summary" ? "Attendance report" : "Timesheet"}</Text>
+          </View>
           <Text style={styles.subtitle}>
             {formatDayLabel(dateFrom)} – {formatDayLabel(dateTo)}
           </Text>
@@ -270,7 +276,9 @@ export default function Reports() {
 
         <Card style={styles.card}>
           <View style={styles.iconTitleRow}>
-            <UserX size={16} color={T.ink} />
+            <IconChip bg={T.coralBg}>
+              <UserX size={14} color={T.coral} />
+            </IconChip>
             <Text style={styles.cardTitle}>Mark absentees</Text>
           </View>
           <Text style={styles.bodyMuted}>

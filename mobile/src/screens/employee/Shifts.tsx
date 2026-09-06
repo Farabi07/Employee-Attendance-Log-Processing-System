@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TextInput, Pressable, Switch, StyleSheet, Activ
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
 import { Repeat, Check, X, CalendarClock } from "lucide-react-native";
+import IconChip from "../../components/IconChip";
 import { T, fonts } from "../../theme";
 import { useAuth } from "../../lib/auth";
 import { api } from "../../lib/api";
@@ -246,7 +247,9 @@ export default function Shifts() {
         {hasSwaps && (
           <Card style={styles.card}>
             <View style={styles.iconTitleRow}>
-              <Repeat size={15} color={T.ink} />
+              <IconChip bg={T.tealBg}>
+                <Repeat size={14} color={T.tealDeep} />
+              </IconChip>
               <Text style={styles.title}>Shift swaps</Text>
             </View>
             <Text style={styles.subtitle}>
@@ -320,7 +323,9 @@ export default function Shifts() {
 
         <Card style={styles.card}>
           <View style={styles.iconTitleRow}>
-            <CalendarClock size={16} color={T.ink} />
+            <IconChip bg={T.navyBg}>
+              <CalendarClock size={15} color={T.navyDeep} />
+            </IconChip>
             <Text style={styles.title}>Weekly availability</Text>
           </View>
           <Text style={styles.subtitle}>

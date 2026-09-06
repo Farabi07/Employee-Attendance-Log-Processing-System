@@ -11,6 +11,7 @@ import { useAuth } from "../../lib/auth";
 import { formatMoney, CURRENCIES } from "../../lib/currency";
 import { weekDates } from "../../lib/dates";
 import Card from "../../components/Card";
+import IconChip from "../../components/IconChip";
 import StatusPill from "../../components/StatusPill";
 import DateField from "../../components/DateField";
 import InlinePicker from "../../components/InlinePicker";
@@ -291,7 +292,9 @@ export default function Payroll() {
         {isManager && (
           <Card style={styles.card}>
             <View style={styles.iconTitleRow}>
-              <CreditCard size={15} color={T.ink} />
+              <IconChip bg={T.navyBg}>
+                <CreditCard size={14} color={T.navyDeep} />
+              </IconChip>
               <Text style={styles.cardTitleSmall}>Payout card</Text>
             </View>
             {payoutCard === undefined ? (
@@ -327,7 +330,12 @@ export default function Payroll() {
         )}
 
         <Card style={styles.card}>
-          <Text style={styles.cardTitle}>Export for accounting</Text>
+          <View style={styles.iconTitleRow}>
+            <IconChip bg={T.navyBg}>
+              <Download size={14} color={T.navyDeep} />
+            </IconChip>
+            <Text style={[styles.cardTitle, { marginBottom: 0 }]}>Export for accounting</Text>
+          </View>
           <Text style={styles.bodyMuted}>
             Gross pay per employee for a pay period — hours, rate, and total earned. Import the CSV straight into Xero, MYOB,
             or Excel.
@@ -353,7 +361,12 @@ export default function Payroll() {
         </Card>
 
         <Card style={styles.card}>
-          <Text style={styles.cardTitle}>Team balances</Text>
+          <View style={styles.iconTitleRow}>
+            <IconChip bg={T.tealBg}>
+              <Wallet size={14} color={T.tealDeep} />
+            </IconChip>
+            <Text style={[styles.cardTitle, { marginBottom: 0 }]}>Team balances</Text>
+          </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View>
               <View style={styles.tableHeaderRow}>
@@ -424,7 +437,12 @@ export default function Payroll() {
 
         {summary.pending_requests.length > 0 && (
           <Card style={styles.card}>
-            <Text style={styles.cardTitle}>Cash-out requests awaiting review</Text>
+            <View style={styles.iconTitleRow}>
+              <IconChip bg={T.amberBg}>
+                <Banknote size={14} color={T.amber} />
+              </IconChip>
+              <Text style={[styles.cardTitle, { marginBottom: 0 }]}>Cash-out requests awaiting review</Text>
+            </View>
             {isManager && !summary.payouts_available && (
               <Text style={styles.warningText}>Paying these out requires a paid subscription — not available during the free trial.</Text>
             )}
@@ -538,8 +556,10 @@ export default function Payroll() {
 
         <Card style={styles.card}>
           <View style={styles.iconTitleRow}>
-            <ListChecks size={16} color={T.ink} />
-            <Text style={styles.cardTitle}>Recent transactions</Text>
+            <IconChip bg={T.tealBg}>
+              <ListChecks size={14} color={T.tealDeep} />
+            </IconChip>
+            <Text style={[styles.cardTitle, { marginBottom: 0 }]}>Recent transactions</Text>
           </View>
           {transactions.length === 0 && <Text style={styles.bodyMuted}>No transactions yet.</Text>}
           {transactions.map((t, i) => (

@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { View, Text, TextInput, ScrollView, Pressable, Linking, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Check, X, Clock3, Paperclip, Repeat } from "lucide-react-native";
+import { Check, X, Clock3, Paperclip, Repeat, CalendarCheck } from "lucide-react-native";
 import { T, fonts } from "../../theme";
 import { api, BASE_URL } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import { formatMoney } from "../../lib/currency";
 import Card from "../../components/Card";
 import Avatar from "../../components/Avatar";
+import IconChip from "../../components/IconChip";
 
 // Ported from frontend/src/pages/manager/Approvals.jsx.
 function initialsOf(emp: any) {
@@ -165,7 +166,12 @@ export default function Approvals() {
     <SafeAreaView style={styles.safe} edges={[]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Card style={styles.card}>
-          <Text style={styles.cardTitle}>Leave approvals</Text>
+          <View style={styles.iconTitleRow}>
+            <IconChip bg={T.tealBg}>
+              <CalendarCheck size={14} color={T.tealDeep} />
+            </IconChip>
+            <Text style={styles.cardTitle}>Leave approvals</Text>
+          </View>
           <Text style={styles.cardSubtitle}>{loading ? "Loading…" : `${requests.length} awaiting your review`}</Text>
           {!loading && requests.length === 0 && <Text style={styles.emptyText}>Nothing pending — you're all caught up.</Text>}
           <View style={{ gap: 12 }}>
@@ -207,7 +213,9 @@ export default function Approvals() {
 
         <Card style={styles.card}>
           <View style={styles.iconTitleRow}>
-            <Clock3 size={16} color={T.ink} />
+            <IconChip bg={T.amberBg}>
+              <Clock3 size={14} color={T.amber} />
+            </IconChip>
             <Text style={styles.cardTitle}>Pay adjustment requests</Text>
           </View>
           <Text style={styles.cardSubtitle}>
@@ -224,7 +232,9 @@ export default function Approvals() {
 
         <Card style={styles.card}>
           <View style={styles.iconTitleRow}>
-            <Repeat size={16} color={T.ink} />
+            <IconChip bg={T.navyBg}>
+              <Repeat size={14} color={T.navyDeep} />
+            </IconChip>
             <Text style={styles.cardTitle}>Shift swap approvals</Text>
           </View>
           <Text style={styles.cardSubtitle}>

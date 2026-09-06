@@ -9,6 +9,7 @@ import { formatDayLabel, todayISO } from "../../lib/dates";
 import { useAuth } from "../../lib/auth";
 import { getLocation } from "../../lib/geolocation";
 import Card from "../../components/Card";
+import IconChip from "../../components/IconChip";
 import FormField from "../../components/FormField";
 import DateField from "../../components/DateField";
 import TimeField from "../../components/TimeField";
@@ -393,7 +394,9 @@ export default function Roster() {
         <Card style={styles.card}>
           <View style={styles.rowHeader}>
             <View style={styles.iconTitleRow}>
-              <Building2 size={15} color={T.ink} />
+              <IconChip bg={T.navyBg}>
+                <Building2 size={14} color={T.navyDeep} />
+              </IconChip>
               <Text style={styles.cardTitle}>Branches</Text>
             </View>
             <Pressable onPress={() => setShowBranchForm((v) => !v)}>
@@ -424,7 +427,9 @@ export default function Roster() {
 
         <Card style={styles.card}>
           <View style={styles.iconTitleRow}>
-            <Tag size={15} color={T.ink} />
+            <IconChip bg={T.amberBg}>
+              <Tag size={14} color={T.amber} />
+            </IconChip>
             <Text style={styles.cardTitle}>Leave types</Text>
           </View>
           {leaveTypes.map((lt) => (
@@ -475,7 +480,9 @@ export default function Roster() {
         {!canManageQr && (
           <Card style={styles.card}>
             <View style={styles.iconTitleRow}>
-              <QrCode size={17} color={T.ink} />
+              <IconChip bg={T.tealBg} size={28}>
+                <QrCode size={15} color={T.tealDeep} />
+              </IconChip>
               <Text style={styles.cardTitle}>Branch check-in QR & geofence</Text>
             </View>
             <Text style={styles.bodyMuted}>
@@ -488,7 +495,9 @@ export default function Roster() {
         {canManageQr && (
           <Card style={styles.card}>
             <View style={styles.iconTitleRow}>
-              <QrCode size={17} color={T.ink} />
+              <IconChip bg={T.tealBg} size={28}>
+                <QrCode size={15} color={T.tealDeep} />
+              </IconChip>
               <Text style={styles.cardTitle}>Live check-in QR & geofence</Text>
             </View>
             <Text style={styles.bodyMuted}>The code refreshes every 30 seconds — display it on a screen at the entrance, don't print it.</Text>

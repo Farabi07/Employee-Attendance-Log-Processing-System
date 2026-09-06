@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, TextInput, ScrollView, Pressable, Switch, StyleSheet, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Search, UserPlus, DollarSign, ShieldCheck, History, User } from "lucide-react-native";
+import { Search, UserPlus, DollarSign, ShieldCheck, History, User, Users } from "lucide-react-native";
 import { T, fonts } from "../../theme";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
@@ -9,6 +9,7 @@ import { useAuth } from "../../lib/auth";
 import { currencySymbol, formatMoney, CURRENCIES } from "../../lib/currency";
 import { todayISO, formatDayLabel } from "../../lib/dates";
 import Card from "../../components/Card";
+import IconChip from "../../components/IconChip";
 import Avatar from "../../components/Avatar";
 import FormField from "../../components/FormField";
 import { PrimaryButton } from "../../components/Button";
@@ -220,7 +221,9 @@ export default function Team() {
         {canAddEmployees ? (
           <Card style={styles.card}>
             <View style={styles.cardTitleRow}>
-              <UserPlus size={17} color={T.ink} />
+              <IconChip bg={T.tealBg}>
+                <UserPlus size={15} color={T.tealDeep} />
+              </IconChip>
               <Text style={styles.cardTitle}>Add employee</Text>
             </View>
             <FormField label="First name" value={firstName} onChangeText={setFirstName} />
@@ -285,7 +288,9 @@ export default function Team() {
         {isManager && (
           <Card style={styles.card}>
             <View style={styles.cardTitleRow}>
-              <ShieldCheck size={16} color={T.ink} />
+              <IconChip bg={T.navyBg}>
+                <ShieldCheck size={14} color={T.navyDeep} />
+              </IconChip>
               <Text style={styles.cardTitle}>Moderator access</Text>
             </View>
             <Text style={styles.bodyMuted}>
@@ -312,7 +317,12 @@ export default function Team() {
 
         <Card style={styles.card}>
           <View style={styles.teamHeaderRow}>
-            <Text style={styles.cardTitle}>Team ({employees.length})</Text>
+            <View style={[styles.cardTitleRow, { marginBottom: 0 }]}>
+              <IconChip bg={T.tealBg}>
+                <Users size={14} color={T.tealDeep} />
+              </IconChip>
+              <Text style={styles.cardTitle}>Team ({employees.length})</Text>
+            </View>
             <View style={styles.searchBox}>
               <Search size={14} color={T.faint} style={styles.searchIcon} />
               <TextInput placeholder="Search" placeholderTextColor={T.faint} value={query} onChangeText={setQuery} style={styles.searchInput} />

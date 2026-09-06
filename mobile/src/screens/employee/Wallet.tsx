@@ -19,6 +19,7 @@ import { endpoints } from "../../lib/endpoints";
 import { useAuth } from "../../lib/auth";
 import { formatMoney, currencySymbol } from "../../lib/currency";
 import Card from "../../components/Card";
+import IconChip from "../../components/IconChip";
 import StatusPill from "../../components/StatusPill";
 import { PrimaryButton } from "../../components/Button";
 
@@ -314,7 +315,9 @@ export default function Wallet() {
 
         <Card style={styles.card}>
           <View style={styles.iconTitleRow}>
-            <Landmark size={15} color={T.ink} />
+            <IconChip bg={T.navyBg}>
+              <Landmark size={14} color={T.navyDeep} />
+            </IconChip>
             <Text style={styles.cardTitle}>Payout method</Text>
           </View>
           {wallet.payouts_enabled ? (
@@ -345,7 +348,9 @@ export default function Wallet() {
 
         <Card style={styles.card}>
           <View style={styles.iconTitleRow}>
-            <ArrowDownToLine size={15} color={T.ink} />
+            <IconChip bg={T.tealBg}>
+              <ArrowDownToLine size={14} color={T.tealDeep} />
+            </IconChip>
             <Text style={styles.cardTitle}>Request payout</Text>
           </View>
           {!wallet.payouts_available ? (
@@ -413,7 +418,9 @@ export default function Wallet() {
         {(eligibleAdjustments.length > 0 || myAdjustments.length > 0) && (
           <Card style={styles.card}>
             <View style={styles.iconTitleRow}>
-              <Clock3 size={15} color={T.ink} />
+              <IconChip bg={T.amberBg}>
+                <Clock3 size={14} color={T.amber} />
+              </IconChip>
               <Text style={styles.cardTitle}>Overtime & shortfall claims</Text>
             </View>
             <Text style={styles.bodyMuted}>Days you worked more or less than your shift sit here until you ask for them to be considered.</Text>
@@ -447,7 +454,9 @@ export default function Wallet() {
         {rateHistory.length > 0 && (
           <Card style={styles.card}>
             <View style={styles.iconTitleRow}>
-              <History size={15} color={T.ink} />
+              <IconChip bg={T.navyBg}>
+                <History size={14} color={T.navyDeep} />
+              </IconChip>
               <Text style={styles.cardTitle}>Pay history</Text>
             </View>
             {rateHistory.map((h, i) => (

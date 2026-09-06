@@ -7,6 +7,7 @@ import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import { formatTime, todayISO } from "../../lib/dates";
 import Card from "../../components/Card";
+import IconChip from "../../components/IconChip";
 import Avatar from "../../components/Avatar";
 import StatusPill from "../../components/StatusPill";
 import Team from "./Team";
@@ -115,7 +116,12 @@ function OverviewDashboard() {
       </View>
 
       <Card style={styles.tableCard}>
-        <Text style={styles.tableTitle}>Team attendance · today</Text>
+        <View style={styles.tableTitleRow}>
+          <IconChip bg={T.navyBg}>
+            <Users size={14} color={T.navy} strokeWidth={2.2} />
+          </IconChip>
+          <Text style={[styles.tableTitle, { marginBottom: 0 }]}>Team attendance · today</Text>
+        </View>
         <View style={styles.searchBox}>
           <Search size={14} color={T.faint} style={styles.searchIcon} />
           <TextInput
@@ -211,6 +217,7 @@ const styles = StyleSheet.create({
   metricIconBox: { width: 28, height: 28, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   metricValue: { fontFamily: fonts.display.semibold, fontSize: 26, color: T.ink },
   tableCard: { padding: 20 },
+  tableTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
   tableTitle: { fontFamily: fonts.display.semibold, fontSize: 16, color: T.ink, marginBottom: 12 },
   searchBox: { position: "relative", marginBottom: 12 },
   searchIcon: { position: "absolute", left: 10, top: 10, zIndex: 1 },
