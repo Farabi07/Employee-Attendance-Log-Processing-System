@@ -244,7 +244,7 @@ export default function Team() {
                 />
               </View>
             ) : (
-              <Text style={styles.hintText}>Added as a regular Employee — only the Manager can create Moderators.</Text>
+              <Text style={styles.hintText}>Added as an Employee — only the Manager can create Moderators.</Text>
             )}
 
             <Text style={styles.label}>Hourly rate (optional)</Text>
@@ -265,7 +265,7 @@ export default function Team() {
             <Text style={styles.label}>Pay out every</Text>
             <InlinePicker selectedValue={payoutCycle} onValueChange={setPayoutCycle} items={PAYOUT_CYCLES} />
             {payoutCycle === "hourly" && (
-              <Text style={styles.hintText}>Earnings settle to their wallet instantly, right after every check-out — no waiting for a batch.</Text>
+              <Text style={styles.hintText}>Earnings settle instantly after every check-out.</Text>
             )}
 
             <View style={{ marginTop: 14 }}>
@@ -279,8 +279,7 @@ export default function Team() {
           <Card style={styles.card}>
             <Text style={styles.cardTitle}>Add employee</Text>
             <Text style={styles.bodyMuted}>
-              Only the store Manager can add new employees or moderators — ask them to turn on "Add employees" below if you need
-              this.
+              Only the Manager can add employees or moderators — ask them to enable it below.
             </Text>
           </Card>
         )}
@@ -294,7 +293,7 @@ export default function Team() {
               <Text style={styles.cardTitle}>Moderator access</Text>
             </View>
             <Text style={styles.bodyMuted}>
-              A Moderator can always manage shifts, roster and leave. Everything below is off until you turn it on.
+              Moderators always manage shifts, roster, and leave. Everything below is off by default.
             </Text>
             <View style={{ gap: 14 }}>
               {MODERATOR_PERMISSIONS.map((opt) => (

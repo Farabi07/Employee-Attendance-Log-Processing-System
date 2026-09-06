@@ -334,8 +334,8 @@ export default function Wallet() {
             <>
               <Text style={styles.bodyMuted}>
                 {wallet.payout_method_connected
-                  ? "Almost there — finish verifying your details with Stripe to start receiving payouts."
-                  : "Add a bank account or card so your payouts can actually reach you."}
+                  ? "Almost there — finish verifying with Stripe to receive payouts."
+                  : "Add a bank account or card to receive payouts."}
               </Text>
               <Pressable onPress={startOnboarding} disabled={connecting} style={styles.navyButton}>
                 <Text style={styles.navyButtonText}>
@@ -354,12 +354,12 @@ export default function Wallet() {
             <Text style={styles.cardTitle}>Request payout</Text>
           </View>
           {!wallet.payouts_available ? (
-            <Text style={styles.bodyMuted}>Cash-out requests open up once your employer subscribes — currently on a free trial.</Text>
+            <Text style={styles.bodyMuted}>Cash-outs open up once your employer subscribes (currently on trial).</Text>
           ) : (
             <>
               <Text style={styles.bodyMuted}>
-                Need cash before payday? Request a cash-out — your manager reviews it and pays you, via Stripe or in person.
-                {!wallet.payouts_enabled && " (You don't need a bank account connected if your manager pays in cash.)"}
+                Need cash before payday? Request a cash-out — your manager reviews and pays it.
+                {!wallet.payouts_enabled && " No bank account needed if paid in cash."}
               </Text>
               <TextInput
                 value={amount}
@@ -423,7 +423,7 @@ export default function Wallet() {
               </IconChip>
               <Text style={styles.cardTitle}>Overtime & shortfall claims</Text>
             </View>
-            <Text style={styles.bodyMuted}>Days you worked more or less than your shift sit here until you ask for them to be considered.</Text>
+            <Text style={styles.bodyMuted}>Extra or short hours sit here until you submit a claim.</Text>
 
             {eligibleAdjustments.length > 0 && (
               <View style={styles.rowGroup}>

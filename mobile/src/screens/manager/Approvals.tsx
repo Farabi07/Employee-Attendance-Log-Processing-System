@@ -219,8 +219,8 @@ export default function Approvals() {
             <Text style={styles.cardTitle}>Pay adjustment requests</Text>
           </View>
           <Text style={styles.cardSubtitle}>
-            {loadingAdjustments ? "Loading…" : `${payAdjustments.length} awaiting your review`} — overtime worked beyond a
-            shift, or hours short of one.
+            {loadingAdjustments ? "Loading…" : `${payAdjustments.length} awaiting your review`} — overtime or shortfall
+            claims.
           </Text>
           {!loadingAdjustments && payAdjustments.length === 0 && <Text style={styles.emptyText}>Nothing pending here either.</Text>}
           <View style={{ gap: 12 }}>
@@ -238,8 +238,8 @@ export default function Approvals() {
             <Text style={styles.cardTitle}>Shift swap approvals</Text>
           </View>
           <Text style={styles.cardSubtitle}>
-            {loadingSwaps ? "Loading…" : `${swapRequests.length} awaiting your review`} — a colleague already agreed to take
-            the shift, this finalizes it.
+            {loadingSwaps ? "Loading…" : `${swapRequests.length} awaiting your review`} — a colleague already agreed; this
+            finalizes it.
           </Text>
           {!loadingSwaps && swapRequests.length === 0 && <Text style={styles.emptyText}>Nothing pending here either.</Text>}
           <View style={{ gap: 12 }}>

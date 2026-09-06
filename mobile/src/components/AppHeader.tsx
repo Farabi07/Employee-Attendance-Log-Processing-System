@@ -45,7 +45,7 @@ export default function AppHeader({ title }: { title: string }) {
 
 const styles = StyleSheet.create({
   safe: {
-    backgroundColor: T.navyDeep,
+    backgroundColor: T.navy,
     overflow: "hidden",
     shadowColor: T.ink,
     shadowOffset: { width: 0, height: 2 },
@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 9,
-    backgroundColor: "rgba(255,255,255,0.16)",
+    backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
   },

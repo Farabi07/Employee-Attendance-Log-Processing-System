@@ -253,7 +253,7 @@ export default function Shifts() {
               <Text style={styles.title}>Shift swaps</Text>
             </View>
             <Text style={styles.subtitle}>
-              Give up a shift above, accept a colleague's, or grab an open one — your manager gives the final approval either way.
+              Give up a shift, accept one, or grab an open one — your manager approves it.
             </Text>
 
             {swaps.incoming.length > 0 && (
@@ -329,7 +329,7 @@ export default function Shifts() {
             <Text style={styles.title}>Weekly availability</Text>
           </View>
           <Text style={styles.subtitle}>
-            Let your manager know which days you're generally free to work — this is advisory, it doesn't block them from rostering you outside it.
+            Let your manager know which days you're usually free. Advisory only.
           </Text>
           {availability.map((d) => (
             <View key={d.day_of_week} style={[styles.availRow, d.day_of_week > 0 && styles.availRowBorder]}>

@@ -3,7 +3,7 @@ import { StyleSheet, View, ViewStyle, StyleProp, LayoutChangeEvent } from "react
 import Svg, { Defs, LinearGradient, Stop, Rect } from "react-native-svg";
 import { T } from "../theme";
 
-// A left-to-right navy->teal gradient panel, used behind the top header
+// A left-to-right, lighter navy->teal gradient panel, used behind the top header
 // and bottom tab bar so the app's "chrome" reads as one smart, branded
 // strip instead of a flat white bar with a thin accent line. Built on
 // react-native-svg (already a dependency, used by ShiftRing) rather than
@@ -28,13 +28,12 @@ export default function GradientBackground({ style }: { style?: StyleProp<ViewSt
   }, []);
 
   return (
-    <View style={[StyleSheet.absoluteFill, style, { backgroundColor: T.navyDeep }]} onLayout={onLayout}>
+    <View style={[StyleSheet.absoluteFill, style, { backgroundColor: T.navy }]} onLayout={onLayout}>
       {size && size.width > 0 && (
         <Svg width={size.width} height={size.height}>
           <Defs>
             <LinearGradient id="chrome" x1={0} y1={0} x2={size.width} y2={0} gradientUnits="userSpaceOnUse">
-              <Stop offset="0" stopColor={T.navyDeep} />
-              <Stop offset="0.4" stopColor={T.tealDeep} />
+              <Stop offset="0" stopColor={T.navy} />
               <Stop offset="1" stopColor={T.teal} />
             </LinearGradient>
           </Defs>

@@ -282,8 +282,8 @@ export default function Reports() {
             <Text style={styles.cardTitle}>Mark absentees</Text>
           </View>
           <Text style={styles.bodyMuted}>
-            Anyone rostered on this date with no attendance record gets marked absent (or on leave, if approved leave covers
-            it). Runs automatically once a day if cron is set up on the server — use this to run it by hand.
+            Marks anyone rostered with no attendance record absent (or on leave, if covered). Runs automatically daily — use
+            this to trigger it by hand.
           </Text>
           <View style={styles.absentRow}>
             <View style={{ flex: 1 }}>

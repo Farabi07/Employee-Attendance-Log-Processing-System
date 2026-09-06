@@ -284,8 +284,7 @@ export default function Payroll() {
         )}
         {isManager && (
           <Text style={styles.hintText}>
-            This pays everyone's full balance right now, regardless of their own cycle. Each employee's cycle (set in Team)
-            decides when they're paid automatically.
+            Pays everyone's full balance now, regardless of their pay cycle.
           </Text>
         )}
 
@@ -314,8 +313,7 @@ export default function Payroll() {
             ) : (
               <View>
                 <Text style={styles.bodyMuted}>
-                  Add a card once so approving a cash-out charges it instantly — no redirect each time. Without one, you'll pay
-                  through a one-off checkout page per approval.
+                  Add a card once to charge cash-outs instantly, no redirect each time.
                 </Text>
                 <Pressable onPress={startPayoutCardSetup} disabled={settingUpCard} style={styles.navyButtonSmall}>
                   <Text style={styles.navyButtonSmallText}>{settingUpCard ? "Opening…" : "Add a payout card"}</Text>
@@ -337,8 +335,7 @@ export default function Payroll() {
             <Text style={[styles.cardTitle, { marginBottom: 0 }]}>Export for accounting</Text>
           </View>
           <Text style={styles.bodyMuted}>
-            Gross pay per employee for a pay period — hours, rate, and total earned. Import the CSV straight into Xero, MYOB,
-            or Excel.
+            Gross pay per employee — hours, rate, and total earned.
           </Text>
           <View style={styles.exportDateRow}>
             <DateField label="From" value={exportFrom} onChange={setExportFrom} />
@@ -413,7 +410,7 @@ export default function Payroll() {
               Pay {payingCashEmployee.employee.first_name} in cash
             </Text>
             <Text style={styles.bodyMuted}>
-              Hand them the cash, then confirm below. It won't count as paid until they confirm receiving it in their Wallet.
+              Hand them the cash, then confirm below — it's not marked paid until they confirm.
             </Text>
             <Text style={styles.confirmLabel}>Amount</Text>
             <TextInput

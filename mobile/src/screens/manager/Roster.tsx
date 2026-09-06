@@ -486,8 +486,7 @@ export default function Roster() {
               <Text style={styles.cardTitle}>Branch check-in QR & geofence</Text>
             </View>
             <Text style={styles.bodyMuted}>
-              Only the store Manager can generate or manage a branch's check-in QR code — ask them to turn this on if you need
-              it.
+              Only the Manager can manage a branch's QR code — ask them to enable it.
             </Text>
           </Card>
         )}
@@ -500,7 +499,7 @@ export default function Roster() {
               </IconChip>
               <Text style={styles.cardTitle}>Live check-in QR & geofence</Text>
             </View>
-            <Text style={styles.bodyMuted}>The code refreshes every 30 seconds — display it on a screen at the entrance, don't print it.</Text>
+            <Text style={styles.bodyMuted}>Refreshes every 30 seconds — display it, don't print it.</Text>
 
             <Text style={styles.label}>Branch</Text>
             <InlinePicker
