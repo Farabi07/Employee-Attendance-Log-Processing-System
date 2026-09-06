@@ -635,7 +635,7 @@ const styles = StyleSheet.create({
   geoRow: { flexDirection: "row", gap: 8, marginBottom: 10 },
   outlineButtonSmall: { paddingVertical: 9, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: T.line, justifyContent: "center" },
   outlineButtonSmallText: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.ink },
-  darkButtonSmall: { backgroundColor: T.ink, borderRadius: 8, paddingVertical: 9, paddingHorizontal: 14, alignSelf: "flex-start" },
+  darkButtonSmall: { backgroundColor: T.teal, borderRadius: 8, paddingVertical: 9, paddingHorizontal: 14, alignSelf: "flex-start" },
   darkButtonSmallText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.paper },
   footHint: { fontFamily: fonts.body.regular, fontSize: 11.5, color: T.faint, marginTop: 8 },
 });

@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
   },
   permissionPrompt: { flex: 1, alignItems: "center", justifyContent: "center", padding: 16, gap: 12 },
   permissionText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, textAlign: "center" },
-  permissionButton: { backgroundColor: T.ink, paddingVertical: 9, paddingHorizontal: 16, borderRadius: 8 },
+  permissionButton: { backgroundColor: T.teal, paddingVertical: 9, paddingHorizontal: 16, borderRadius: 8 },
   permissionButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.paper },
   manualSection: { marginTop: 18, paddingTop: 16, borderTopWidth: 1, borderTopColor: T.line2 },
   manualLabelRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
@@ -145,6 +145,6 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     color: T.ink,
   },
-  useButton: { paddingVertical: 9, paddingHorizontal: 14, borderRadius: 8, backgroundColor: T.ink, alignItems: "center", justifyContent: "center" },
+  useButton: { paddingVertical: 9, paddingHorizontal: 14, borderRadius: 8, backgroundColor: T.teal, alignItems: "center", justifyContent: "center" },
   useButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.paper },
 });

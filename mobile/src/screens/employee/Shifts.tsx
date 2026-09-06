@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
   pickerBox: { borderWidth: 1, borderColor: T.line, borderRadius: 8, marginBottom: 8, overflow: "hidden", backgroundColor: T.card },
   reasonInput: { borderWidth: 1, borderColor: T.line, borderRadius: 7, paddingVertical: 8, paddingHorizontal: 10, fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink, marginBottom: 10, backgroundColor: T.card },
   actionRow: { flexDirection: "row", gap: 8 },
-  sendButton: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, backgroundColor: T.ink },
+  sendButton: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, backgroundColor: T.teal },
   sendButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.paper },
   cancelButton: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: T.line },
   cancelButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.muted },

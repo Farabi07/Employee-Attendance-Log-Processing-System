@@ -277,7 +277,7 @@ export default function Payroll() {
             style={[styles.runPayrollButton, { opacity: running || Number(summary.total_payable) <= 0 ? 0.6 : 1 }]}
           >
             <Wallet size={15} color={T.paper} />
-            <Text style={styles.runPayrollButtonText}>{running ? "Processing…" : "Approve & Pay Payroll"}</Text>
+            <Text style={styles.runPayrollButtonText}>{running ? "Processing…" : "Run Payroll"}</Text>
           </Pressable>
         ) : (
           <Text style={styles.bodyMuted}>Only the store Manager can run payroll.</Text>
@@ -610,7 +610,7 @@ const styles = StyleSheet.create({
   metricValue: { fontFamily: fonts.display.semibold, fontSize: 22, color: T.ink },
   mixedCurrencyNote: { fontFamily: fonts.body.regular, fontSize: 10.5, color: T.faint, marginTop: 4 },
   runPayrollButton: { flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", backgroundColor: T.teal, borderRadius: 9, paddingVertical: 11 },
-  runPayrollButtonText: { fontFamily: fonts.body.semibold, fontSize: 13.5, color: T.paper },
+  runPayrollButtonText: { fontFamily: fonts.body.semibold, fontSize: 13.5, color: "#fff" },
   cardStatusRow: { flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap" },
   cardBrandText: { fontFamily: fonts.mono.regular, fontSize: 13, color: T.ink, textTransform: "capitalize" },
   cardBadge: { backgroundColor: T.tealBg, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 999 },

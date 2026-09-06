@@ -364,17 +364,17 @@ export default function Team() {
                       </Text>
                     </View>
                     <Pressable onPress={() => toggleProfile(emp)} style={[styles.iconButton, isProfileOpen && styles.iconButtonActive]}>
-                      <User size={15} color={isProfileOpen ? T.tealDeep : T.faint} />
+                      <User size={15} color={T.tealDeep} />
                     </Pressable>
                     <Pressable onPress={() => toggleHistory(emp)} style={[styles.iconButton, isHistoryOpen && styles.iconButtonActive]}>
-                      <History size={15} color={isHistoryOpen ? T.tealDeep : T.faint} />
+                      <History size={15} color={T.tealDeep} />
                     </Pressable>
                     {canAddEmployees && (
                       <Pressable
                         onPress={() => (isEditing ? setEditingPayId(null) : startEditPay(emp))}
                         style={[styles.iconButton, isEditing && styles.iconButtonActive]}
                       >
-                        <DollarSign size={15} color={isEditing ? T.tealDeep : T.teal} />
+                        <DollarSign size={15} color={T.tealDeep} />
                       </Pressable>
                     )}
                   </View>
@@ -544,8 +544,8 @@ const styles = StyleSheet.create({
   empMeta: { fontFamily: fonts.mono.regular, fontSize: 11, color: T.faint, marginTop: 2 },
   roleBadge: { paddingVertical: 2, paddingHorizontal: 7, borderRadius: 999 },
   roleBadgeText: { fontFamily: fonts.body.semibold, fontSize: 10.5 },
-  iconButton: { padding: 6, borderRadius: 7 },
-  iconButtonActive: { backgroundColor: T.tealBg },
+  iconButton: { padding: 6, borderRadius: 8, backgroundColor: T.tealBg, borderWidth: 1.5, borderColor: "transparent" },
+  iconButtonActive: { borderColor: T.teal },
   editRow: { flexDirection: "row", gap: 8, alignItems: "center", paddingTop: 10, paddingLeft: 46, flexWrap: "wrap" },
   editRateInput: {
     width: 100,

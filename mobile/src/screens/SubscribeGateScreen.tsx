@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
   title: { fontFamily: fonts.display.semibold, fontSize: 19, color: T.ink, marginBottom: 8, textAlign: "center" },
   subtitle: { fontFamily: fonts.body.regular, fontSize: 13, color: T.muted, marginBottom: 24, textAlign: "center", lineHeight: 19 },
   planRow: { flexDirection: "row", gap: 10, width: "100%" },
-  planButton: { flex: 1, paddingVertical: 12, borderRadius: 9, backgroundColor: T.ink, alignItems: "center" },
+  planButton: { flex: 1, paddingVertical: 12, borderRadius: 9, backgroundColor: T.navy, alignItems: "center" },
   planButtonTeal: { backgroundColor: T.teal },
   planButtonText: { fontFamily: fonts.body.semibold, fontSize: 13.5, color: T.paper },
   errorText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.coral, marginTop: 12 },

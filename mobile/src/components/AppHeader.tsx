@@ -33,8 +33,9 @@ export default function AppHeader({ title }: { title: string }) {
           <Pressable onPress={() => setShowProfile(true)} hitSlop={4} style={styles.avatarRing}>
             <Avatar initials={initials} size={30} src={mediaUrl(user.image)} />
           </Pressable>
-          <Pressable onPress={logout} style={styles.logoutButton}>
+          <Pressable onPress={logout} style={styles.logoutButton} hitSlop={6}>
             <LogOut size={15} color={T.coral} strokeWidth={2.2} />
+            <Text style={styles.logoutText}>Logout</Text>
           </Pressable>
         </View>
       </View>
@@ -69,11 +70,13 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.55)",
   },
   logoutButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
-    backgroundColor: "#fff",
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 4,
+  },
+  logoutText: {
+    fontFamily: fonts.body.semibold,
+    fontSize: 12,
+    color: T.coral,
   },
 });
