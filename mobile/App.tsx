@@ -77,7 +77,7 @@ export default function App() {
               <RootNavigator />
             </NavigationContainer>
           </AuthProvider>
-          <StatusBar style="dark" />
+          <StatusBar style="light" />
         </View>
       </SafeAreaProvider>
     </GestureHandlerRootView>

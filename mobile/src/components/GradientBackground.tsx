@@ -15,7 +15,8 @@ export default function GradientBackground({ style }: { style?: StyleProp<ViewSt
       <Defs>
         <LinearGradient id="chrome" x1="0" y1="0" x2="1" y2="1">
           <Stop offset="0" stopColor={T.navyDeep} />
-          <Stop offset="1" stopColor={T.tealDeep} />
+          <Stop offset="0.4" stopColor={T.tealDeep} />
+          <Stop offset="1" stopColor={T.teal} />
         </LinearGradient>
       </Defs>
       <Rect x={0} y={0} width="100%" height="100%" fill="url(#chrome)" />
