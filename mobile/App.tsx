@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { NavigationContainer } from "@react-navigation/native";
 import * as SplashScreen from "expo-splash-screen";
+import * as Updates from "expo-updates";
 
 import { AuthProvider } from "./src/lib/auth";
 import { useAppFonts } from "./src/lib/useAppFonts";
@@ -22,20 +23,48 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 // SafeAreaProvider (device notches/home-indicator insets).
 export default function App() {
   const [fontsLoaded] = useAppFonts();
-
-  const onLayoutRootView = useCallback(async () => {
-    if (fontsLoaded) {
-      await SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded]);
+  // expo-updates' default behavior only applies a downloaded OTA update on
+  // the *next* cold start after the one that fetched it — one "reopen"
+  // after publishing isn't enough, which was a repeated source of "the app
+  // isn't updating" reports. Checking + applying before first render means
+  // a single reopen is enough to pick up a new update.
+  const [updateChecked, setUpdateChecked] = useState(false);
 
   useEffect(() => {
-    if (fontsLoaded) {
+    (async () => {
+      if (!Updates.isEnabled) {
+        setUpdateChecked(true);
+        return;
+      }
+      try {
+        const { isAvailable } = await Updates.checkForUpdateAsync();
+        if (isAvailable) {
+          await Updates.fetchUpdateAsync();
+          await Updates.reloadAsync();
+          return;
+        }
+      } catch {
+        // Offline or the check failed — fall through and run what's already installed.
+      }
+      setUpdateChecked(true);
+    })();
+  }, []);
+
+  const ready = fontsLoaded && updateChecked;
+
+  const onLayoutRootView = useCallback(async () => {
+    if (ready) {
+      await SplashScreen.hideAsync();
+    }
+  }, [ready]);
+
+  useEffect(() => {
+    if (ready) {
       SplashScreen.hideAsync().catch(() => {});
     }
-  }, [fontsLoaded]);
+  }, [ready]);
 
-  if (!fontsLoaded) {
+  if (!ready) {
     return null;
   }
 

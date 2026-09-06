@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TextInput, Pressable, StyleSheet, ActivityIndic
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
 import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system/legacy";
 import {
   Wallet as WalletIcon,
   ArrowDownToLine,
@@ -13,7 +14,7 @@ import {
   Paperclip,
 } from "lucide-react-native";
 import { T, fonts } from "../../theme";
-import { api, BASE_URL } from "../../lib/api";
+import { api, BASE_URL, getToken } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import { useAuth } from "../../lib/auth";
 import { formatMoney, currencySymbol } from "../../lib/currency";
@@ -65,18 +66,29 @@ function EligibleClaimRow({
     setSubmitting(true);
     setError(null);
     try {
-      const form = new FormData();
-      form.append("attendance", String(item.attendance_id));
-      form.append("kind", item.kind);
-      if (note) form.append("note", note);
+      const fields: Record<string, string> = { attendance: String(item.attendance_id), kind: item.kind };
+      if (note) fields.note = note;
+
       if (attachment) {
-        form.append("attachment", {
-          uri: attachment.uri,
-          name: attachment.name,
-          type: attachment.mimeType || "application/octet-stream",
-        } as any);
+        // fetch()+FormData throws "Unsupported FormDataPart implementation"
+        // on Android regardless of HTTP method — see ProfileModal.tsx.
+        // Route file uploads through expo-file-system's native multipart
+        // upload instead.
+        const token = await getToken();
+        const result = await FileSystem.uploadAsync(`${BASE_URL}${endpoints.payAdjustmentRequest()}`, attachment.uri, {
+          httpMethod: "POST",
+          uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+          fieldName: "attachment",
+          mimeType: attachment.mimeType || "application/octet-stream",
+          parameters: fields,
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        if (result.status < 200 || result.status >= 300) {
+          throw new Error(JSON.parse(result.body || "{}")?.detail || "Could not submit request");
+        }
+      } else {
+        await api.post(endpoints.payAdjustmentRequest(), fields);
       }
-      await api.post(endpoints.payAdjustmentRequest(), form);
       onSubmitted();
     } catch (err: any) {
       setError(err.message);
