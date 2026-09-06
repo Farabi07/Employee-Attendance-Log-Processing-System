@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, ScrollView, TextInput, Pressable, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, TextInput, Pressable, Switch, StyleSheet, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
-import { Repeat, Check, X } from "lucide-react-native";
+import { Repeat, Check, X, CalendarClock } from "lucide-react-native";
 import { T, fonts } from "../../theme";
 import { useAuth } from "../../lib/auth";
 import { api } from "../../lib/api";
@@ -10,6 +10,7 @@ import { endpoints } from "../../lib/endpoints";
 import { weekDates, formatDayLabel, todayISO } from "../../lib/dates";
 import Card from "../../components/Card";
 import StatusPill from "../../components/StatusPill";
+import TimeField from "../../components/TimeField";
 
 // Ported from frontend/src/pages/employee/Shifts.jsx. The web version's
 // 7-column CSS grid becomes a horizontal ScrollView — a phone screen never
@@ -21,6 +22,12 @@ const SWAP_STATUS_LABEL: Record<string, string> = {
   rejected: "rejected",
   cancelled: "rejected",
 };
+
+const DAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+function defaultWeek() {
+  return DAY_LABELS.map((_, i) => ({ day_of_week: i, is_available: true, start_time: "", end_time: "" }));
+}
 
 function SwapRow({ swap, right }: { swap: any; right: React.ReactNode }) {
   return (
@@ -52,16 +59,49 @@ export default function Shifts() {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  const [availability, setAvailability] = useState(defaultWeek());
+  const [savingAvailability, setSavingAvailability] = useState(false);
+  const [availabilityMessage, setAvailabilityMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
   const load = useCallback(async () => {
-    const [rosterRes, teammateRes, swapRes] = await Promise.all([
+    const [rosterRes, teammateRes, swapRes, availabilityRes] = await Promise.all([
       api.get(endpoints.rosterByEmployee(user!.id, "?size=100")),
       api.get(endpoints.teammatesAll()),
       api.get(endpoints.shiftSwapMine()),
+      api.get(endpoints.availabilityMine()),
     ]);
     setRosters(rosterRes.rosters || []);
     setTeammates(teammateRes.employees || []);
     setSwaps({ outgoing: swapRes.outgoing || [], incoming: swapRes.incoming || [], open: swapRes.open || [] });
+
+    const byDay: Record<number, any> = {};
+    for (const row of availabilityRes.availability || []) byDay[row.day_of_week] = row;
+    setAvailability(
+      defaultWeek().map((d) => {
+        const saved = byDay[d.day_of_week];
+        return saved
+          ? { day_of_week: d.day_of_week, is_available: saved.is_available, start_time: saved.start_time || "", end_time: saved.end_time || "" }
+          : d;
+      })
+    );
   }, [user!.id]);
+
+  const updateAvailabilityDay = (dayOfWeek: number, patch: Partial<{ is_available: boolean; start_time: string; end_time: string }>) => {
+    setAvailability((week) => week.map((d) => (d.day_of_week === dayOfWeek ? { ...d, ...patch } : d)));
+  };
+
+  const saveAvailability = async () => {
+    setSavingAvailability(true);
+    setAvailabilityMessage(null);
+    try {
+      await api.put(endpoints.availabilityMineUpdate(), { days: availability });
+      setAvailabilityMessage({ type: "success", text: "Availability saved." });
+    } catch (err: any) {
+      setAvailabilityMessage({ type: "error", text: err.message });
+    } finally {
+      setSavingAvailability(false);
+    }
+  };
 
   useEffect(() => {
     load().finally(() => setLoading(false));
@@ -277,6 +317,42 @@ export default function Shifts() {
             )}
           </Card>
         )}
+
+        <Card style={styles.card}>
+          <View style={styles.iconTitleRow}>
+            <CalendarClock size={16} color={T.ink} />
+            <Text style={styles.title}>Weekly availability</Text>
+          </View>
+          <Text style={styles.subtitle}>
+            Let your manager know which days you're generally free to work — this is advisory, it doesn't block them from rostering you outside it.
+          </Text>
+          {availability.map((d) => (
+            <View key={d.day_of_week} style={[styles.availRow, d.day_of_week > 0 && styles.availRowBorder]}>
+              <Text style={styles.availDay}>{DAY_LABELS[d.day_of_week]}</Text>
+              <View style={styles.availSwitchRow}>
+                <Switch
+                  value={d.is_available}
+                  onValueChange={(v) => updateAvailabilityDay(d.day_of_week, { is_available: v })}
+                  trackColor={{ false: T.line, true: T.tealBg }}
+                  thumbColor={d.is_available ? T.teal : undefined}
+                />
+                <Text style={styles.availSwitchLabel}>Available</Text>
+              </View>
+              <View style={styles.availTimeRow}>
+                <TimeField value={d.start_time || ""} onChange={(v) => updateAvailabilityDay(d.day_of_week, { start_time: v })} disabled={!d.is_available} />
+                <TimeField value={d.end_time || ""} onChange={(v) => updateAvailabilityDay(d.day_of_week, { end_time: v })} disabled={!d.is_available} />
+              </View>
+            </View>
+          ))}
+          <Pressable onPress={saveAvailability} disabled={savingAvailability} style={styles.sendButton}>
+            <Text style={styles.sendButtonText}>{savingAvailability ? "Saving…" : "Save availability"}</Text>
+          </Pressable>
+          {availabilityMessage && (
+            <Text style={[styles.messageText, { color: availabilityMessage.type === "error" ? T.coral : T.teal }]}>
+              {availabilityMessage.text}
+            </Text>
+          )}
+        </Card>
       </ScrollView>
     </SafeAreaView>
   );
@@ -324,4 +400,10 @@ const styles = StyleSheet.create({
   declineBtnText: { fontFamily: fonts.body.semibold, fontSize: 11.5, color: T.coral },
   cancelChip: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 7, borderWidth: 1, borderColor: T.line },
   cancelChipText: { fontFamily: fonts.body.semibold, fontSize: 11.5, color: T.muted },
+  availRow: { paddingVertical: 12, gap: 10 },
+  availRowBorder: { borderTopWidth: 1, borderTopColor: T.line2 },
+  availDay: { fontFamily: fonts.body.medium, fontSize: 13.5, color: T.ink },
+  availSwitchRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  availSwitchLabel: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted },
+  availTimeRow: { flexDirection: "row", gap: 10 },
 });

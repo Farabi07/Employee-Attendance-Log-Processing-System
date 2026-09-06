@@ -57,6 +57,7 @@ export default function Roster() {
   const [creatingBranch, setCreatingBranch] = useState(false);
 
   const [leaveTypeName, setLeaveTypeName] = useState("");
+  const [leaveTypeDays, setLeaveTypeDays] = useState("");
   const [creatingLeaveType, setCreatingLeaveType] = useState(false);
 
   const [qrBranchId, setQrBranchId] = useState("");
@@ -198,8 +199,9 @@ export default function Roster() {
     if (!leaveTypeName.trim()) return;
     setCreatingLeaveType(true);
     try {
-      await api.post(endpoints.leaveTypeCreate(), { name: leaveTypeName });
+      await api.post(endpoints.leaveTypeCreate(), { name: leaveTypeName, days_per_year: leaveTypeDays || 0 });
       setLeaveTypeName("");
+      setLeaveTypeDays("");
       await load();
     } catch (err: any) {
       setAssignMsg({ type: "error", text: err.message });
@@ -428,6 +430,7 @@ export default function Roster() {
           {leaveTypes.map((lt) => (
             <View key={lt.id} style={styles.leaveTypeRow}>
               <Text style={[styles.plainListItem, { flex: 1, marginVertical: 0 }]}>{lt.name}</Text>
+              <Text style={styles.leaveTypeDays}>{lt.days_per_year > 0 ? `${lt.days_per_year} days/yr` : "unlimited"}</Text>
               <Pressable onPress={() => deleteLeaveType(lt.id)} style={styles.iconBtn}>
                 <Trash2 size={13} color={T.coral} />
               </Pressable>
@@ -440,6 +443,14 @@ export default function Roster() {
               placeholder="e.g. Casual"
               placeholderTextColor={T.faint}
               style={[styles.compactInput, { flex: 1 }]}
+            />
+            <TextInput
+              value={leaveTypeDays}
+              onChangeText={setLeaveTypeDays}
+              placeholder="Days/yr"
+              placeholderTextColor={T.faint}
+              keyboardType="numeric"
+              style={[styles.compactInput, { width: 80 }]}
             />
             <Pressable onPress={createLeaveType} disabled={creatingLeaveType} style={styles.addButton}>
               <Text style={styles.addButtonText}>{creatingLeaveType ? "…" : "Add"}</Text>
@@ -592,6 +603,7 @@ const styles = StyleSheet.create({
   addButton: { backgroundColor: T.teal, borderRadius: 8, paddingVertical: 9, paddingHorizontal: 14, alignItems: "center", justifyContent: "center" },
   addButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: "#fff" },
   leaveTypeRow: { flexDirection: "row", alignItems: "center" },
+  leaveTypeDays: { fontFamily: fonts.mono.regular, fontSize: 12, color: T.muted, marginRight: 10 },
   assignmentRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12 },
   borderTop: { borderTopWidth: 1, borderTopColor: T.line2 },
   assignmentName: { fontFamily: fonts.body.regular, fontSize: 13.5, color: T.ink },

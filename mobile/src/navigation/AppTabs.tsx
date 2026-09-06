@@ -1,5 +1,5 @@
 import React from "react";
-import { View, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, Platform } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { T, fonts } from "../theme";
 import { EMP_NAV, MGR_NAV } from "./navConfig";
@@ -19,8 +19,9 @@ export default function AppTabs({ role }: { role: "employee" | "manager" }) {
     <Tab.Navigator
       screenOptions={{
         tabBarActiveTintColor: T.tealDeep,
-        tabBarInactiveTintColor: T.muted,
-        tabBarStyle: { borderTopColor: T.line, height: 64, paddingTop: 6, paddingBottom: 8 },
+        tabBarInactiveTintColor: T.faint,
+        tabBarStyle: styles.tabBar,
+        tabBarItemStyle: styles.tabItem,
         tabBarLabelStyle: { fontFamily: fonts.body.medium, fontSize: 10.5 },
       }}
     >
@@ -34,8 +35,21 @@ export default function AppTabs({ role }: { role: "employee" | "manager" }) {
             header: () => <AppHeader title={item.label} />,
             tabBarIcon: ({ focused, color, size }) => (
               <View style={[styles.iconPill, focused && styles.iconPillActive]}>
-                <item.icon color={focused ? T.tealDeep : color} size={size ?? 19} strokeWidth={focused ? 2.1 : 1.8} />
+                {focused && <View style={styles.activeDot} />}
+                <item.icon color={focused ? T.tealDeep : color} size={size ?? 19} strokeWidth={focused ? 2.2 : 1.8} />
               </View>
+            ),
+            tabBarLabel: ({ focused, color }) => (
+              <Text
+                style={[
+                  styles.label,
+                  { color },
+                  focused && styles.labelActive,
+                ]}
+                numberOfLines={1}
+              >
+                {item.label}
+              </Text>
             ),
           }}
         />
@@ -45,8 +59,25 @@ export default function AppTabs({ role }: { role: "employee" | "manager" }) {
 }
 
 const styles = StyleSheet.create({
+  tabBar: {
+    backgroundColor: T.card,
+    borderTopWidth: 0,
+    height: 68,
+    paddingTop: 8,
+    paddingBottom: 10,
+    ...Platform.select({
+      ios: {
+        shadowColor: T.ink,
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
+      },
+      android: { elevation: 14 },
+    }),
+  },
+  tabItem: { paddingTop: 2 },
   iconPill: {
-    width: 44,
+    width: 46,
     height: 30,
     borderRadius: 15,
     alignItems: "center",
@@ -54,5 +85,21 @@ const styles = StyleSheet.create({
   },
   iconPillActive: {
     backgroundColor: T.tealBg,
+  },
+  activeDot: {
+    position: "absolute",
+    top: -7,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: T.teal,
+  },
+  label: {
+    fontFamily: fonts.body.medium,
+    fontSize: 10.5,
+    marginTop: 3,
+  },
+  labelActive: {
+    fontFamily: fonts.body.semibold,
   },
 });

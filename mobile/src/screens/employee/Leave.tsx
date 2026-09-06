@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, ScrollView, TextInput, StyleSheet, ActivityIndicator, Switch } from "react-native";
+import { View, Text, ScrollView, TextInput, StyleSheet, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
-import { CalendarClock } from "lucide-react-native";
+import { PieChart } from "lucide-react-native";
 import { T, fonts } from "../../theme";
 import { useAuth } from "../../lib/auth";
 import { api } from "../../lib/api";
@@ -10,21 +10,16 @@ import { endpoints } from "../../lib/endpoints";
 import Card from "../../components/Card";
 import StatusPill from "../../components/StatusPill";
 import DateField from "../../components/DateField";
-import TimeField from "../../components/TimeField";
 import { PrimaryButton } from "../../components/Button";
-
-const DAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-
-function defaultWeek() {
-  return DAY_LABELS.map((_, i) => ({ day_of_week: i, is_available: true, start_time: "", end_time: "" }));
-}
 
 // Ported from frontend/src/pages/employee/Leave.jsx. The web version's
 // side-by-side (request form | history) grid becomes one scrollable
-// column; the <select> becomes @react-native-picker/picker.
+// column; the <select> becomes @react-native-picker/picker. Weekly
+// availability lives on the Shifts screen instead — see that file.
 export default function Leave() {
   const { user } = useAuth();
   const [leaveTypes, setLeaveTypes] = useState<any[]>([]);
+  const [balance, setBalance] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -35,53 +30,26 @@ export default function Leave() {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  const [availability, setAvailability] = useState(defaultWeek());
-  const [savingAvailability, setSavingAvailability] = useState(false);
-  const [availabilityMessage, setAvailabilityMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-
   const load = useCallback(async () => {
-    const [typesRes, historyRes, availabilityRes] = await Promise.all([
+    const [typesRes, historyRes, balanceRes] = await Promise.all([
       api.get(endpoints.leaveTypesAll()),
       api.get(endpoints.leaveRequestByEmployee(user!.id, "?size=100")),
-      api.get(endpoints.availabilityMine()),
+      api.get(endpoints.leaveBalanceMine()),
     ]);
     const types = typesRes.leave_types || [];
     setLeaveTypes(types);
     setHistory(historyRes.leave_requests || []);
     setLeaveTypeId((current) => current || (types.length ? String(types[0].id) : ""));
-
-    const byDay: Record<number, any> = {};
-    for (const row of availabilityRes.availability || []) byDay[row.day_of_week] = row;
-    setAvailability(
-      defaultWeek().map((d) => {
-        const saved = byDay[d.day_of_week];
-        return saved
-          ? { day_of_week: d.day_of_week, is_available: saved.is_available, start_time: saved.start_time || "", end_time: saved.end_time || "" }
-          : d;
-      })
-    );
+    setBalance(balanceRes.balance || []);
   }, [user!.id]);
 
   useEffect(() => {
     load().finally(() => setLoading(false));
   }, [load]);
 
-  const updateDay = (dayOfWeek: number, patch: Partial<{ is_available: boolean; start_time: string; end_time: string }>) => {
-    setAvailability((week) => week.map((d) => (d.day_of_week === dayOfWeek ? { ...d, ...patch } : d)));
-  };
-
-  const saveAvailability = async () => {
-    setSavingAvailability(true);
-    setAvailabilityMessage(null);
-    try {
-      await api.put(endpoints.availabilityMineUpdate(), { days: availability });
-      setAvailabilityMessage({ type: "success", text: "Availability saved." });
-    } catch (err: any) {
-      setAvailabilityMessage({ type: "error", text: err.message });
-    } finally {
-      setSavingAvailability(false);
-    }
-  };
+  const balanceByTypeId = Object.fromEntries(balance.map((b) => [b.leave_type_id, b]));
+  const totalUsed = balance.reduce((sum, b) => sum + b.used, 0);
+  const totalQuota = balance.reduce((sum, b) => sum + b.days_per_year, 0);
 
   const handleSubmit = async () => {
     setMessage(null);
@@ -119,9 +87,11 @@ export default function Leave() {
           <View style={styles.pickerBox}>
             <Picker selectedValue={leaveTypeId} onValueChange={setLeaveTypeId} enabled={leaveTypes.length > 0}>
               {leaveTypes.length === 0 && <Picker.Item label="No leave types yet" value="" />}
-              {leaveTypes.map((lt) => (
-                <Picker.Item key={lt.id} label={lt.name} value={String(lt.id)} />
-              ))}
+              {leaveTypes.map((lt) => {
+                const b = balanceByTypeId[lt.id];
+                const suffix = b && b.days_per_year > 0 ? ` (${b.remaining} of ${b.days_per_year} left)` : "";
+                return <Picker.Item key={lt.id} label={`${lt.name}${suffix}`} value={String(lt.id)} />;
+              })}
             </Picker>
           </View>
 
@@ -149,6 +119,43 @@ export default function Leave() {
         </Card>
 
         <Card style={styles.card}>
+          <View style={styles.iconTitleRow}>
+            <PieChart size={16} color={T.ink} />
+            <Text style={styles.title}>Leave balance</Text>
+          </View>
+          <Text style={styles.balanceSubtitle}>
+            {totalQuota > 0 ? `${totalUsed} of ${totalQuota} days used this year` : "This year"}
+          </Text>
+          {balance.length === 0 ? (
+            <Text style={styles.emptyText}>No leave types set up yet.</Text>
+          ) : (
+            balance.map((b) => (
+              <View key={b.leave_type_id} style={styles.balanceRow}>
+                <View style={styles.balanceRowTop}>
+                  <Text style={styles.balanceName}>{b.name}</Text>
+                  <Text style={styles.balanceValue}>
+                    {b.days_per_year > 0 ? `${b.used} / ${b.days_per_year} days` : `${b.used} days (unlimited)`}
+                  </Text>
+                </View>
+                {b.days_per_year > 0 && (
+                  <View style={styles.balanceTrack}>
+                    <View
+                      style={[
+                        styles.balanceFill,
+                        {
+                          width: `${Math.min(100, (b.used / b.days_per_year) * 100)}%`,
+                          backgroundColor: b.remaining === 0 ? T.coral : T.teal,
+                        },
+                      ]}
+                    />
+                  </View>
+                )}
+              </View>
+            ))
+          )}
+        </Card>
+
+        <Card style={styles.card}>
           <Text style={styles.title}>Your requests</Text>
           {loading && <ActivityIndicator color={T.navy} />}
           {!loading && history.length === 0 && <Text style={styles.emptyText}>No leave requests yet.</Text>}
@@ -163,39 +170,6 @@ export default function Leave() {
               <StatusPill status={l.status} />
             </View>
           ))}
-        </Card>
-
-        <Card style={styles.card}>
-          <View style={styles.iconTitleRow}>
-            <CalendarClock size={16} color={T.ink} />
-            <Text style={styles.title}>Weekly availability</Text>
-          </View>
-          <Text style={styles.availabilityHint}>
-            Let your manager know which days you're generally free to work — advisory only, it doesn't block them from rostering you outside it.
-          </Text>
-          {availability.map((d) => (
-            <View key={d.day_of_week} style={[styles.availRow, d.day_of_week > 0 && styles.historyRowBorder]}>
-              <Text style={styles.availDay}>{DAY_LABELS[d.day_of_week]}</Text>
-              <Switch
-                value={d.is_available}
-                onValueChange={(v) => updateDay(d.day_of_week, { is_available: v })}
-                trackColor={{ false: T.line, true: T.tealBg }}
-                thumbColor={d.is_available ? T.teal : T.faint}
-              />
-              <TimeField value={d.start_time} onChange={(v) => updateDay(d.day_of_week, { start_time: v })} disabled={!d.is_available} />
-              <TimeField value={d.end_time} onChange={(v) => updateDay(d.day_of_week, { end_time: v })} disabled={!d.is_available} />
-            </View>
-          ))}
-          <PrimaryButton
-            title={savingAvailability ? "Saving…" : "Save availability"}
-            onPress={saveAvailability}
-            loading={savingAvailability}
-          />
-          {availabilityMessage && (
-            <Text style={[styles.messageText, { color: availabilityMessage.type === "error" ? T.coral : T.teal }]}>
-              {availabilityMessage.text}
-            </Text>
-          )}
         </Card>
       </ScrollView>
     </SafeAreaView>
@@ -228,8 +202,12 @@ const styles = StyleSheet.create({
   historyRowBorder: { borderTopWidth: 1, borderTopColor: T.line2 },
   historyType: { fontFamily: fonts.body.medium, fontSize: 13.5, color: T.ink, marginBottom: 3 },
   historyDates: { fontFamily: fonts.mono.regular, fontSize: 12, color: T.muted },
-  iconTitleRow: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 6 },
-  availabilityHint: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 14, lineHeight: 18 },
-  availRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 9 },
-  availDay: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink, width: 78 },
+  iconTitleRow: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 4 },
+  balanceSubtitle: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 14 },
+  balanceRow: { marginBottom: 12 },
+  balanceRowTop: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
+  balanceName: { fontFamily: fonts.body.regular, fontSize: 13, color: T.ink },
+  balanceValue: { fontFamily: fonts.mono.regular, fontSize: 12.5, color: T.muted },
+  balanceTrack: { height: 6, borderRadius: 3, backgroundColor: T.line2, overflow: "hidden" },
+  balanceFill: { height: "100%", borderRadius: 3 },
 });
