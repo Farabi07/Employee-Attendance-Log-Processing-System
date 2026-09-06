@@ -1,17 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, TextInput, ScrollView, Pressable, Switch, StyleSheet, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Search, UserPlus, DollarSign, ShieldCheck, History } from "lucide-react-native";
+import { Search, UserPlus, DollarSign, ShieldCheck, History, User } from "lucide-react-native";
 import { T, fonts } from "../../theme";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import { useAuth } from "../../lib/auth";
 import { currencySymbol, formatMoney, CURRENCIES } from "../../lib/currency";
+import { todayISO, formatDayLabel } from "../../lib/dates";
 import Card from "../../components/Card";
 import Avatar from "../../components/Avatar";
 import FormField from "../../components/FormField";
 import { PrimaryButton } from "../../components/Button";
 import InlinePicker from "../../components/InlinePicker";
+
+const DAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 // Ported from frontend/src/pages/manager/Team.jsx. The web version's
 // side-by-side (forms | team list) grid becomes one scrollable column;
@@ -67,6 +70,10 @@ export default function Team() {
   const [historyForId, setHistoryForId] = useState<number | null>(null);
   const [historyById, setHistoryById] = useState<Record<number, any[] | undefined>>({});
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const [profileForId, setProfileForId] = useState<number | null>(null);
+  const [profileById, setProfileById] = useState<Record<number, any | undefined>>({});
+  const [loadingProfile, setLoadingProfile] = useState(false);
 
   const load = useCallback(async () => {
     const res = await api.get(endpoints.employeesAll());
@@ -165,6 +172,44 @@ export default function Team() {
         setMessage({ type: "error", text: err.message });
       } finally {
         setLoadingHistory(false);
+      }
+    }
+  };
+
+  const toggleProfile = async (emp: any) => {
+    setEditingPayId(null);
+    if (profileForId === emp.id) {
+      setProfileForId(null);
+      return;
+    }
+    setProfileForId(emp.id);
+    if (!profileById[emp.id]) {
+      setLoadingProfile(true);
+      try {
+        const [availRes, rosterRes, payrollRes] = await Promise.all([
+          api.get(endpoints.availabilityByEmployee(emp.id)),
+          api.get(endpoints.rosterByEmployee(emp.id, "?size=100")),
+          api.get(endpoints.payrollSummary()),
+        ]);
+        const today = todayISO();
+        const upcoming = (rosterRes.rosters || [])
+          .filter((r: any) => r.date >= today)
+          .sort((a: any, b: any) => a.date.localeCompare(b.date))
+          .slice(0, 5);
+        const balanceRow = (payrollRes.employees || []).find((r: any) => r.employee.id === emp.id);
+        setProfileById((p) => ({
+          ...p,
+          [emp.id]: {
+            availability: availRes.availability || [],
+            upcoming,
+            balance: balanceRow?.current_balance,
+            currency: balanceRow?.currency,
+          },
+        }));
+      } catch (err: any) {
+        setMessage({ type: "error", text: err.message });
+      } finally {
+        setLoadingProfile(false);
       }
     }
   };
@@ -284,6 +329,8 @@ export default function Team() {
               const isEditing = editingPayId === emp.id;
               const isHistoryOpen = historyForId === emp.id;
               const history = historyById[emp.id];
+              const isProfileOpen = profileForId === emp.id;
+              const profile = profileById[emp.id];
               return (
                 <View key={emp.id} style={[styles.empBlock, i > 0 && styles.borderTop]}>
                   <View style={styles.empRow}>
@@ -307,6 +354,9 @@ export default function Team() {
                           }`}
                       </Text>
                     </View>
+                    <Pressable onPress={() => toggleProfile(emp)} style={[styles.iconButton, isProfileOpen && styles.iconButtonActive]}>
+                      <User size={15} color={isProfileOpen ? T.tealDeep : T.faint} />
+                    </Pressable>
                     <Pressable onPress={() => toggleHistory(emp)} style={[styles.iconButton, isHistoryOpen && styles.iconButtonActive]}>
                       <History size={15} color={isHistoryOpen ? T.tealDeep : T.faint} />
                     </Pressable>
@@ -319,6 +369,67 @@ export default function Team() {
                       </Pressable>
                     )}
                   </View>
+
+                  {isProfileOpen && (
+                    <View style={styles.profileBlock}>
+                      {loadingProfile && !profile ? (
+                        <Text style={styles.bodyMuted}>Loading…</Text>
+                      ) : (
+                        <>
+                          <View style={styles.profileFieldsRow}>
+                            <View style={styles.profileField}>
+                              <Text style={styles.profileFieldLabel}>Phone</Text>
+                              <Text style={styles.profileFieldValue}>{emp.primary_phone || "Not set"}</Text>
+                            </View>
+                            <View style={styles.profileField}>
+                              <Text style={styles.profileFieldLabel}>Address</Text>
+                              <Text style={styles.profileFieldValue}>
+                                {emp.street_address_one
+                                  ? `${emp.street_address_one}${emp.street_address_two ? ", " + emp.street_address_two : ""}`
+                                  : "Not set"}
+                              </Text>
+                            </View>
+                            <View style={styles.profileField}>
+                              <Text style={styles.profileFieldLabel}>Balance due</Text>
+                              <Text style={[styles.profileFieldValue, { fontFamily: fonts.mono.regular }]}>
+                                {profile ? formatMoney(profile.balance || 0, profile.currency) : "—"}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <Text style={styles.profileSectionLabel}>Weekly availability</Text>
+                          <View style={styles.availPillRow}>
+                            {DAY_LABELS.map((label, dow) => {
+                              const row = profile?.availability.find((a: any) => a.day_of_week === dow);
+                              const avail = row ? row.is_available : true;
+                              return (
+                                <View key={dow} style={[styles.availPill, { backgroundColor: avail ? T.tealBg : T.line2 }]}>
+                                  <Text style={[styles.availPillText, { color: avail ? T.tealDeep : T.faint }]}>{label.slice(0, 3)}</Text>
+                                </View>
+                              );
+                            })}
+                          </View>
+
+                          <Text style={styles.profileSectionLabel}>Upcoming shifts</Text>
+                          {!profile || profile.upcoming.length === 0 ? (
+                            <Text style={styles.bodyMuted}>No upcoming shifts scheduled.</Text>
+                          ) : (
+                            profile.upcoming.map((r: any) => (
+                              <Text key={r.id} style={styles.upcomingRow}>
+                                {formatDayLabel(r.date)} · {r.shift?.name}
+                                {r.shift?.start_time && (
+                                  <Text style={{ fontFamily: fonts.mono.regular, color: T.muted }}>
+                                    {" "}
+                                    ({r.shift.start_time.slice(0, 5)}–{r.shift.end_time?.slice(0, 5)})
+                                  </Text>
+                                )}
+                              </Text>
+                            ))
+                          )}
+                        </>
+                      )}
+                    </View>
+                  )}
 
                   {isEditing && (
                     <View style={styles.editRow}>
@@ -445,4 +556,14 @@ const styles = StyleSheet.create({
   historyRow: { flexDirection: "row", gap: 8, paddingVertical: 5 },
   historyDate: { fontFamily: fonts.mono.regular, fontSize: 12, color: T.faint, width: 110 },
   historyText: { fontFamily: fonts.body.regular, fontSize: 12, color: T.ink, flex: 1, flexWrap: "wrap" },
+  profileBlock: { paddingTop: 12, paddingLeft: 46, gap: 12 },
+  profileFieldsRow: { flexDirection: "row", flexWrap: "wrap", gap: 18 },
+  profileField: { minWidth: 100 },
+  profileFieldLabel: { fontFamily: fonts.body.regular, fontSize: 11.5, color: T.muted, marginBottom: 3 },
+  profileFieldValue: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink },
+  profileSectionLabel: { fontFamily: fonts.body.regular, fontSize: 11.5, color: T.muted, marginTop: 2, marginBottom: 6 },
+  availPillRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  availPill: { paddingVertical: 3, paddingHorizontal: 8, borderRadius: 999 },
+  availPillText: { fontFamily: fonts.body.semibold, fontSize: 10.5 },
+  upcomingRow: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink, marginBottom: 4 },
 });
