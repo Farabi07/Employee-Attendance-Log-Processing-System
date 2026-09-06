@@ -13,7 +13,12 @@ export default function GradientBackground({ style }: { style?: StyleProp<ViewSt
   return (
     <Svg style={[StyleSheet.absoluteFill, style]} width="100%" height="100%" preserveAspectRatio="none">
       <Defs>
-        <LinearGradient id="chrome" x1="0" y1="0" x2="1" y2="1">
+        {/* Purely horizontal (y stays 0) — on a short, wide bar like a
+            header or tab bar, any vertical component in the angle makes
+            the top edge and bottom edge land on visibly different colors,
+            which reads as two flat blocks stacked on top of each other
+            instead of one smooth gradient. */}
+        <LinearGradient id="chrome" x1="0" y1="0" x2="1" y2="0">
           <Stop offset="0" stopColor={T.navyDeep} />
           <Stop offset="0.4" stopColor={T.tealDeep} />
           <Stop offset="1" stopColor={T.teal} />

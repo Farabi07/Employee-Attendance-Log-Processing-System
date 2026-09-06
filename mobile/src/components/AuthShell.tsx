@@ -58,7 +58,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: "center",
     padding: 16,
-    paddingTop: 24,
+    paddingTop: 20,
+    paddingBottom: 32,
   },
-  card: { width: "100%", padding: 28, marginTop: -32 },
+  card: { width: "100%", padding: 28 },
 });

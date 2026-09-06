@@ -34,7 +34,7 @@ export default function AppHeader({ title }: { title: string }) {
             <Avatar initials={initials} size={30} src={mediaUrl(user.image)} />
           </Pressable>
           <Pressable onPress={logout} style={styles.logoutButton}>
-            <LogOut size={15} color="#fff" />
+            <LogOut size={15} color={T.coral} strokeWidth={2.2} />
           </Pressable>
         </View>
       </View>

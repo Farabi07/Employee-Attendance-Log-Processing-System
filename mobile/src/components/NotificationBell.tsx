@@ -64,7 +64,7 @@ export default function NotificationBell() {
   return (
     <>
       <Pressable onPress={() => setOpen(true)} style={styles.bellButton}>
-        <Bell size={15} color={T.navyDeep} />
+        <Bell size={15} color={T.amber} strokeWidth={2} />
         {unreadCount > 0 && (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
@@ -117,9 +117,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 9,
-    backgroundColor: T.navyBg,
-    borderWidth: 1,
-    borderColor: T.navyBg,
+    backgroundColor: "rgba(255,255,255,0.16)",
     alignItems: "center",
     justifyContent: "center",
   },
