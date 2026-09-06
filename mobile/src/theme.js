@@ -9,7 +9,7 @@
 
 export const T = {
   ink: "#132A38",
-  paper: "#F5F9FB",
+  paper: "#EAF8F4",
   card: "#FFFFFF",
   line: "#C6D8E3",
   line2: "#EBF2F6",

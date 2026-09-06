@@ -154,7 +154,7 @@ export default function Today() {
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Card style={[styles.ringCard, { backgroundColor: T.tealBg }]}>
+        <Card style={[styles.ringCard, { backgroundColor: T.navyBg }]}>
           <Text style={styles.dayLabel}>{formatDayLabel(todayISO())}</Text>
           <ShiftRing
             checkedIn={checkedIn || completed}
