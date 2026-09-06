@@ -51,6 +51,7 @@ export const endpoints = {
   leaveRequestByEmployee: (id, params = "") => `/leave_request/api/v1/leave_request/get_all_by_employee_id/${id}${params}`,
   leaveRequestAll: (params = "") => `/leave_request/api/v1/leave_request/all/${params}`,
   leaveRequestReview: (pk) => `/leave_request/api/v1/leave_request/review/${pk}`,
+  leaveBalanceMine: () => `/leave_request/api/v1/leave_request/balance/mine/`,
 
   employeesAll: () => `/employee/api/v1/employee/without_paginaiton/all/`,
   teammatesAll: () => `/employee/api/v1/employee/teammates/`,

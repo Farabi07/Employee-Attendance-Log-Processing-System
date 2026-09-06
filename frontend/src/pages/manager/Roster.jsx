@@ -60,6 +60,7 @@ export default function ManagerRoster() {
   const [creatingBranch, setCreatingBranch] = useState(false);
 
   const [leaveTypeName, setLeaveTypeName] = useState("");
+  const [leaveTypeDays, setLeaveTypeDays] = useState("");
   const [creatingLeaveType, setCreatingLeaveType] = useState(false);
 
   const [qrBranchId, setQrBranchId] = useState("");
@@ -197,8 +198,9 @@ export default function ManagerRoster() {
     if (!leaveTypeName.trim()) return;
     setCreatingLeaveType(true);
     try {
-      await api.post(endpoints.leaveTypeCreate(), { name: leaveTypeName });
+      await api.post(endpoints.leaveTypeCreate(), { name: leaveTypeName, days_per_year: leaveTypeDays || 0 });
       setLeaveTypeName("");
+      setLeaveTypeDays("");
       await load();
     } catch (err) {
       setAssignMsg({ type: "error", text: err.message });
@@ -450,6 +452,9 @@ export default function ManagerRoster() {
           {leaveTypes.map((lt) => (
             <div key={lt.id} style={{ display: "flex", alignItems: "center", padding: "5px 0" }}>
               <p style={{ fontFamily: fontBody, fontSize: 13, color: T.ink, margin: 0, flex: 1 }}>{lt.name}</p>
+              <span style={{ fontFamily: fontMono, fontSize: 12, color: T.muted, marginRight: 10 }}>
+                {lt.days_per_year > 0 ? `${lt.days_per_year} days/yr` : "unlimited"}
+              </span>
               <button onClick={() => deleteLeaveType(lt.id)} style={smallBtn} aria-label="Delete leave type">
                 <Trash2 size={13} color={T.coral} />
               </button>
@@ -457,6 +462,13 @@ export default function ManagerRoster() {
           ))}
           <form onSubmit={createLeaveType} style={{ marginTop: 10, display: "flex", gap: 8 }}>
             <input value={leaveTypeName} onChange={(e) => setLeaveTypeName(e.target.value)} placeholder="e.g. Casual" style={{ ...inputStyle, marginBottom: 0, flex: 1 }} />
+            <input
+              type="number" min="0"
+              value={leaveTypeDays}
+              onChange={(e) => setLeaveTypeDays(e.target.value)}
+              placeholder="Days/yr"
+              style={{ ...inputStyle, marginBottom: 0, width: 90 }}
+            />
             <button type="submit" disabled={creatingLeaveType} style={{ padding: "9px 14px", borderRadius: 8, border: "none", background: T.teal, color: "#fff", fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
               {creatingLeaveType ? "…" : "Add"}
             </button>
