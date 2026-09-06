@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, TextInput, Pressable, Modal, StyleSheet } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system/legacy";
 import { X, Camera, Eye, EyeOff } from "lucide-react-native";
 import { T, fonts } from "../theme";
 import { useAuth } from "../lib/auth";
-import { api, mediaUrl } from "../lib/api";
+import { api, mediaUrl, BASE_URL, getToken } from "../lib/api";
 import { endpoints } from "../lib/endpoints";
 import Card from "./Card";
 import Avatar from "./Avatar";
@@ -62,22 +63,34 @@ export default function ProfileModal({ visible, onClose }: { visible: boolean; o
     setProfileMessage(null);
     setSavingProfile(true);
     try {
-      const form = new FormData();
-      form.append("first_name", firstName);
-      form.append("last_name", lastName);
-      if (phone) form.append("primary_phone", phone);
-      if (address) form.append("street_address_one", address);
+      const fields: Record<string, string> = { first_name: firstName, last_name: lastName };
+      if (phone) fields.primary_phone = phone;
+      if (address) fields.street_address_one = address;
+
+      let res;
       if (pickedImage) {
-        form.append("image", {
-          uri: pickedImage.uri,
-          name: pickedImage.name || "photo.jpg",
-          type: pickedImage.mimeType || "image/jpeg",
-        } as any);
+        // React Native's Android networking layer throws "Unsupported
+        // FormDataPart implementation" for a plain fetch()+FormData body
+        // (both PUT and POST — it's not method-specific). expo-file-system's
+        // uploadAsync drives multipart through native code instead of the
+        // JS FormData bridge, so it doesn't hit that bug.
+        const token = await getToken();
+        const result = await FileSystem.uploadAsync(`${BASE_URL}${endpoints.profileUpdate()}`, pickedImage.uri, {
+          httpMethod: "POST",
+          uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+          fieldName: "image",
+          mimeType: pickedImage.mimeType || "image/jpeg",
+          parameters: fields,
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        if (result.status < 200 || result.status >= 300) {
+          throw new Error(JSON.parse(result.body || "{}")?.detail || "Could not update profile");
+        }
+        res = JSON.parse(result.body);
+      } else {
+        // No photo change — plain JSON, no FormData involved at all.
+        res = await api.post(endpoints.profileUpdate(), fields);
       }
-      // POST, not PUT — React Native's Android networking layer throws
-      // "Unsupported FormDataPart implementation" for PUT + multipart
-      // bodies. The backend accepts both; the web app still uses PUT.
-      const res = await api.post(endpoints.profileUpdate(), form);
       setProfile(res);
       setPickedImage(null);
       setProfileMessage({ type: "success", text: "Profile updated." });
