@@ -184,6 +184,12 @@ export default function Approvals() {
                       {r.start_date} – {r.end_date}
                     </Text>
                     {!!r.reason && <Text style={styles.reasonText}>{r.reason}</Text>}
+                    {!!r.attachment && (
+                      <Pressable onPress={() => Linking.openURL(`${BASE_URL}${r.attachment}`)} style={styles.attachRow}>
+                        <Paperclip size={12} color={T.navyDeep} />
+                        <Text style={styles.attachText}>View attachment</Text>
+                      </Pressable>
+                    )}
                   </View>
                   <View style={styles.leaveActions}>
                     <Pressable onPress={() => decide(r.id, "rejected")} disabled={decidingId === r.id} style={styles.rejectButton}>

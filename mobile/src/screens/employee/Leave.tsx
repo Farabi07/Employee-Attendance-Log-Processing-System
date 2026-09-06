@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, ScrollView, TextInput, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, TextInput, Pressable, StyleSheet, ActivityIndicator, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
-import { PieChart } from "lucide-react-native";
+import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system/legacy";
+import { PieChart, Paperclip } from "lucide-react-native";
 import { T, fonts } from "../../theme";
 import { useAuth } from "../../lib/auth";
-import { api } from "../../lib/api";
+import { api, BASE_URL, getToken, mediaUrl } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import Card from "../../components/Card";
 import StatusPill from "../../components/StatusPill";
@@ -27,8 +29,14 @@ export default function Leave() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [reason, setReason] = useState("");
+  const [attachment, setAttachment] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const pickAttachment = async () => {
+    const result = await DocumentPicker.getDocumentAsync({ type: "*/*" });
+    if (!result.canceled) setAttachment(result.assets[0]);
+  };
 
   const load = useCallback(async () => {
     const [typesRes, historyRes, balanceRes] = await Promise.all([
@@ -59,16 +67,36 @@ export default function Leave() {
     }
     setSubmitting(true);
     try {
-      await api.post(endpoints.leaveRequestCreate(), {
-        leave_type: Number(leaveTypeId),
-        start_date: from,
-        end_date: to,
-        reason,
-      });
+      if (attachment) {
+        // fetch()+FormData throws "Unsupported FormDataPart implementation"
+        // on Android regardless of HTTP method — see ProfileModal.tsx.
+        // Route file uploads through expo-file-system's native multipart
+        // upload instead.
+        const token = await getToken();
+        const result = await FileSystem.uploadAsync(`${BASE_URL}${endpoints.leaveRequestCreate()}`, attachment.uri, {
+          httpMethod: "POST",
+          uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+          fieldName: "attachment",
+          mimeType: attachment.mimeType || "application/octet-stream",
+          parameters: { leave_type: leaveTypeId, start_date: from, end_date: to, reason },
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        if (result.status < 200 || result.status >= 300) {
+          throw new Error(JSON.parse(result.body || "{}")?.detail || "Could not submit request");
+        }
+      } else {
+        await api.post(endpoints.leaveRequestCreate(), {
+          leave_type: Number(leaveTypeId),
+          start_date: from,
+          end_date: to,
+          reason,
+        });
+      }
       setMessage({ type: "success", text: "Sent to your manager for review." });
       setFrom("");
       setTo("");
       setReason("");
+      setAttachment(null);
       await load();
     } catch (err: any) {
       setMessage({ type: "error", text: err.message });
@@ -109,6 +137,13 @@ export default function Leave() {
             style={styles.textarea}
             placeholderTextColor={T.faint}
           />
+
+          <Pressable onPress={pickAttachment} style={styles.attachRow}>
+            <Paperclip size={13} color={T.muted} />
+            <Text style={styles.attachText} numberOfLines={1}>
+              {attachment ? attachment.name : "Attach a document (optional, e.g. a medical certificate)"}
+            </Text>
+          </Pressable>
 
           <PrimaryButton title={submitting ? "Sending…" : "Submit request"} onPress={handleSubmit} loading={submitting} />
           {message && (
@@ -166,6 +201,12 @@ export default function Leave() {
                 <Text style={styles.historyDates}>
                   {l.start_date} – {l.end_date}
                 </Text>
+                {l.attachment && (
+                  <Pressable onPress={() => Linking.openURL(mediaUrl(l.attachment)!)} style={styles.historyAttachRow}>
+                    <Paperclip size={11} color={T.navyDeep} />
+                    <Text style={styles.historyAttachText}>View attachment</Text>
+                  </Pressable>
+                )}
               </View>
               <StatusPill status={l.status} />
             </View>
@@ -210,4 +251,8 @@ const styles = StyleSheet.create({
   balanceValue: { fontFamily: fonts.mono.regular, fontSize: 12.5, color: T.muted },
   balanceTrack: { height: 6, borderRadius: 3, backgroundColor: T.line2, overflow: "hidden" },
   balanceFill: { height: "100%", borderRadius: 3 },
+  attachRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 16 },
+  attachText: { fontFamily: fonts.body.regular, fontSize: 12, color: T.muted, flexShrink: 1 },
+  historyAttachRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 4 },
+  historyAttachText: { fontFamily: fonts.body.regular, fontSize: 11.5, color: T.navyDeep },
 });

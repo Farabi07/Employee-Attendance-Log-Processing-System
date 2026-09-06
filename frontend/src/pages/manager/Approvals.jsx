@@ -210,7 +210,17 @@ export default function ManagerApprovals() {
                 <p style={{ fontFamily: fontMono, fontSize: 12, color: T.muted, margin: "0 0 6px" }}>
                   {r.start_date} – {r.end_date}
                 </p>
-                {r.reason && <p style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted, margin: 0, lineHeight: 1.5 }}>{r.reason}</p>}
+                {r.reason && <p style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted, margin: "0 0 6px", lineHeight: 1.5 }}>{r.reason}</p>}
+                {r.attachment && (
+                  <a
+                    href={`${BASE_URL}${r.attachment}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ display: "inline-flex", alignItems: "center", gap: 5, fontFamily: fontBody, fontSize: 12, color: T.navyDeep }}
+                  >
+                    <Paperclip size={12} /> View attachment
+                  </a>
+                )}
               </div>
               <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                 <button
