@@ -198,6 +198,10 @@ class LeaveType(models.Model):
 
 
 
+def leave_request_attachment_upload_path(instance, filename):
+    return f'leave_request_attachments/org_{instance.employee.organization_id}/{instance.employee_id}_{filename}'
+
+
 class LeaveRequest(models.Model):
     class Status(models.TextChoices):
         PENDING = 'pending', 'Pending'
@@ -210,6 +214,9 @@ class LeaveRequest(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
     reason = models.TextField(null=True, blank=True)
+    # e.g. a medical certificate for sick leave — optional, same pattern as
+    # PayAdjustmentRequest.attachment in wallet/models.py.
+    attachment = models.FileField(upload_to=leave_request_attachment_upload_path, null=True, blank=True)
 
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True)
 
