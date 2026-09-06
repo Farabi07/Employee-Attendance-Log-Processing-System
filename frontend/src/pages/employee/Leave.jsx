@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { PieChart } from "lucide-react";
+import { PieChart, Paperclip } from "lucide-react";
 import { T, fontDisplay, fontBody, fontMono } from "../../theme";
 import { useAuth } from "../../lib/auth";
-import { api } from "../../lib/api";
+import { api, BASE_URL } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import { useIsMobile } from "../../lib/useMediaQuery";
 import Card from "../../components/Card";
@@ -20,6 +20,7 @@ export default function EmployeeLeave() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [reason, setReason] = useState("");
+  const [attachment, setAttachment] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState(null);
 
@@ -53,16 +54,27 @@ export default function EmployeeLeave() {
     }
     setSubmitting(true);
     try {
-      await api.post(endpoints.leaveRequestCreate(), {
-        leave_type: Number(leaveTypeId),
-        start_date: from,
-        end_date: to,
-        reason,
-      });
+      if (attachment) {
+        const form = new FormData();
+        form.append("leave_type", leaveTypeId);
+        form.append("start_date", from);
+        form.append("end_date", to);
+        if (reason) form.append("reason", reason);
+        form.append("attachment", attachment);
+        await api.post(endpoints.leaveRequestCreate(), form);
+      } else {
+        await api.post(endpoints.leaveRequestCreate(), {
+          leave_type: Number(leaveTypeId),
+          start_date: from,
+          end_date: to,
+          reason,
+        });
+      }
       setMessage({ type: "success", text: "Sent to your manager for review." });
       setFrom("");
       setTo("");
       setReason("");
+      setAttachment(null);
       await load();
     } catch (err) {
       setMessage({ type: "error", text: err.message });
@@ -121,8 +133,16 @@ export default function EmployeeLeave() {
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             rows={3}
-            style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: `1px solid ${T.line}`, fontFamily: fontBody, fontSize: 13, color: T.ink, marginBottom: 16, resize: "vertical" }}
+            style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: `1px solid ${T.line}`, fontFamily: fontBody, fontSize: 13, color: T.ink, marginBottom: 12, resize: "vertical" }}
           />
+
+          <label
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: fontBody, fontSize: 12, color: T.muted, marginBottom: 16, cursor: "pointer" }}
+          >
+            <Paperclip size={13} />
+            {attachment ? attachment.name : "Attach a document (optional, e.g. a medical certificate)"}
+            <input type="file" onChange={(e) => setAttachment(e.target.files?.[0] || null)} style={{ display: "none" }} />
+          </label>
 
           <button
             type="submit"
@@ -212,6 +232,16 @@ export default function EmployeeLeave() {
                 <p style={{ fontFamily: fontMono, fontSize: 12, color: T.muted, margin: 0 }}>
                   {l.start_date} – {l.end_date}
                 </p>
+                {l.attachment && (
+                  <a
+                    href={`${BASE_URL}${l.attachment}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ display: "inline-flex", alignItems: "center", gap: 5, fontFamily: fontBody, fontSize: 11.5, color: T.navyDeep, marginTop: 4 }}
+                  >
+                    <Paperclip size={11} /> View attachment
+                  </a>
+                )}
               </div>
               <StatusPill status={l.status} />
             </div>
