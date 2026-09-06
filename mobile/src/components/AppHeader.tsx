@@ -23,26 +23,37 @@ export default function AppHeader({ title }: { title: string }) {
   return (
     <SafeAreaView edges={["top"]} style={styles.safe}>
       <View style={styles.row}>
-        <Text style={styles.title} numberOfLines={1}>
-          {title}
-        </Text>
+        <View style={styles.titleRow}>
+          <View style={styles.titleDot} />
+          <Text style={styles.title} numberOfLines={1}>
+            {title}
+          </Text>
+        </View>
         <View style={styles.actions}>
           <NotificationBell />
-          <Pressable onPress={() => setShowProfile(true)} hitSlop={4}>
-            <Avatar initials={initials} size={32} src={mediaUrl(user.image)} />
+          <Pressable onPress={() => setShowProfile(true)} hitSlop={4} style={styles.avatarRing}>
+            <Avatar initials={initials} size={30} src={mediaUrl(user.image)} />
           </Pressable>
           <Pressable onPress={logout} style={styles.logoutButton}>
-            <LogOut size={15} color={T.muted} />
+            <LogOut size={15} color={T.coral} />
           </Pressable>
         </View>
       </View>
+      <View style={styles.accentLine} />
       <ProfileModal visible={showProfile} onClose={() => setShowProfile(false)} />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { backgroundColor: T.card, borderBottomWidth: 1, borderBottomColor: T.line },
+  safe: {
+    backgroundColor: T.card,
+    shadowColor: T.ink,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 4,
+  },
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -51,16 +62,22 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 10,
   },
-  title: { fontFamily: fonts.display.semibold, fontSize: 17, color: T.ink, flex: 1 },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1, minWidth: 0 },
+  titleDot: { width: 8, height: 8, borderRadius: 3, backgroundColor: T.teal },
+  title: { fontFamily: fonts.display.semibold, fontSize: 17, color: T.navyDeep, flex: 1 },
   actions: { flexDirection: "row", alignItems: "center", gap: 10 },
+  avatarRing: {
+    borderRadius: 17,
+    borderWidth: 2,
+    borderColor: T.tealBg,
+  },
   logoutButton: {
     width: 34,
     height: 34,
     borderRadius: 9,
-    borderWidth: 1,
-    borderColor: T.line,
-    backgroundColor: T.card,
+    backgroundColor: T.coralBg,
     alignItems: "center",
     justifyContent: "center",
   },
+  accentLine: { height: 3, backgroundColor: T.teal },
 });

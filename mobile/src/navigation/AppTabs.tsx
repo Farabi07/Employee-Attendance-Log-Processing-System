@@ -19,7 +19,7 @@ export default function AppTabs({ role }: { role: "employee" | "manager" }) {
     <Tab.Navigator
       screenOptions={{
         tabBarActiveTintColor: T.tealDeep,
-        tabBarInactiveTintColor: T.faint,
+        tabBarInactiveTintColor: T.muted,
         tabBarStyle: styles.tabBar,
         tabBarItemStyle: styles.tabItem,
         tabBarLabelStyle: { fontFamily: fonts.body.medium, fontSize: 10.5 },
@@ -61,7 +61,8 @@ export default function AppTabs({ role }: { role: "employee" | "manager" }) {
 const styles = StyleSheet.create({
   tabBar: {
     backgroundColor: T.card,
-    borderTopWidth: 0,
+    borderTopWidth: 3,
+    borderTopColor: T.teal,
     height: 68,
     paddingTop: 8,
     paddingBottom: 10,
@@ -85,6 +86,8 @@ const styles = StyleSheet.create({
   },
   iconPillActive: {
     backgroundColor: T.tealBg,
+    borderWidth: 1,
+    borderColor: T.teal,
   },
   activeDot: {
     position: "absolute",
