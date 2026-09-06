@@ -1,14 +1,17 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
-import { Search, UserPlus, DollarSign, ShieldCheck, History } from "lucide-react";
+import { Search, UserPlus, DollarSign, ShieldCheck, History, User } from "lucide-react";
 import { T, fontDisplay, fontBody, fontMono } from "../../theme";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import { useIsMobile } from "../../lib/useMediaQuery";
 import { useAuth } from "../../lib/auth";
 import { currencySymbol, formatMoney, CURRENCIES } from "../../lib/currency";
+import { todayISO, formatDayLabel } from "../../lib/dates";
 import Card from "../../components/Card";
 import Avatar from "../../components/Avatar";
 import PasswordInput from "../../components/PasswordInput";
+
+const DAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 const inputStyle = {
   width: "100%",
@@ -74,6 +77,10 @@ export default function ManagerTeam() {
   const [historyForId, setHistoryForId] = useState(null);
   const [historyById, setHistoryById] = useState({});
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const [profileForId, setProfileForId] = useState(null);
+  const [profileById, setProfileById] = useState({});
+  const [loadingProfile, setLoadingProfile] = useState(false);
 
   const load = useCallback(async () => {
     const res = await api.get(endpoints.employeesAll());
@@ -173,6 +180,44 @@ export default function ManagerTeam() {
         setMessage({ type: "error", text: err.message });
       } finally {
         setLoadingHistory(false);
+      }
+    }
+  };
+
+  const toggleProfile = async (emp) => {
+    setEditingPayId(null);
+    if (profileForId === emp.id) {
+      setProfileForId(null);
+      return;
+    }
+    setProfileForId(emp.id);
+    if (!profileById[emp.id]) {
+      setLoadingProfile(true);
+      try {
+        const [availRes, rosterRes, payrollRes] = await Promise.all([
+          api.get(endpoints.availabilityByEmployee(emp.id)),
+          api.get(endpoints.rosterByEmployee(emp.id, "?size=100")),
+          api.get(endpoints.payrollSummary()),
+        ]);
+        const today = todayISO();
+        const upcoming = (rosterRes.rosters || [])
+          .filter((r) => r.date >= today)
+          .sort((a, b) => a.date.localeCompare(b.date))
+          .slice(0, 5);
+        const balanceRow = (payrollRes.employees || []).find((r) => r.employee.id === emp.id);
+        setProfileById((p) => ({
+          ...p,
+          [emp.id]: {
+            availability: availRes.availability || [],
+            upcoming,
+            balance: balanceRow?.current_balance,
+            currency: balanceRow?.currency,
+          },
+        }));
+      } catch (err) {
+        setMessage({ type: "error", text: err.message });
+      } finally {
+        setLoadingProfile(false);
       }
     }
   };
@@ -311,6 +356,8 @@ export default function ManagerTeam() {
               const isEditing = editingPayId === emp.id;
               const isHistoryOpen = historyForId === emp.id;
               const history = historyById[emp.id];
+              const isProfileOpen = profileForId === emp.id;
+              const profile = profileById[emp.id];
               return (
                 <div key={emp.id} style={{ borderTop: i === 0 ? "none" : `1px solid ${T.line2}`, minWidth: 420 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 4px" }}>
@@ -335,6 +382,14 @@ export default function ManagerTeam() {
                     </div>
                     <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
                       <button
+                        onClick={() => toggleProfile(emp)}
+                        aria-label="View profile"
+                        title="View profile"
+                        style={{ border: "none", background: isProfileOpen ? T.tealBg : "transparent", borderRadius: 7, cursor: "pointer", padding: 6, display: "flex" }}
+                      >
+                        <User size={15} color={isProfileOpen ? T.tealDeep : T.faint} />
+                      </button>
+                      <button
                         onClick={() => toggleHistory(emp)}
                         aria-label="View pay history"
                         title="Pay history"
@@ -354,6 +409,82 @@ export default function ManagerTeam() {
                       )}
                     </div>
                   </div>
+
+                  {isProfileOpen && (
+                    <div style={{ padding: "0 4px 16px 46px" }}>
+                      {loadingProfile && !profile ? (
+                        <p style={{ fontFamily: fontBody, fontSize: 12, color: T.muted, margin: 0 }}>Loading…</p>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 460 }}>
+                          <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+                            <div>
+                              <p style={{ ...labelStyle, marginBottom: 3 }}>Phone</p>
+                              <p style={{ fontFamily: fontBody, fontSize: 12.5, color: T.ink, margin: 0 }}>{emp.primary_phone || "Not set"}</p>
+                            </div>
+                            <div>
+                              <p style={{ ...labelStyle, marginBottom: 3 }}>Address</p>
+                              <p style={{ fontFamily: fontBody, fontSize: 12.5, color: T.ink, margin: 0 }}>
+                                {emp.street_address_one
+                                  ? `${emp.street_address_one}${emp.street_address_two ? ", " + emp.street_address_two : ""}`
+                                  : "Not set"}
+                              </p>
+                            </div>
+                            <div>
+                              <p style={{ ...labelStyle, marginBottom: 3 }}>Balance due</p>
+                              <p style={{ fontFamily: fontMono, fontSize: 12.5, color: T.ink, margin: 0 }}>
+                                {profile ? formatMoney(profile.balance || 0, profile.currency) : "—"}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div>
+                            <p style={{ ...labelStyle, marginBottom: 6 }}>Weekly availability</p>
+                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                              {DAY_LABELS.map((label, dow) => {
+                                const row = profile?.availability.find((a) => a.day_of_week === dow);
+                                const avail = row ? row.is_available : true;
+                                return (
+                                  <span
+                                    key={dow}
+                                    style={{
+                                      fontFamily: fontBody,
+                                      fontSize: 10.5,
+                                      fontWeight: 600,
+                                      padding: "3px 8px",
+                                      borderRadius: 999,
+                                      color: avail ? T.tealDeep : T.faint,
+                                      background: avail ? T.tealBg : T.line2,
+                                    }}
+                                  >
+                                    {label.slice(0, 3)}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          <div>
+                            <p style={{ ...labelStyle, marginBottom: 6 }}>Upcoming shifts</p>
+                            {!profile || profile.upcoming.length === 0 ? (
+                              <p style={{ fontFamily: fontBody, fontSize: 12, color: T.muted, margin: 0 }}>No upcoming shifts scheduled.</p>
+                            ) : (
+                              profile.upcoming.map((r) => (
+                                <p key={r.id} style={{ fontFamily: fontBody, fontSize: 12.5, color: T.ink, margin: "0 0 4px" }}>
+                                  {formatDayLabel(r.date)} · {r.shift?.name}
+                                  {r.shift?.start_time && (
+                                    <span style={{ fontFamily: fontMono, color: T.muted }}>
+                                      {" "}
+                                      ({r.shift.start_time.slice(0, 5)}–{r.shift.end_time?.slice(0, 5)})
+                                    </span>
+                                  )}
+                                </p>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {isEditing && (
                     <div style={{ display: "flex", gap: 8, alignItems: "center", padding: "0 4px 14px 46px", flexWrap: "wrap" }}>
