@@ -49,13 +49,13 @@ export default function ShiftRing({
   return (
     <View style={{ width: size, height: size, alignSelf: "center" }}>
       <Svg width={size} height={size} style={{ transform: [{ rotate: "-90deg" }] }}>
-        <Circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={T.line2} strokeWidth={stroke} />
+        <Circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={checkedIn ? T.tealBg : T.navyBg} strokeWidth={stroke} />
         <AnimatedCircle
           cx={size / 2}
           cy={size / 2}
           r={r}
           fill="none"
-          stroke={checkedIn ? T.teal : T.faint}
+          stroke={checkedIn ? T.teal : T.navy}
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={`${c} ${c}`}
@@ -73,14 +73,14 @@ export default function ShiftRing({
             right: stroke + 8,
             bottom: stroke + 8,
             borderRadius: (size - (stroke + 8) * 2) / 2,
-            backgroundColor: checkedIn ? T.tealBg : T.paper,
+            backgroundColor: checkedIn ? T.tealBg : T.navyBg,
             opacity: disabled ? 0.75 : 1,
             transform: [{ scale: scanning ? 0.94 : 1 }],
           },
         ]}
       >
-        <QrCode size={30} color={checkedIn ? T.tealDeep : T.ink} strokeWidth={1.6} />
-        <Text style={[styles.label, { color: checkedIn ? T.tealDeep : T.ink }]}>
+        <QrCode size={30} color={checkedIn ? T.tealDeep : T.navyDeep} strokeWidth={1.8} />
+        <Text style={[styles.label, { color: checkedIn ? T.tealDeep : T.navyDeep }]}>
           {label || (checkedIn ? "Tap to check out" : "Tap to check in")}
         </Text>
       </Pressable>

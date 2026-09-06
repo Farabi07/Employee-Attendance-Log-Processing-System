@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Bell, MapPin } from "lucide-react-native";
+import { Bell, MapPin, Clock, CalendarDays, AlertCircle, CalendarClock } from "lucide-react-native";
 import { T, fonts } from "../../theme";
 import { useAuth } from "../../lib/auth";
 import { api } from "../../lib/api";
@@ -154,7 +154,7 @@ export default function Today() {
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Card style={styles.ringCard}>
+        <Card style={[styles.ringCard, { backgroundColor: checkedIn || completed ? T.tealBg : T.navyBg }]}>
           <Text style={styles.dayLabel}>{formatDayLabel(todayISO())}</Text>
           <ShiftRing
             checkedIn={checkedIn || completed}
@@ -189,11 +189,20 @@ export default function Today() {
 
         <View style={styles.metricsRow}>
           {[
-            { label: "This week", value: formatDuration(weekHours) },
-            { label: "This month", value: formatDuration(monthHours) },
-            { label: "Pending leave", value: pendingLeave ? "1 request" : "None" },
+            { label: "This week", value: formatDuration(weekHours), icon: Clock, color: T.tealDeep, bg: T.tealBg },
+            { label: "This month", value: formatDuration(monthHours), icon: CalendarDays, color: T.navyDeep, bg: T.navyBg },
+            {
+              label: "Pending leave",
+              value: pendingLeave ? "1 request" : "None",
+              icon: AlertCircle,
+              color: pendingLeave ? T.amber : T.tealDeep,
+              bg: pendingLeave ? T.amberBg : T.tealBg,
+            },
           ].map((m) => (
             <Card key={m.label} style={styles.metricCard}>
+              <View style={[styles.metricIconPill, { backgroundColor: m.bg }]}>
+                <m.icon size={15} color={m.color} strokeWidth={2} />
+              </View>
               <Text style={styles.metricLabel}>{m.label}</Text>
               <Text style={styles.metricValue}>{m.value}</Text>
             </Card>
@@ -201,13 +210,18 @@ export default function Today() {
         </View>
 
         <Card style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Upcoming shifts</Text>
+          <View style={styles.sectionTitleRow}>
+            <CalendarClock size={16} color={T.navyDeep} strokeWidth={2} />
+            <Text style={styles.sectionTitle}>Upcoming shifts</Text>
+          </View>
           {upcoming.length === 0 && <Text style={styles.emptyText}>No shifts assigned yet.</Text>}
           {upcoming.map((r, i) => {
             const meta = shiftMeta(r.shift?.name);
             return (
               <View key={r.id} style={[styles.shiftRow, i > 0 && styles.shiftRowBorder]}>
-                <View style={[styles.shiftDot, { backgroundColor: meta.bg }]} />
+                <View style={[styles.shiftChip, { backgroundColor: meta.color }]}>
+                  <CalendarDays size={13} color="#fff" strokeWidth={2.2} />
+                </View>
                 <Text style={styles.shiftDate}>{formatDayLabel(r.date)}</Text>
                 <Text style={styles.shiftName}>{r.shift?.name || "Shift"}</Text>
                 <Text style={styles.shiftTime}>
@@ -260,7 +274,7 @@ const styles = StyleSheet.create({
     marginTop: 18,
     paddingTop: 18,
     borderTopWidth: 1,
-    borderTopColor: T.line2,
+    borderTopColor: "rgba(19,42,56,0.08)",
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
@@ -270,14 +284,23 @@ const styles = StyleSheet.create({
   branchText: { fontFamily: fonts.body.regular, fontSize: 12, color: T.faint },
   metricsRow: { flexDirection: "row", gap: 10 },
   metricCard: { flex: 1, padding: 14 },
+  metricIconPill: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
   metricLabel: { fontFamily: fonts.body.regular, fontSize: 11.5, color: T.muted, marginBottom: 6 },
   metricValue: { fontFamily: fonts.display.semibold, fontSize: 18, color: T.ink },
   sectionCard: { padding: 20 },
-  sectionTitle: { fontFamily: fonts.display.semibold, fontSize: 15.5, color: T.ink, marginBottom: 12 },
+  sectionTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
+  sectionTitle: { fontFamily: fonts.display.semibold, fontSize: 15.5, color: T.ink },
   emptyText: { fontFamily: fonts.body.regular, fontSize: 13, color: T.muted },
   shiftRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10 },
   shiftRowBorder: { borderTopWidth: 1, borderTopColor: T.line2 },
-  shiftDot: { width: 24, height: 24, borderRadius: 7 },
+  shiftChip: { width: 26, height: 26, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   shiftDate: { fontFamily: fonts.body.regular, fontSize: 13, color: T.ink, width: 100 },
   shiftName: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, flex: 1 },
   shiftTime: { fontFamily: fonts.mono.regular, fontSize: 12, color: T.faint },
