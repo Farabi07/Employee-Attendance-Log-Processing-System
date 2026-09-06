@@ -95,7 +95,7 @@ def _resolve_qr_token_by_code(organization, code):
 @api_view(['GET'])
 @permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def getAllAttendance(request):
-	attendances = Attendance.objects.filter(employee__organization=request.user.organization)
+	attendances = Attendance.objects.filter(employee__organization=request.user.organization).select_related('employee', 'branch', 'created_by', 'updated_by')
 	total_elements = attendances.count()
 
 	page = request.query_params.get('page')
@@ -125,7 +125,7 @@ def getAllAttendance(request):
 @api_view(['GET'])
 @permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def getAllAttendanceWithoutPagination(request):
-	attendances = Attendance.objects.filter(employee__organization=request.user.organization)
+	attendances = Attendance.objects.filter(employee__organization=request.user.organization).select_related('employee', 'branch', 'created_by', 'updated_by')
 
 	serializer = AttendanceListSerializer(attendances, many=True)
 
@@ -153,7 +153,7 @@ def getAllAttendanceWithoutPagination(request):
 @api_view(['GET'])
 @permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def searchAttendance(request):
-	attendances = AttendanceFilter(request.GET, queryset=Attendance.objects.filter(employee__organization=request.user.organization))
+	attendances = AttendanceFilter(request.GET, queryset=Attendance.objects.filter(employee__organization=request.user.organization).select_related('employee', 'branch', 'created_by', 'updated_by'))
 	attendances = attendances.qs
 
 	total_elements = attendances.count()
@@ -192,7 +192,7 @@ def searchAttendance(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, HasActiveSubscription])
 def getAllAttendanceByEmployeeId(request, employee_id):
-	attendances = Attendance.objects.filter(employee__id=employee_id, employee__organization=request.user.organization)
+	attendances = Attendance.objects.filter(employee__id=employee_id, employee__organization=request.user.organization).select_related('employee', 'branch', 'created_by', 'updated_by')
 	total_elements = attendances.count()
 
 	page = request.query_params.get('page')

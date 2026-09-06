@@ -76,7 +76,7 @@ def getEmployeeAvailability(request, employee_id):
 	except ObjectDoesNotExist:
 		return Response({'detail': f"Employee id - {employee_id} doesn't exist"}, status=status.HTTP_400_BAD_REQUEST)
 
-	rows = Availability.objects.filter(employee_id=employee_id)
+	rows = Availability.objects.filter(employee_id=employee_id).select_related('employee')
 	return Response({'availability': AvailabilityListSerializer(rows, many=True).data}, status=status.HTTP_200_OK)
 
 
@@ -89,5 +89,5 @@ def getAllAvailability(request):
 	"""Everyone's availability in the store at once — what the Roster
 	screen needs to show an at-a-glance hint per employee/day while
 	scheduling, without a round-trip per employee."""
-	rows = Availability.objects.filter(employee__organization=request.user.organization)
+	rows = Availability.objects.filter(employee__organization=request.user.organization).select_related('employee')
 	return Response({'availability': AvailabilityListSerializer(rows, many=True).data}, status=status.HTTP_200_OK)

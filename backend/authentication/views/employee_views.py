@@ -35,7 +35,7 @@ from wallet.notify import notify_rate_changed
 @api_view(['GET'])
 @permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def getAllEmployee(request):
-	employees = Employee.objects.filter(organization=request.user.organization)
+	employees = Employee.objects.filter(organization=request.user.organization).select_related('role', 'thana', 'city', 'country', 'department', 'branch', 'created_by', 'updated_by')
 	total_elements = employees.count()
 
 	page = request.query_params.get('page')
@@ -69,7 +69,7 @@ def getAllEmployee(request):
 @api_view(['GET'])
 @permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def getAllEmployeeWithoutPagination(request):
-	employees = Employee.objects.filter(organization=request.user.organization)
+	employees = Employee.objects.filter(organization=request.user.organization).select_related('role', 'thana', 'city', 'country', 'department', 'branch', 'created_by', 'updated_by')
 
 	serializer = EmployeeListSerializer(employees, many=True)
 
@@ -94,7 +94,7 @@ def getAEmployee(request, pk):
 @permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def searchEmployee(request):
 
-	employees = EmployeeFilter(request.GET, queryset=Employee.objects.filter(organization=request.user.organization))
+	employees = EmployeeFilter(request.GET, queryset=Employee.objects.filter(organization=request.user.organization).select_related('role', 'thana', 'city', 'country', 'department', 'branch', 'created_by', 'updated_by'))
 	employees = employees.qs
 
 	total_elements = employees.count()

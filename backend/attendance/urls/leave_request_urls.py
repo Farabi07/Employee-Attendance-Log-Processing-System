@@ -11,6 +11,8 @@ urlpatterns = [
 
 	path('api/v1/leave_request/get_all_by_employee_id/<int:employee_id>', views.getAllLeaveRequestByEmployeeId),
 
+	path('api/v1/leave_request/balance/mine/', views.getMyLeaveBalance),
+
 	path('api/v1/leave_request/<int:pk>', views.getALeaveRequest),
 
 	path('api/v1/leave_request/create/', views.createLeaveRequest),

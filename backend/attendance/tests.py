@@ -414,3 +414,34 @@ class ShiftSwapTests(APITestCase):
         resp = self.client.post(f'/shift_swap/api/v1/{swap_id}/respond/', {'action': 'accept'}, format='json')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(resp.data['status'], 'pending_manager')
+
+
+class LeaveBalanceTests(APITestCase):
+    def setUp(self):
+        _set_current_user(None)
+        self.org = make_org("Leave Balance Org")
+        self.manager = make_manager(self.org, "balance.mgr@example.com")
+        self.employee = make_employee(self.org, "balance.emp@example.com")
+        self.casual = LeaveType.objects.create(name="Casual", organization=self.org, days_per_year=10)
+
+    def test_balance_reflects_approved_leave_only(self):
+        today = timezone.localdate()
+        LeaveRequest.objects.create(
+            employee=self.employee, leave_type=self.casual,
+            start_date=today, end_date=today + timezone.timedelta(days=2),
+            status=LeaveRequest.Status.APPROVED,
+        )
+        # A pending request shouldn't count against the quota yet.
+        LeaveRequest.objects.create(
+            employee=self.employee, leave_type=self.casual,
+            start_date=today + timezone.timedelta(days=10), end_date=today + timezone.timedelta(days=10),
+            status=LeaveRequest.Status.PENDING,
+        )
+
+        self.client.force_authenticate(user=self.employee)
+        resp = self.client.get('/leave_request/api/v1/leave_request/balance/mine/')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        row = next(r for r in resp.data['balance'] if r['leave_type_id'] == self.casual.id)
+        self.assertEqual(row['days_per_year'], 10)
+        self.assertEqual(row['used'], 3)
+        self.assertEqual(row['remaining'], 7)

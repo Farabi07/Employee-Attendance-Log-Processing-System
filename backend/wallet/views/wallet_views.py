@@ -158,7 +158,7 @@ def getMyWallet(request):
 		created_at__date__gte=week_start, created_at__date__lte=week_end,
 	).aggregate(s=Sum('amount'))['s'] or 0
 
-	history = WalletTransaction.objects.filter(employee=employee).order_by('-created_at')[:50]
+	history = WalletTransaction.objects.filter(employee=employee).select_related('employee').order_by('-created_at')[:50]
 
 	return Response(
 		{
@@ -365,7 +365,7 @@ def getPayrollSummary(request):
 
 	pending_qs = WalletTransaction.objects.filter(
 		organization=organization, type=WalletTransaction.Type.PAYOUT, status=WalletTransaction.Status.PENDING
-	).order_by('-created_at')
+	).select_related('employee').order_by('-created_at')
 
 	return Response(
 		{
@@ -833,7 +833,7 @@ def getRateHistory(request, employee_id):
 @api_view(['GET'])
 @permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def listTransactions(request):
-	transactions = WalletTransaction.objects.filter(organization=request.user.organization)
+	transactions = WalletTransaction.objects.filter(organization=request.user.organization).select_related('employee')
 
 	employee_id = request.query_params.get('employee_id')
 	if employee_id:
@@ -977,7 +977,7 @@ def listMyPayAdjustments(request):
 	except ObjectDoesNotExist:
 		return Response({'detail': 'Only employees have this'}, status=status.HTTP_400_BAD_REQUEST)
 
-	qs = PayAdjustmentRequest.objects.filter(employee=employee).order_by('-created_at')[:50]
+	qs = PayAdjustmentRequest.objects.filter(employee=employee).select_related('employee', 'reviewed_by', 'attendance').order_by('-created_at')[:50]
 	return Response({'requests': PayAdjustmentRequestSerializer(qs, many=True).data}, status=status.HTTP_200_OK)
 
 
@@ -990,7 +990,7 @@ def listMyPayAdjustments(request):
 @api_view(['GET'])
 @permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def listOrgPayAdjustments(request):
-	qs = PayAdjustmentRequest.objects.filter(organization=request.user.organization)
+	qs = PayAdjustmentRequest.objects.filter(organization=request.user.organization).select_related('employee', 'reviewed_by', 'attendance')
 	status_filter = request.query_params.get('status')
 	if status_filter:
 		qs = qs.filter(status=status_filter)

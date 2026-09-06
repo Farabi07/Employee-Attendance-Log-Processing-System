@@ -35,7 +35,7 @@ class WalletTransaction(models.Model):
 	organization = models.ForeignKey('authentication.Organization', on_delete=models.CASCADE, related_name='wallet_transactions')
 
 	type = models.CharField(max_length=20, choices=Type.choices)
-	status = models.CharField(max_length=25, choices=Status.choices, default=Status.COMPLETED)
+	status = models.CharField(max_length=25, choices=Status.choices, default=Status.COMPLETED, db_index=True)
 	amount = models.DecimalField(max_digits=10, decimal_places=2)
 
 	related_attendance = models.ForeignKey('attendance.Attendance', on_delete=models.SET_NULL, null=True, blank=True, related_name='wallet_transactions')
@@ -210,7 +210,7 @@ class PayAdjustmentRequest(models.Model):
 	note = models.TextField(null=True, blank=True)
 	attachment = models.FileField(upload_to=pay_adjustment_upload_path, null=True, blank=True)
 
-	status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+	status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True)
 	granted_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 	manager_note = models.TextField(null=True, blank=True)
 

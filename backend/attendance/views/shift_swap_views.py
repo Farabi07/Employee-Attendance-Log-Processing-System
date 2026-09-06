@@ -67,13 +67,13 @@ def listMyShiftSwapRequests(request):
 	"""Three buckets for the current employee: swaps they asked for
 	(outgoing), swaps a colleague specifically asked them to take
 	(incoming), and open swaps anyone in the store could claim."""
-	outgoing = ShiftSwapRequest.objects.filter(requested_by_id=request.user.id)
-	incoming = ShiftSwapRequest.objects.filter(proposed_to_id=request.user.id, status=ShiftSwapRequest.Status.PENDING_PEER)
+	outgoing = ShiftSwapRequest.objects.filter(requested_by_id=request.user.id).select_related('roster', 'roster__employee', 'roster__shift', 'requested_by', 'proposed_to', 'claimed_by', 'reviewed_by')
+	incoming = ShiftSwapRequest.objects.filter(proposed_to_id=request.user.id, status=ShiftSwapRequest.Status.PENDING_PEER).select_related('roster', 'roster__employee', 'roster__shift', 'requested_by', 'proposed_to', 'claimed_by', 'reviewed_by')
 	open_requests = ShiftSwapRequest.objects.filter(
 		roster__employee__organization=request.user.organization,
 		proposed_to__isnull=True,
 		status=ShiftSwapRequest.Status.PENDING_PEER,
-	).exclude(requested_by_id=request.user.id)
+	).exclude(requested_by_id=request.user.id).select_related('roster', 'roster__employee', 'roster__shift', 'requested_by', 'proposed_to', 'claimed_by', 'reviewed_by')
 
 	return Response(
 		{
@@ -148,12 +148,13 @@ def cancelShiftSwapRequest(request, pk):
 @api_view(['GET'])
 @permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def listOrgShiftSwapRequests(request):
+	SR = ('roster', 'roster__employee', 'roster__shift', 'requested_by', 'proposed_to', 'claimed_by', 'reviewed_by')
 	pending = ShiftSwapRequest.objects.filter(
 		roster__employee__organization=request.user.organization, status=ShiftSwapRequest.Status.PENDING_MANAGER
-	)
+	).select_related(*SR)
 	recent = ShiftSwapRequest.objects.filter(
 		roster__employee__organization=request.user.organization
-	).exclude(status=ShiftSwapRequest.Status.PENDING_MANAGER)[:50]
+	).exclude(status=ShiftSwapRequest.Status.PENDING_MANAGER).select_related(*SR)[:50]
 
 	return Response(
 		{

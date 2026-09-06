@@ -42,7 +42,7 @@ class Roster(models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='rosters')
     shift = models.ForeignKey(Shift, on_delete=models.SET_NULL, null=True, blank=True, related_name='rosters')
 
-    date = models.DateField()
+    date = models.DateField(db_index=True)
     note = models.CharField(max_length=255, null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -133,7 +133,7 @@ class Attendance(models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='attendances')
     branch = models.ForeignKey(Branch, on_delete=models.SET_NULL, null=True, blank=True)
 
-    date = models.DateField(default=timezone.localdate)
+    date = models.DateField(default=timezone.localdate, db_index=True)
     check_in_time = models.DateTimeField(null=True, blank=True)
     check_out_time = models.DateTimeField(null=True, blank=True)
     worked_hours = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
@@ -174,6 +174,10 @@ class Attendance(models.Model):
 class LeaveType(models.Model):
     name = models.CharField(max_length=100)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True, related_name='leave_types')
+    # The manager's annual quota for this type (e.g. Casual 10, Sick 7) —
+    # every employee in the store gets the same allowance per type. 0 means
+    # "no fixed quota" (unlimited/track-only), not "nobody can take this".
+    days_per_year = models.PositiveIntegerField(default=0)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -207,7 +211,7 @@ class LeaveRequest(models.Model):
     end_date = models.DateField()
     reason = models.TextField(null=True, blank=True)
 
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True)
 
     reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, related_name="+", null=True, blank=True)
     reviewed_at = models.DateTimeField(null=True, blank=True)
@@ -287,7 +291,7 @@ class ShiftSwapRequest(models.Model):
     claimed_by = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, blank=True, related_name='swap_requests_claimed')
 
     reason = models.CharField(max_length=255, null=True, blank=True)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING_PEER)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING_PEER, db_index=True)
 
     manager_note = models.CharField(max_length=255, null=True, blank=True)
     reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
@@ -325,7 +329,7 @@ class Notification(models.Model):
     notification_type = models.CharField(max_length=30, choices=NotificationType.choices, default=NotificationType.GENERAL)
     title = models.CharField(max_length=255)
     message = models.TextField(blank=True, null=True)
-    is_read = models.BooleanField(default=False)
+    is_read = models.BooleanField(default=False, db_index=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -31,7 +31,7 @@ from commons.pagination import Pagination
 @api_view(['GET'])
 @permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def getAllRoster(request):
-	rosters = Roster.objects.filter(employee__organization=request.user.organization)
+	rosters = Roster.objects.filter(employee__organization=request.user.organization).select_related('employee', 'shift', 'created_by', 'updated_by')
 	total_elements = rosters.count()
 
 	page = request.query_params.get('page')
@@ -61,7 +61,7 @@ def getAllRoster(request):
 @api_view(['GET'])
 @permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def getAllRosterWithoutPagination(request):
-	rosters = Roster.objects.filter(employee__organization=request.user.organization)
+	rosters = Roster.objects.filter(employee__organization=request.user.organization).select_related('employee', 'shift', 'created_by', 'updated_by')
 
 	serializer = RosterListSerializer(rosters, many=True)
 
@@ -85,7 +85,7 @@ def getAllRosterWithoutPagination(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, HasActiveSubscription])
 def getAllRosterByEmployeeId(request, employee_id):
-	rosters = Roster.objects.filter(employee__id=employee_id, employee__organization=request.user.organization)
+	rosters = Roster.objects.filter(employee__id=employee_id, employee__organization=request.user.organization).select_related('employee', 'shift', 'created_by', 'updated_by')
 	total_elements = rosters.count()
 
 	page = request.query_params.get('page')
