@@ -156,8 +156,8 @@ export default function Leave() {
 
         <Card style={styles.card}>
           <View style={styles.iconTitleRow}>
-            <IconChip bg={T.amberBg}>
-              <PieChart size={15} color={T.amber} />
+            <IconChip bg={T.tealBg}>
+              <PieChart size={15} color={T.tealDeep} />
             </IconChip>
             <Text style={styles.title}>Leave balance</Text>
           </View>

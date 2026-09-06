@@ -213,8 +213,8 @@ export default function Approvals() {
 
         <Card style={styles.card}>
           <View style={styles.iconTitleRow}>
-            <IconChip bg={T.amberBg}>
-              <Clock3 size={14} color={T.amber} />
+            <IconChip bg={T.tealBg}>
+              <Clock3 size={14} color={T.tealDeep} />
             </IconChip>
             <Text style={styles.cardTitle}>Pay adjustment requests</Text>
           </View>
@@ -232,8 +232,8 @@ export default function Approvals() {
 
         <Card style={styles.card}>
           <View style={styles.iconTitleRow}>
-            <IconChip bg={T.navyBg}>
-              <Repeat size={14} color={T.navyDeep} />
+            <IconChip bg={T.tealBg}>
+              <Repeat size={14} color={T.tealDeep} />
             </IconChip>
             <Text style={styles.cardTitle}>Shift swap approvals</Text>
           </View>

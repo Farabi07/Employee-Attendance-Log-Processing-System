@@ -292,8 +292,8 @@ export default function Payroll() {
         {isManager && (
           <Card style={styles.card}>
             <View style={styles.iconTitleRow}>
-              <IconChip bg={T.navyBg}>
-                <CreditCard size={14} color={T.navyDeep} />
+              <IconChip bg={T.tealBg}>
+                <CreditCard size={14} color={T.tealDeep} />
               </IconChip>
               <Text style={styles.cardTitleSmall}>Payout card</Text>
             </View>
@@ -331,8 +331,8 @@ export default function Payroll() {
 
         <Card style={styles.card}>
           <View style={styles.iconTitleRow}>
-            <IconChip bg={T.navyBg}>
-              <Download size={14} color={T.navyDeep} />
+            <IconChip bg={T.tealBg}>
+              <Download size={14} color={T.tealDeep} />
             </IconChip>
             <Text style={[styles.cardTitle, { marginBottom: 0 }]}>Export for accounting</Text>
           </View>
@@ -438,8 +438,8 @@ export default function Payroll() {
         {summary.pending_requests.length > 0 && (
           <Card style={styles.card}>
             <View style={styles.iconTitleRow}>
-              <IconChip bg={T.amberBg}>
-                <Banknote size={14} color={T.amber} />
+              <IconChip bg={T.tealBg}>
+                <Banknote size={14} color={T.tealDeep} />
               </IconChip>
               <Text style={[styles.cardTitle, { marginBottom: 0 }]}>Cash-out requests awaiting review</Text>
             </View>

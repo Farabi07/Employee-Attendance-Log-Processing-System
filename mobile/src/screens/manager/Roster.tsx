@@ -394,8 +394,8 @@ export default function Roster() {
         <Card style={styles.card}>
           <View style={styles.rowHeader}>
             <View style={styles.iconTitleRow}>
-              <IconChip bg={T.navyBg}>
-                <Building2 size={14} color={T.navyDeep} />
+              <IconChip bg={T.tealBg}>
+                <Building2 size={14} color={T.tealDeep} />
               </IconChip>
               <Text style={styles.cardTitle}>Branches</Text>
             </View>
@@ -427,8 +427,8 @@ export default function Roster() {
 
         <Card style={styles.card}>
           <View style={styles.iconTitleRow}>
-            <IconChip bg={T.amberBg}>
-              <Tag size={14} color={T.amber} />
+            <IconChip bg={T.tealBg}>
+              <Tag size={14} color={T.tealDeep} />
             </IconChip>
             <Text style={styles.cardTitle}>Leave types</Text>
           </View>

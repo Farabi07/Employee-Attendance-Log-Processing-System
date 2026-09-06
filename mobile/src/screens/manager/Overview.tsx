@@ -117,8 +117,8 @@ function OverviewDashboard() {
 
       <Card style={styles.tableCard}>
         <View style={styles.tableTitleRow}>
-          <IconChip bg={T.navyBg}>
-            <Users size={14} color={T.navy} strokeWidth={2.2} />
+          <IconChip bg={T.tealBg}>
+            <Users size={14} color={T.tealDeep} strokeWidth={2.2} />
           </IconChip>
           <Text style={[styles.tableTitle, { marginBottom: 0 }]}>Team attendance · today</Text>
         </View>

@@ -288,8 +288,8 @@ export default function Team() {
         {isManager && (
           <Card style={styles.card}>
             <View style={styles.cardTitleRow}>
-              <IconChip bg={T.navyBg}>
-                <ShieldCheck size={14} color={T.navyDeep} />
+              <IconChip bg={T.tealBg}>
+                <ShieldCheck size={14} color={T.tealDeep} />
               </IconChip>
               <Text style={styles.cardTitle}>Moderator access</Text>
             </View>

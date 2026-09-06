@@ -35,7 +35,7 @@ export default function AppHeader({ title }: { title: string }) {
             <Avatar initials={initials} size={30} src={mediaUrl(user.image)} />
           </Pressable>
           <Pressable onPress={logout} style={styles.logoutButton}>
-            <LogOut size={15} color={T.coral} />
+            <LogOut size={15} color={T.muted} />
           </Pressable>
         </View>
       </View>
@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 9,
-    backgroundColor: T.coralBg,
+    backgroundColor: T.line2,
     alignItems: "center",
     justifyContent: "center",
   },

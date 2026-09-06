@@ -154,7 +154,7 @@ export default function Today() {
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Card style={[styles.ringCard, { backgroundColor: checkedIn || completed ? T.tealBg : T.navyBg }]}>
+        <Card style={[styles.ringCard, { backgroundColor: T.tealBg }]}>
           <Text style={styles.dayLabel}>{formatDayLabel(todayISO())}</Text>
           <ShiftRing
             checkedIn={checkedIn || completed}
@@ -190,7 +190,7 @@ export default function Today() {
         <View style={styles.metricsRow}>
           {[
             { label: "This week", value: formatDuration(weekHours), icon: Clock, color: T.tealDeep, bg: T.tealBg },
-            { label: "This month", value: formatDuration(monthHours), icon: CalendarDays, color: T.navyDeep, bg: T.navyBg },
+            { label: "This month", value: formatDuration(monthHours), icon: CalendarDays, color: T.tealDeep, bg: T.tealBg },
             {
               label: "Pending leave",
               value: pendingLeave ? "1 request" : "None",
@@ -211,7 +211,7 @@ export default function Today() {
 
         <Card style={styles.sectionCard}>
           <View style={styles.sectionTitleRow}>
-            <CalendarClock size={16} color={T.navyDeep} strokeWidth={2} />
+            <CalendarClock size={16} color={T.tealDeep} strokeWidth={2} />
             <Text style={styles.sectionTitle}>Upcoming shifts</Text>
           </View>
           {upcoming.length === 0 && <Text style={styles.emptyText}>No shifts assigned yet.</Text>}

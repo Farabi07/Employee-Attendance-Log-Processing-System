@@ -323,8 +323,8 @@ export default function Shifts() {
 
         <Card style={styles.card}>
           <View style={styles.iconTitleRow}>
-            <IconChip bg={T.navyBg}>
-              <CalendarClock size={15} color={T.navyDeep} />
+            <IconChip bg={T.tealBg}>
+              <CalendarClock size={15} color={T.tealDeep} />
             </IconChip>
             <Text style={styles.title}>Weekly availability</Text>
           </View>

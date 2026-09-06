@@ -145,8 +145,8 @@ export default function Reports() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Card style={styles.card}>
           <View style={styles.iconTitleRow}>
-            <IconChip bg={T.navyBg}>
-              <ClipboardList size={14} color={T.navyDeep} />
+            <IconChip bg={T.tealBg}>
+              <ClipboardList size={14} color={T.tealDeep} />
             </IconChip>
             <Text style={styles.cardTitle}>{view === "summary" ? "Attendance report" : "Timesheet"}</Text>
           </View>
@@ -276,8 +276,8 @@ export default function Reports() {
 
         <Card style={styles.card}>
           <View style={styles.iconTitleRow}>
-            <IconChip bg={T.coralBg}>
-              <UserX size={14} color={T.coral} />
+            <IconChip bg={T.tealBg}>
+              <UserX size={14} color={T.tealDeep} />
             </IconChip>
             <Text style={styles.cardTitle}>Mark absentees</Text>
           </View>

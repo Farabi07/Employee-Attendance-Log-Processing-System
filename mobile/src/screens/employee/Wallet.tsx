@@ -315,8 +315,8 @@ export default function Wallet() {
 
         <Card style={styles.card}>
           <View style={styles.iconTitleRow}>
-            <IconChip bg={T.navyBg}>
-              <Landmark size={14} color={T.navyDeep} />
+            <IconChip bg={T.tealBg}>
+              <Landmark size={14} color={T.tealDeep} />
             </IconChip>
             <Text style={styles.cardTitle}>Payout method</Text>
           </View>
@@ -418,8 +418,8 @@ export default function Wallet() {
         {(eligibleAdjustments.length > 0 || myAdjustments.length > 0) && (
           <Card style={styles.card}>
             <View style={styles.iconTitleRow}>
-              <IconChip bg={T.amberBg}>
-                <Clock3 size={14} color={T.amber} />
+              <IconChip bg={T.tealBg}>
+                <Clock3 size={14} color={T.tealDeep} />
               </IconChip>
               <Text style={styles.cardTitle}>Overtime & shortfall claims</Text>
             </View>
@@ -454,8 +454,8 @@ export default function Wallet() {
         {rateHistory.length > 0 && (
           <Card style={styles.card}>
             <View style={styles.iconTitleRow}>
-              <IconChip bg={T.navyBg}>
-                <History size={14} color={T.navyDeep} />
+              <IconChip bg={T.tealBg}>
+                <History size={14} color={T.tealDeep} />
               </IconChip>
               <Text style={styles.cardTitle}>Pay history</Text>
             </View>
