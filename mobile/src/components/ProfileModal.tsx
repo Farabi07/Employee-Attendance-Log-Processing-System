@@ -106,7 +106,15 @@ export default function ProfileModal({ visible, onClose }: { visible: boolean; o
     setMessage(null);
     setSubmitting(true);
     try {
-      await api.post(endpoints.djoserSetPassword(), { current_password: currentPassword, new_password: newPassword });
+      // Djoser's SET_PASSWORD_RETYPE setting is on, so it requires
+      // re_new_password even though this form only has one "new password"
+      // field — send the same value twice rather than adding a second
+      // field just to satisfy that.
+      await api.post(endpoints.djoserSetPassword(), {
+        current_password: currentPassword,
+        new_password: newPassword,
+        re_new_password: newPassword,
+      });
       setMessage({ type: "success", text: "Password updated. Please log in again." });
       setCurrentPassword("");
       setNewPassword("");
