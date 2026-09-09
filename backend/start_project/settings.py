@@ -67,6 +67,21 @@ INSTALLED_APPS = [
 
 INSTALLED_APPS += ['sequences.apps.SequencesConfig']
 
+# Render's web dyno filesystem is ephemeral — anything saved to MEDIA_ROOT
+# (profile photos, leave-request attachments, pay-adjustment proof images)
+# is wiped on every deploy. Cloudinary's free tier is used to persist
+# uploads instead, but only once real credentials are supplied — with no
+# CLOUDINARY_* env vars set, this is a no-op and MEDIA_ROOT below still
+# works exactly as before (matches the EMAIL_BACKEND fallback pattern).
+CLOUDINARY_CLOUD_NAME = os.environ.get('CLOUDINARY_CLOUD_NAME', '')
+CLOUDINARY_API_KEY = os.environ.get('CLOUDINARY_API_KEY', '')
+CLOUDINARY_API_SECRET = os.environ.get('CLOUDINARY_API_SECRET', '')
+USE_CLOUDINARY = bool(CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET)
+
+if USE_CLOUDINARY:
+    # Must load before django.contrib.staticfiles per django-cloudinary-storage's docs.
+    INSTALLED_APPS = ['cloudinary_storage', 'cloudinary'] + INSTALLED_APPS
+
 MIDDLEWARE = [
     # Simplified static file serving.
     # https://warehouse.python.org/project/whitenoise/
@@ -184,6 +199,14 @@ STATIC_URL = '/static/'
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media') # media files upload directory
 MEDIA_URL = '/media/' # media files retrieve directory
+
+if USE_CLOUDINARY:
+    CLOUDINARY_STORAGE = {
+        'CLOUD_NAME': CLOUDINARY_CLOUD_NAME,
+        'API_KEY': CLOUDINARY_API_KEY,
+        'API_SECRET': CLOUDINARY_API_SECRET,
+    }
+    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
