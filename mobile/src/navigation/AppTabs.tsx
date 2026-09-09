@@ -25,6 +25,7 @@ export default function AppTabs({ role }: { role: "employee" | "manager" }) {
         tabBarItemStyle: styles.tabItem,
         tabBarBackground: () => <GradientBackground />,
         tabBarLabelStyle: { fontFamily: fonts.body.medium, fontSize: 10.5 },
+        animation: "shift",
       }}
     >
       {items.map((item) => (

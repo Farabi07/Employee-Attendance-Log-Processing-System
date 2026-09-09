@@ -1,8 +1,9 @@
 import React, { useEffect, useRef } from "react";
-import { View, Text, Pressable, StyleSheet, Animated, Easing } from "react-native";
+import { View, Text, StyleSheet, Animated, Easing } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { QrCode } from "lucide-react-native";
 import { T, fonts } from "../theme";
+import PressScale from "./PressScale";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -62,20 +63,24 @@ export default function ShiftRing({
           strokeDashoffset={Animated.subtract(c, dashAnim)}
         />
       </Svg>
-      <Pressable
+      <PressScale
         onPress={disabled ? undefined : onScan}
         disabled={disabled}
-        style={[
+        scaleTo={0.94}
+        style={{
+          position: "absolute",
+          top: stroke + 8,
+          left: stroke + 8,
+          right: stroke + 8,
+          bottom: stroke + 8,
+          borderRadius: (size - (stroke + 8) * 2) / 2,
+        }}
+        pressableStyle={[
           styles.button,
           {
-            top: stroke + 8,
-            left: stroke + 8,
-            right: stroke + 8,
-            bottom: stroke + 8,
             borderRadius: (size - (stroke + 8) * 2) / 2,
             backgroundColor: T.navyBg,
             opacity: disabled ? 0.75 : 1,
-            transform: [{ scale: scanning ? 0.94 : 1 }],
           },
         ]}
       >
@@ -83,14 +88,13 @@ export default function ShiftRing({
         <Text style={[styles.label, { color: T.navyDeep }]}>
           {label || (checkedIn ? "Tap to check out" : "Tap to check in")}
         </Text>
-      </Pressable>
+      </PressScale>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   button: {
-    position: "absolute",
     alignItems: "center",
     justifyContent: "center",
     gap: 4,
