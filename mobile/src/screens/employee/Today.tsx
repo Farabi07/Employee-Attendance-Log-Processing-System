@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, ScrollView, StyleSheet } from "react-native";
+import { View, Text, ScrollView, StyleSheet, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Bell, MapPin, Clock, CalendarDays, AlertCircle, CalendarClock } from "lucide-react-native";
 import { T, fonts } from "../../theme";
@@ -14,6 +14,7 @@ import ShiftRing from "../../components/ShiftRing";
 import QrScannerModal from "../../components/QrScannerModal";
 import Skeleton from "../../components/Skeleton";
 import EmptyState from "../../components/EmptyState";
+import { useToast } from "../../components/Toast";
 
 // Ported from frontend/src/pages/employee/Today.jsx. The web version's
 // isMobile grid-vs-sidebar layout switch doesn't apply here — a phone
@@ -33,6 +34,7 @@ function shiftMeta(name?: string) {
 
 export default function Today() {
   const { user } = useAuth();
+  const toast = useToast();
   const [attendance, setAttendance] = useState<any>(undefined); // undefined = loading
   const [rosterToday, setRosterToday] = useState<any>(null);
   const [upcoming, setUpcoming] = useState<any[]>([]);
@@ -42,7 +44,7 @@ export default function Today() {
   const [scanMode, setScanMode] = useState<"checkin" | "checkout" | null>(null);
   const [locating, setLocating] = useState(false);
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
-  const [banner, setBanner] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [now, setNow] = useState(Date.now());
 
   const load = useCallback(async () => {
@@ -87,6 +89,15 @@ export default function Today() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await load();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     if (attendance && attendance.check_in_time && !attendance.check_out_time) {
@@ -145,14 +156,13 @@ export default function Today() {
   // so a scan can never even start from outside the office if location
   // access fails or is denied.
   const startCheck = async (action: "checkin" | "checkout") => {
-    setBanner(null);
     setLocating(true);
     try {
       const loc = await getLocation();
       setLocation(loc);
       setScanMode(action);
     } catch (err: any) {
-      setBanner({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     } finally {
       setLocating(false);
     }
@@ -161,26 +171,28 @@ export default function Today() {
   const handleToken = async (code: string) => {
     const action = scanMode;
     setScanMode(null);
-    setBanner(null);
     try {
       const payload = location ? { code, lat: location.lat, lon: location.lon } : { code };
 
       if (action === "checkin") {
         await api.post(endpoints.checkin(), payload);
-        setBanner({ type: "success", text: "Checked in successfully." });
+        toast.show("Checked in successfully.");
       } else {
         await api.post(endpoints.checkout(), payload);
-        setBanner({ type: "success", text: "Checked out successfully." });
+        toast.show("Checked out successfully.");
       }
       await load();
     } catch (err: any) {
-      setBanner({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     }
   };
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={T.teal} colors={[T.teal]} />}
+      >
         <Card style={[styles.ringCard, { backgroundColor: T.navyBg }]}>
           <Text style={styles.dayLabel}>{formatDayLabel(todayISO())}</Text>
           <ShiftRing
@@ -202,11 +214,6 @@ export default function Today() {
           )}
           {completed && attendance.earnings != null && (
             <Text style={styles.earningsText}>Earned today: {attendance.earnings}</Text>
-          )}
-          {banner && (
-            <Text style={[styles.bannerText, { color: banner.type === "error" ? T.coral : T.teal }]}>
-              {banner.text}
-            </Text>
           )}
           <View style={styles.branchRow}>
             <MapPin size={13} color={T.faint} />
@@ -297,7 +304,6 @@ const styles = StyleSheet.create({
   },
   sinceText: { fontFamily: fonts.mono.regular, fontSize: 12.5, color: T.muted, marginTop: 10 },
   earningsText: { fontFamily: fonts.display.semibold, fontSize: 15, color: T.teal, marginTop: 6 },
-  bannerText: { fontFamily: fonts.body.regular, fontSize: 12.5, marginTop: 10, textAlign: "center" },
   branchRow: {
     marginTop: 18,
     paddingTop: 18,

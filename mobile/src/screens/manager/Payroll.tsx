@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, TextInput, ScrollView, Pressable, StyleSheet } from "react-native";
+import { View, Text, TextInput, ScrollView, Pressable, StyleSheet, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
 import { Wallet, CheckCircle2, XCircle, ListChecks, Download, FileText, FileSpreadsheet, CreditCard, Banknote } from "lucide-react-native";
@@ -15,6 +15,7 @@ import IconChip from "../../components/IconChip";
 import StatusPill from "../../components/StatusPill";
 import DateField from "../../components/DateField";
 import InlinePicker from "../../components/InlinePicker";
+import { useToast } from "../../components/Toast";
 
 // Ported from frontend/src/pages/manager/Payroll.jsx. The web version's
 // <table> becomes a horizontally-scrollable fixed-column row layout (RN
@@ -42,9 +43,9 @@ function extractQueryParam(url: string, key: string): string | null {
 
 export default function Payroll() {
   const { isManager } = useAuth();
+  const toast = useToast();
   const [summary, setSummary] = useState<any>(undefined);
   const [transactions, setTransactions] = useState<any[]>([]);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [running, setRunning] = useState(false);
   const [reviewingId, setReviewingId] = useState<number | null>(null);
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
@@ -82,8 +83,17 @@ export default function Payroll() {
     load();
   }, [load]);
 
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await load();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const startPayoutCardSetup = async () => {
-    setMessage(null);
     setSettingUpCard(true);
     try {
       const res = await api.post(endpoints.payoutCardSetup(), { success_url: PAYOUT_CARD_RETURN, cancel_url: PAYOUT_CARD_RETURN });
@@ -92,12 +102,12 @@ export default function Payroll() {
         const sessionId = extractQueryParam(result.url, "session_id");
         if (sessionId) {
           await api.post(endpoints.payoutCardConfirm(), { session_id: sessionId });
-          setMessage({ type: "success", text: "Payout card saved — future approvals will charge it automatically." });
+          toast.show("Payout card saved — future approvals will charge it automatically.");
           await load();
         }
       }
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     } finally {
       setSettingUpCard(false);
     }
@@ -110,24 +120,23 @@ export default function Payroll() {
       await api.put(endpoints.organizationSettings(), { currency: value });
       await load();
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     } finally {
       setSavingCurrency(false);
     }
   };
 
   const runPayroll = async () => {
-    setMessage(null);
     setRunning(true);
     try {
       const res = await api.post(endpoints.payrollRun(), {});
       let text = `Paid ${res.employees_paid} employee(s), total ${money(res.total_paid)}.`;
       if (res.employees_failed) text += ` ${res.employees_failed} card charge(s) failed.`;
       if (res.employees_skipped?.length) text += ` Skipped (no payout method set up): ${res.employees_skipped.join(", ")}.`;
-      setMessage({ type: res.employees_failed || res.employees_skipped?.length ? "error" : "success", text });
+      toast.show(text, res.employees_failed || res.employees_skipped?.length ? "error" : "success");
       await load();
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     } finally {
       setRunning(false);
     }
@@ -135,12 +144,11 @@ export default function Payroll() {
 
   const reject = async (id: number) => {
     setReviewingId(id);
-    setMessage(null);
     try {
       await api.post(endpoints.payoutReview(id), { action: "reject" });
       await load();
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     } finally {
       setReviewingId(null);
     }
@@ -148,7 +156,6 @@ export default function Payroll() {
 
   const confirmApprove = async (id: number) => {
     setReviewingId(id);
-    setMessage(null);
     try {
       const res = await api.post(endpoints.payoutReview(id), { action: "approve", success_url: PAYOUT_RETURN, cancel_url: PAYOUT_RETURN });
       if (res.checkout_url) {
@@ -157,7 +164,7 @@ export default function Payroll() {
           const sessionId = extractQueryParam(result.url, "session_id");
           if (sessionId) {
             await api.post(endpoints.payoutConfirm(), { session_id: sessionId });
-            setMessage({ type: "success", text: "Payment confirmed." });
+            toast.show("Payment confirmed.");
           }
         }
         setConfirmingId(null);
@@ -166,10 +173,10 @@ export default function Payroll() {
       }
       // Saved card on file — already charged synchronously, no redirect.
       setConfirmingId(null);
-      setMessage({ type: "success", text: `Paid ${money(res.total_charge)} from your saved card.` });
+      toast.show(`Paid ${money(res.total_charge)} from your saved card.`);
       await load();
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     } finally {
       setReviewingId(null);
     }
@@ -177,15 +184,14 @@ export default function Payroll() {
 
   const confirmCash = async (id: number) => {
     setReviewingId(id);
-    setMessage(null);
     try {
       await api.post(endpoints.payoutReview(id), { action: "approve", payout_method: "cash", note: cashNote || undefined });
       setCashConfirmingId(null);
       setCashNote("");
-      setMessage({ type: "success", text: "Marked as paid in cash — waiting for the employee to confirm they received it." });
+      toast.show("Marked as paid in cash — waiting for the employee to confirm they received it.");
       await load();
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     } finally {
       setReviewingId(null);
     }
@@ -195,23 +201,21 @@ export default function Payroll() {
     setPayingCashEmployee(row);
     setDirectCashAmount(String(row.current_balance));
     setDirectCashNote("");
-    setMessage(null);
   };
 
   const submitPayCash = async () => {
     if (!payingCashEmployee) return;
     setPayingCashBusy(true);
-    setMessage(null);
     try {
       await api.post(endpoints.payoutPayCash(payingCashEmployee.employee.id), {
         amount: directCashAmount,
         note: directCashNote || undefined,
       });
-      setMessage({ type: "success", text: `Marked as paid in cash — waiting for ${payingCashEmployee.employee.first_name} to confirm.` });
+      toast.show(`Marked as paid in cash — waiting for ${payingCashEmployee.employee.first_name} to confirm.`);
       setPayingCashEmployee(null);
       await load();
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     } finally {
       setPayingCashBusy(false);
     }
@@ -226,7 +230,7 @@ export default function Payroll() {
       else if (kind === "pdf") await downloadAndShare(endpoints.payrollExportPdf(params), `${filename}.pdf`);
       else await downloadAndShare(endpoints.payrollExportExcel(params), `${filename}.xlsx`);
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     } finally {
       setExporting(null);
     }
@@ -245,7 +249,10 @@ export default function Payroll() {
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={T.teal} colors={[T.teal]} />}
+      >
         {isManager && (
           <View style={styles.currencyRow}>
             <Text style={styles.currencyLabel}>Store currency (used for all wallets & payouts)</Text>
@@ -321,10 +328,6 @@ export default function Payroll() {
               </View>
             )}
           </Card>
-        )}
-
-        {message && (
-          <Text style={[styles.messageText, { color: message.type === "error" ? T.coral : T.teal }]}>{message.text}</Text>
         )}
 
         <Card style={styles.card}>

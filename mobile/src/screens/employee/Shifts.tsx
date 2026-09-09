@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, ScrollView, TextInput, Pressable, Switch, StyleSheet } from "react-native";
+import { View, Text, ScrollView, TextInput, Pressable, Switch, StyleSheet, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
 import { Repeat, Check, X, CalendarClock } from "lucide-react-native";
 import IconChip from "../../components/IconChip";
 import Skeleton from "../../components/Skeleton";
+import { useToast } from "../../components/Toast";
 import { T, fonts } from "../../theme";
 import { useAuth } from "../../lib/auth";
 import { api } from "../../lib/api";
@@ -51,6 +52,7 @@ function SwapRow({ swap, right }: { swap: any; right: React.ReactNode }) {
 
 export default function Shifts() {
   const { user } = useAuth();
+  const toast = useToast();
   const [rosters, setRosters] = useState<any[]>([]);
   const [teammates, setTeammates] = useState<any[]>([]);
   const [swaps, setSwaps] = useState<{ outgoing: any[]; incoming: any[]; open: any[] }>({ outgoing: [], incoming: [], open: [] });
@@ -59,11 +61,9 @@ export default function Shifts() {
   const [proposedTo, setProposedTo] = useState("");
   const [reason, setReason] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const [availability, setAvailability] = useState(defaultWeek());
   const [savingAvailability, setSavingAvailability] = useState(false);
-  const [availabilityMessage, setAvailabilityMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const load = useCallback(async () => {
     const [rosterRes, teammateRes, swapRes, availabilityRes] = await Promise.all([
@@ -94,12 +94,11 @@ export default function Shifts() {
 
   const saveAvailability = async () => {
     setSavingAvailability(true);
-    setAvailabilityMessage(null);
     try {
       await api.put(endpoints.availabilityMineUpdate(), { days: availability });
-      setAvailabilityMessage({ type: "success", text: "Availability saved." });
+      toast.show("Availability saved.");
     } catch (err: any) {
-      setAvailabilityMessage({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     } finally {
       setSavingAvailability(false);
     }
@@ -109,12 +108,21 @@ export default function Shifts() {
     load().finally(() => setLoading(false));
   }, [load]);
 
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await load();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const days = weekDates();
   const byDate = Object.fromEntries(rosters.map((r) => [r.date, r]));
   const today = todayISO();
 
   const requestSwap = async (roster: any) => {
-    setMessage(null);
     setBusyId(roster.id);
     try {
       await api.post(endpoints.shiftSwapRequest(), {
@@ -122,39 +130,37 @@ export default function Shifts() {
         proposed_to: proposedTo || undefined,
         reason: reason || undefined,
       });
-      setMessage({ type: "success", text: "Swap requested." });
+      toast.show("Swap requested.");
       setOpenSwapDate(null);
       setProposedTo("");
       setReason("");
       await load();
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     } finally {
       setBusyId(null);
     }
   };
 
   const respond = async (swapId: number, action: "accept" | "decline") => {
-    setMessage(null);
     setBusyId(swapId);
     try {
       await api.post(endpoints.shiftSwapRespond(swapId), { action });
       await load();
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     } finally {
       setBusyId(null);
     }
   };
 
   const cancelSwap = async (swapId: number) => {
-    setMessage(null);
     setBusyId(swapId);
     try {
       await api.post(endpoints.shiftSwapCancel(swapId));
       await load();
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     } finally {
       setBusyId(null);
     }
@@ -164,7 +170,10 @@ export default function Shifts() {
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={T.teal} colors={[T.teal]} />}
+      >
         <Card style={styles.card}>
           <Text style={styles.title}>This week</Text>
           <Text style={styles.subtitle}>
@@ -247,9 +256,6 @@ export default function Shifts() {
                 </View>
               )}
             </>
-          )}
-          {message && (
-            <Text style={[styles.messageText, { color: message.type === "error" ? T.coral : T.teal }]}>{message.text}</Text>
           )}
         </Card>
 
@@ -361,11 +367,6 @@ export default function Shifts() {
           <Pressable onPress={saveAvailability} disabled={savingAvailability} style={styles.sendButton}>
             <Text style={styles.sendButtonText}>{savingAvailability ? "Saving…" : "Save availability"}</Text>
           </Pressable>
-          {availabilityMessage && (
-            <Text style={[styles.messageText, { color: availabilityMessage.type === "error" ? T.coral : T.teal }]}>
-              {availabilityMessage.text}
-            </Text>
-          )}
         </Card>
       </ScrollView>
     </SafeAreaView>

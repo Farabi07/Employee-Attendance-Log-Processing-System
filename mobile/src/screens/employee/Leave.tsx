@@ -1,11 +1,14 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, ScrollView, TextInput, Pressable, StyleSheet, ActivityIndicator, Linking } from "react-native";
+import { View, Text, ScrollView, TextInput, Pressable, StyleSheet, Linking, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
-import { PieChart, Paperclip } from "lucide-react-native";
+import { PieChart, Paperclip, CalendarX2 } from "lucide-react-native";
+import Skeleton from "../../components/Skeleton";
+import EmptyState from "../../components/EmptyState";
 import IconChip from "../../components/IconChip";
+import { useToast } from "../../components/Toast";
 import { T, fonts } from "../../theme";
 import { useAuth } from "../../lib/auth";
 import { api, BASE_URL, getToken, mediaUrl } from "../../lib/api";
@@ -21,6 +24,7 @@ import { PrimaryButton } from "../../components/Button";
 // availability lives on the Shifts screen instead — see that file.
 export default function Leave() {
   const { user } = useAuth();
+  const toast = useToast();
   const [leaveTypes, setLeaveTypes] = useState<any[]>([]);
   const [balance, setBalance] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
@@ -32,7 +36,6 @@ export default function Leave() {
   const [reason, setReason] = useState("");
   const [attachment, setAttachment] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const pickAttachment = async () => {
     const result = await DocumentPicker.getDocumentAsync({ type: "*/*" });
@@ -56,14 +59,23 @@ export default function Leave() {
     load().finally(() => setLoading(false));
   }, [load]);
 
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await load();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const balanceByTypeId = Object.fromEntries(balance.map((b) => [b.leave_type_id, b]));
   const totalUsed = balance.reduce((sum, b) => sum + b.used, 0);
   const totalQuota = balance.reduce((sum, b) => sum + b.days_per_year, 0);
 
   const handleSubmit = async () => {
-    setMessage(null);
     if (!leaveTypeId || !from || !to) {
-      setMessage({ type: "error", text: "Please fill in leave type and both dates." });
+      toast.show("Please fill in leave type and both dates.", "error");
       return;
     }
     setSubmitting(true);
@@ -93,14 +105,14 @@ export default function Leave() {
           reason,
         });
       }
-      setMessage({ type: "success", text: "Sent to your manager for review." });
+      toast.show("Sent to your manager for review.");
       setFrom("");
       setTo("");
       setReason("");
       setAttachment(null);
       await load();
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     } finally {
       setSubmitting(false);
     }
@@ -108,7 +120,10 @@ export default function Leave() {
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={T.teal} colors={[T.teal]} />}
+      >
         <Card style={styles.card}>
           <Text style={styles.title}>Request leave</Text>
 
@@ -147,11 +162,6 @@ export default function Leave() {
           </Pressable>
 
           <PrimaryButton title={submitting ? "Sending…" : "Submit request"} onPress={handleSubmit} loading={submitting} />
-          {message && (
-            <Text style={[styles.messageText, { color: message.type === "error" ? T.coral : T.teal }]}>
-              {message.text}
-            </Text>
-          )}
         </Card>
 
         <Card style={styles.card}>
@@ -195,8 +205,19 @@ export default function Leave() {
 
         <Card style={styles.card}>
           <Text style={styles.title}>Your requests</Text>
-          {loading && <ActivityIndicator color={T.navy} />}
-          {!loading && history.length === 0 && <Text style={styles.emptyText}>No leave requests yet.</Text>}
+          {loading && (
+            <View style={{ gap: 12 }}>
+              {[0, 1].map((i) => (
+                <View key={i} style={{ gap: 6 }}>
+                  <Skeleton width="40%" height={12} radius={4} />
+                  <Skeleton width="60%" height={10} radius={4} />
+                </View>
+              ))}
+            </View>
+          )}
+          {!loading && history.length === 0 && (
+            <EmptyState icon={CalendarX2} title="No requests yet" subtitle="Your leave requests will show up here." />
+          )}
           {history.map((l, i) => (
             <View key={l.id} style={[styles.historyRow, i > 0 && styles.historyRowBorder]}>
               <View style={{ flex: 1 }}>

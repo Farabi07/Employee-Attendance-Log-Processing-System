@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, TextInput, ScrollView, Pressable, Alert, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, TextInput, ScrollView, Pressable, Alert, StyleSheet, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Plus, QrCode, Trash2, Pencil, MapPin, Building2, Tag, Maximize2 } from "lucide-react-native";
+import Skeleton from "../../components/Skeleton";
 import { T, fonts } from "../../theme";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
@@ -16,6 +17,7 @@ import TimeField from "../../components/TimeField";
 import InlinePicker from "../../components/InlinePicker";
 import { PrimaryButton } from "../../components/Button";
 import LiveQrDisplay from "../../components/LiveQrDisplay";
+import { useToast } from "../../components/Toast";
 
 function dayOfWeekFromDate(isoDate: string) {
   const jsDay = new Date(`${isoDate}T00:00:00`).getDay(); // 0=Sun..6=Sat
@@ -28,6 +30,7 @@ function dayOfWeekFromDate(isoDate: string) {
 // components/LiveQrDisplay.tsx — the plan's hardest single-component port).
 export default function Roster() {
   const { isManager, billing } = useAuth();
+  const toast = useToast();
   const canManageQr = isManager || !!billing?.can_manage_qr;
 
   const [employees, setEmployees] = useState<any[]>([]);
@@ -41,7 +44,6 @@ export default function Roster() {
   const [employeeId, setEmployeeId] = useState("");
   const [date, setDate] = useState(todayISO());
   const [shiftId, setShiftId] = useState("");
-  const [assignMsg, setAssignMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [assigning, setAssigning] = useState(false);
 
   const [showShiftForm, setShowShiftForm] = useState(false);
@@ -67,7 +69,6 @@ export default function Roster() {
   const [geoLon, setGeoLon] = useState("");
   const [geoRadius, setGeoRadius] = useState("");
   const [savingGeofence, setSavingGeofence] = useState(false);
-  const [geoMsg, setGeoMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const load = useCallback(async () => {
     const [empRes, shiftRes, branchRes, leaveTypeRes, rosterRes, availabilityRes] = await Promise.all([
@@ -108,19 +109,28 @@ export default function Roster() {
     load().finally(() => setLoading(false));
   }, [load]);
 
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await load();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const assign = async () => {
-    setAssignMsg(null);
     if (!employeeId || !shiftId || !date) {
-      setAssignMsg({ type: "error", text: "Pick an employee, date and shift." });
+      toast.show("Pick an employee, date and shift.", "error");
       return;
     }
     setAssigning(true);
     try {
       await api.post(endpoints.rosterCreate(), { employee: Number(employeeId), shift: Number(shiftId), date });
-      setAssignMsg({ type: "success", text: "Shift assigned." });
+      toast.show("Shift assigned.");
       await load();
     } catch (err: any) {
-      setAssignMsg({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     } finally {
       setAssigning(false);
     }
@@ -139,7 +149,7 @@ export default function Roster() {
       setShowShiftForm(false);
       await load();
     } catch (err: any) {
-      setAssignMsg({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     } finally {
       setCreatingShift(false);
     }
@@ -160,7 +170,7 @@ export default function Roster() {
       setEditingShiftId(null);
       await load();
     } catch (err: any) {
-      setAssignMsg({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     }
   };
 
@@ -175,7 +185,7 @@ export default function Roster() {
             await api.del(endpoints.shiftDelete(id));
             await load();
           } catch (err: any) {
-            setAssignMsg({ type: "error", text: err.message });
+            toast.show(err.message, "error");
           }
         },
       },
@@ -190,7 +200,7 @@ export default function Roster() {
       setShowBranchForm(false);
       await load();
     } catch (err: any) {
-      setAssignMsg({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     } finally {
       setCreatingBranch(false);
     }
@@ -205,7 +215,7 @@ export default function Roster() {
       setLeaveTypeDays("");
       await load();
     } catch (err: any) {
-      setAssignMsg({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     } finally {
       setCreatingLeaveType(false);
     }
@@ -222,7 +232,7 @@ export default function Roster() {
             await api.del(endpoints.leaveTypeDelete(id));
             await load();
           } catch (err: any) {
-            setAssignMsg({ type: "error", text: err.message });
+            toast.show(err.message, "error");
           }
         },
       },
@@ -249,23 +259,22 @@ export default function Roster() {
       setGeoLat(loc.lat.toFixed(6));
       setGeoLon(loc.lon.toFixed(6));
     } catch (err: any) {
-      setGeoMsg({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     }
   };
 
   const saveGeofence = async () => {
     if (!qrBranchId) return;
     setSavingGeofence(true);
-    setGeoMsg(null);
     try {
       await api.put(endpoints.qrGeofence(qrBranchId), {
         latitude: geoLat === "" ? null : Number(geoLat),
         longitude: geoLon === "" ? null : Number(geoLon),
         allowed_radius_meters: geoRadius === "" ? null : Number(geoRadius),
       });
-      setGeoMsg({ type: "success", text: "Geofence saved." });
+      toast.show("Geofence saved.");
     } catch (err: any) {
-      setGeoMsg({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     } finally {
       setSavingGeofence(false);
     }
@@ -273,15 +282,26 @@ export default function Roster() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.loadingSafe} edges={[]}>
-        <ActivityIndicator color={T.navy} />
+      <SafeAreaView style={styles.safe} edges={[]}>
+        <View style={styles.scrollContent}>
+          {[0, 1, 2].map((i) => (
+            <Card key={i} style={styles.card}>
+              <Skeleton width="40%" height={14} radius={4} style={{ marginBottom: 16 }} />
+              <Skeleton width="100%" height={38} radius={9} style={{ marginBottom: 10 }} />
+              <Skeleton width="100%" height={38} radius={9} />
+            </Card>
+          ))}
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={T.teal} colors={[T.teal]} />}
+      >
         <Card style={styles.card}>
           <Text style={styles.cardTitle}>Assign a shift</Text>
           {employees.length === 0 && <Text style={styles.errorText}>No employees found yet.</Text>}
@@ -320,9 +340,6 @@ export default function Roster() {
           </View>
 
           <PrimaryButton title={assigning ? "Assigning…" : "Assign shift"} onPress={assign} loading={assigning} disabled={shifts.length === 0} />
-          {assignMsg && (
-            <Text style={[styles.messageText, { color: assignMsg.type === "error" ? T.coral : T.teal }]}>{assignMsg.text}</Text>
-          )}
         </Card>
 
         <Card style={styles.card}>
@@ -552,11 +569,6 @@ export default function Roster() {
               <Pressable onPress={saveGeofence} disabled={savingGeofence} style={styles.darkButtonSmall}>
                 <Text style={styles.darkButtonSmallText}>{savingGeofence ? "Saving…" : "Save geofence"}</Text>
               </Pressable>
-              {geoMsg && (
-                <Text style={[styles.messageText, { color: geoMsg.type === "error" ? T.coral : T.teal, textAlign: "left" }]}>
-                  {geoMsg.text}
-                </Text>
-              )}
               <Text style={styles.footHint}>Leave all three blank to allow check-in from anywhere.</Text>
             </View>
           </Card>

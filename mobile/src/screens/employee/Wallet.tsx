@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, ScrollView, TextInput, Pressable, StyleSheet, Linking } from "react-native";
+import { View, Text, ScrollView, TextInput, Pressable, StyleSheet, Linking, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
 import * as DocumentPicker from "expo-document-picker";
@@ -24,6 +24,7 @@ import EmptyState from "../../components/EmptyState";
 import IconChip from "../../components/IconChip";
 import StatusPill from "../../components/StatusPill";
 import { PrimaryButton } from "../../components/Button";
+import { useToast } from "../../components/Toast";
 
 // Ported from frontend/src/pages/employee/Wallet.jsx. The web version's
 // side-by-side grid becomes one scrollable column. Stripe Connect
@@ -197,10 +198,10 @@ function MyAdjustmentRow({ request: r, onAccepted }: { request: any; onAccepted:
 
 export default function Wallet() {
   const { user } = useAuth();
+  const toast = useToast();
   const [wallet, setWallet] = useState<any>(undefined);
   const [rateHistory, setRateHistory] = useState<any[]>([]);
   const [amount, setAmount] = useState("");
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [eligibleAdjustments, setEligibleAdjustments] = useState<any[]>([]);
@@ -231,16 +232,25 @@ export default function Wallet() {
     await Promise.all([loadAdjustments(), load()]);
   };
 
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refreshAdjustments();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const handleRequest = async () => {
-    setMessage(null);
     setSubmitting(true);
     try {
       await api.post(endpoints.walletPayoutRequest(), { amount });
-      setMessage({ type: "success", text: "Payout requested — your manager will settle it." });
+      toast.show("Payout requested — your manager will settle it.");
       setAmount("");
       await load();
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     } finally {
       setSubmitting(false);
     }
@@ -248,27 +258,25 @@ export default function Wallet() {
 
   const confirmCashReceived = async (id: number) => {
     setConfirmingCashId(id);
-    setMessage(null);
     try {
       await api.post(endpoints.payoutConfirmCash(id));
-      setMessage({ type: "success", text: "Confirmed — thanks!" });
+      toast.show("Confirmed — thanks!");
       await load();
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     } finally {
       setConfirmingCashId(null);
     }
   };
 
   const startOnboarding = async () => {
-    setMessage(null);
     setConnecting(true);
     try {
       const res = await api.post(endpoints.connectOnboard(), { return_url: CONNECT_RETURN_URL });
       await WebBrowser.openAuthSessionAsync(res.url, CONNECT_RETURN_URL);
       await load();
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     } finally {
       setConnecting(false);
     }
@@ -299,7 +307,10 @@ export default function Wallet() {
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={T.teal} colors={[T.teal]} />}
+      >
         <Card style={[styles.card, styles.balanceCard]}>
           <View style={styles.balanceHeader}>
             <WalletIcon size={16} color={T.paper} strokeWidth={1.8} />
@@ -392,9 +403,6 @@ export default function Wallet() {
                 disabled={Number(wallet.current_balance) <= 0}
               />
             </>
-          )}
-          {message && (
-            <Text style={[styles.messageText, { color: message.type === "error" ? T.coral : T.teal }]}>{message.text}</Text>
           )}
         </Card>
 

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, TextInput, ScrollView, Pressable, Linking, StyleSheet } from "react-native";
+import { View, Text, TextInput, ScrollView, Pressable, Linking, StyleSheet, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Check, X, Clock3, Paperclip, Repeat, CalendarCheck } from "lucide-react-native";
 import { T, fonts } from "../../theme";
@@ -142,6 +142,16 @@ export default function Approvals() {
     loadSwaps().finally(() => setLoadingSwaps(false));
   }, [load, loadAdjustments, loadSwaps]);
 
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([load(), loadAdjustments(), loadSwaps()]);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const decide = async (id: number, status: string) => {
     setDecidingId(id);
     try {
@@ -164,7 +174,10 @@ export default function Approvals() {
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={T.teal} colors={[T.teal]} />}
+      >
         <Card style={styles.card}>
           <View style={styles.iconTitleRow}>
             <IconChip bg={T.tealBg}>

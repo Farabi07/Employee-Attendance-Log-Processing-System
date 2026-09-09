@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { View, Text, TextInput, ScrollView, StyleSheet, ActivityIndicator, Pressable } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { View, Text, TextInput, ScrollView, StyleSheet, Pressable, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Search, Users, CheckCircle2, Coffee, UserX, LayoutGrid, ClipboardCheck } from "lucide-react-native";
+import Skeleton from "../../components/Skeleton";
 import { T, fonts } from "../../theme";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
@@ -39,31 +40,42 @@ function OverviewDashboard() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     const today = todayISO();
-    Promise.all([
+    const [empRes, attRes, leaveRes] = await Promise.all([
       api.get(endpoints.employeesAll()),
       api.get(endpoints.attendanceSearch(`?date=${today}&size=200`)),
       api.get(endpoints.leaveRequestAll(`?status=approved&size=200`)),
-    ])
-      .then(([empRes, attRes, leaveRes]) => {
-        setEmployees(empRes.employees || []);
+    ]);
+    setEmployees(empRes.employees || []);
 
-        const map: Record<number, any> = {};
-        for (const a of attRes.attendances || []) {
-          if (a.employee?.id) map[a.employee.id] = a;
-        }
-        setAttendanceByEmp(map);
+    const map: Record<number, any> = {};
+    for (const a of attRes.attendances || []) {
+      if (a.employee?.id) map[a.employee.id] = a;
+    }
+    setAttendanceByEmp(map);
 
-        const onLeaveIds = new Set<number>(
-          (leaveRes.leave_requests || [])
-            .filter((l: any) => l.start_date <= today && today <= l.end_date)
-            .map((l: any) => l.employee?.id)
-        );
-        setLeaveEmployeeIds(onLeaveIds);
-      })
-      .finally(() => setLoading(false));
+    const onLeaveIds = new Set<number>(
+      (leaveRes.leave_requests || [])
+        .filter((l: any) => l.start_date <= today && today <= l.end_date)
+        .map((l: any) => l.employee?.id)
+    );
+    setLeaveEmployeeIds(onLeaveIds);
   }, []);
+
+  useEffect(() => {
+    load().finally(() => setLoading(false));
+  }, [load]);
+
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await load();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const rows = useMemo(() => {
     return employees
@@ -100,7 +112,10 @@ function OverviewDashboard() {
   ];
 
   return (
-    <ScrollView contentContainerStyle={styles.scrollContent}>
+    <ScrollView
+      contentContainerStyle={styles.scrollContent}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={T.teal} colors={[T.teal]} />}
+    >
       <View style={styles.metricsGrid}>
         {metrics.map((m) => (
           <Card key={m.label} style={styles.metricCard}>
@@ -133,7 +148,17 @@ function OverviewDashboard() {
           />
         </View>
         {loading ? (
-          <ActivityIndicator color={T.navy} style={{ marginTop: 12 }} />
+          <View style={{ gap: 14, marginTop: 4 }}>
+            {[0, 1, 2].map((i) => (
+              <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <Skeleton width={32} height={32} radius={16} />
+                <View style={{ flex: 1, gap: 6 }}>
+                  <Skeleton width="50%" height={12} radius={4} />
+                  <Skeleton width="30%" height={10} radius={4} />
+                </View>
+              </View>
+            ))}
+          </View>
         ) : (
           <>
             <View style={styles.tableHeaderRow}>

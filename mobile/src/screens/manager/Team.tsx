@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, TextInput, ScrollView, Pressable, Switch, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, TextInput, ScrollView, Pressable, Switch, StyleSheet, ActivityIndicator, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Search, UserPlus, DollarSign, ShieldCheck, History, User, Users } from "lucide-react-native";
+import Skeleton from "../../components/Skeleton";
+import EmptyState from "../../components/EmptyState";
 import { T, fonts } from "../../theme";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
@@ -14,6 +16,7 @@ import Avatar from "../../components/Avatar";
 import FormField from "../../components/FormField";
 import { PrimaryButton } from "../../components/Button";
 import InlinePicker from "../../components/InlinePicker";
+import { useToast } from "../../components/Toast";
 
 const DAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -45,6 +48,7 @@ function initialsOf(emp: any) {
 
 export default function Team() {
   const { isManager, billing, refreshBilling } = useAuth();
+  const toast = useToast();
   const canAddEmployees = isManager || !!billing?.can_add_employees;
   const [savingAccess, setSavingAccess] = useState<string | null>(null);
   const [employees, setEmployees] = useState<any[]>([]);
@@ -59,7 +63,6 @@ export default function Team() {
   const [hourlyRate, setHourlyRate] = useState("");
   const [currency, setCurrency] = useState<string>(billing?.currency || "usd");
   const [payoutCycle, setPayoutCycle] = useState("weekly");
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const [editingPayId, setEditingPayId] = useState<number | null>(null);
@@ -85,13 +88,22 @@ export default function Team() {
     load().finally(() => setLoading(false));
   }, [load]);
 
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await load();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const filtered = useMemo(
     () => employees.filter((e) => `${e.first_name} ${e.last_name} ${e.email}`.toLowerCase().includes(query.toLowerCase())),
     [employees, query]
   );
 
   const handleSubmit = async () => {
-    setMessage(null);
     setSubmitting(true);
     try {
       await api.post(endpoints.employeeCreate(), {
@@ -103,7 +115,7 @@ export default function Team() {
         payout_cycle: payoutCycle,
         ...(hourlyRate ? { hourly_rate: hourlyRate, currency } : {}),
       });
-      setMessage({ type: "success", text: "Employee added." });
+      toast.show("Employee added.");
       setFirstName("");
       setLastName("");
       setEmail("");
@@ -114,7 +126,7 @@ export default function Team() {
       setPayoutCycle("weekly");
       await load();
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     } finally {
       setSubmitting(false);
     }
@@ -126,7 +138,7 @@ export default function Team() {
       await api.put(endpoints.organizationSettings(), { [key]: checked });
       await refreshBilling();
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     } finally {
       setSavingAccess(null);
     }
@@ -151,7 +163,7 @@ export default function Team() {
       setHistoryById((h) => ({ ...h, [id]: undefined }));
       await load();
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     } finally {
       setSavingPay(false);
     }
@@ -170,7 +182,7 @@ export default function Team() {
         const res = await api.get(endpoints.rateHistory(emp.id));
         setHistoryById((h) => ({ ...h, [emp.id]: res.history || [] }));
       } catch (err: any) {
-        setMessage({ type: "error", text: err.message });
+        toast.show(err.message, "error");
       } finally {
         setLoadingHistory(false);
       }
@@ -208,7 +220,7 @@ export default function Team() {
           },
         }));
       } catch (err: any) {
-        setMessage({ type: "error", text: err.message });
+        toast.show(err.message, "error");
       } finally {
         setLoadingProfile(false);
       }
@@ -217,7 +229,10 @@ export default function Team() {
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={T.teal} colors={[T.teal]} />}
+      >
         {canAddEmployees ? (
           <Card style={styles.card}>
             <View style={styles.cardTitleRow}>
@@ -271,9 +286,6 @@ export default function Team() {
             <View style={{ marginTop: 14 }}>
               <PrimaryButton title={submitting ? "Adding…" : "Add employee"} onPress={handleSubmit} loading={submitting} />
             </View>
-            {message && (
-              <Text style={[styles.messageText, { color: message.type === "error" ? T.coral : T.teal }]}>{message.text}</Text>
-            )}
           </Card>
         ) : (
           <Card style={styles.card}>
@@ -329,9 +341,19 @@ export default function Team() {
           </View>
 
           {loading ? (
-            <ActivityIndicator color={T.navy} />
+            <View style={{ gap: 14 }}>
+              {[0, 1, 2].map((i) => (
+                <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                  <Skeleton width={34} height={34} radius={17} />
+                  <View style={{ flex: 1, gap: 6 }}>
+                    <Skeleton width="55%" height={12} radius={4} />
+                    <Skeleton width="75%" height={10} radius={4} />
+                  </View>
+                </View>
+              ))}
+            </View>
           ) : filtered.length === 0 ? (
-            <Text style={styles.bodyMuted}>No one matches "{query}".</Text>
+            <EmptyState icon={Search} title="No matches" subtitle={`No one matches "${query}".`} />
           ) : (
             filtered.map((emp, i) => {
               const badge = ROLE_BADGE[emp.org_role];

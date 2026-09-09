@@ -12,6 +12,7 @@ import { useAppFonts } from "./src/lib/useAppFonts";
 import { T } from "./src/theme";
 import { linking } from "./src/navigation/linking";
 import RootNavigator from "./src/navigation/RootNavigator";
+import { ToastProvider } from "./src/components/Toast";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -72,11 +73,13 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutRootView}>
       <SafeAreaProvider>
         <View style={{ flex: 1, backgroundColor: T.paper }}>
-          <AuthProvider>
-            <NavigationContainer linking={linking}>
-              <RootNavigator />
-            </NavigationContainer>
-          </AuthProvider>
+          <ToastProvider>
+            <AuthProvider>
+              <NavigationContainer linking={linking}>
+                <RootNavigator />
+              </NavigationContainer>
+            </AuthProvider>
+          </ToastProvider>
           <StatusBar style="light" />
         </View>
       </SafeAreaProvider>

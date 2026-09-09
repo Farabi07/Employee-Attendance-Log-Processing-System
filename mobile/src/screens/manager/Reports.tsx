@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, Pressable, StyleSheet, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Download, FileText, FileSpreadsheet, UserX, ClipboardList } from "lucide-react-native";
+import Skeleton from "../../components/Skeleton";
 import { T, fonts } from "../../theme";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
@@ -11,6 +12,7 @@ import Card from "../../components/Card";
 import IconChip from "../../components/IconChip";
 import DateField from "../../components/DateField";
 import StatusPill from "../../components/StatusPill";
+import { useToast } from "../../components/Toast";
 
 // Ported from frontend/src/pages/manager/Reports.jsx. The client-side CSV
 // export (Blob + <a download>) becomes writeAndShareText (see lib/download.js).
@@ -26,6 +28,7 @@ function overlapDays(start: string, end: string, rangeFrom: string, rangeTo: str
 }
 
 export default function Reports() {
+  const toast = useToast();
   const defaultWeek = weekDates();
   const [dateFrom, setDateFrom] = useState(defaultWeek[0]);
   const [dateTo, setDateTo] = useState(defaultWeek[6]);
@@ -36,7 +39,6 @@ export default function Reports() {
 
   const [absentDate, setAbsentDate] = useState(todayISO());
   const [absentBusy, setAbsentBusy] = useState(false);
-  const [absentMsg, setAbsentMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const [view, setView] = useState<"summary" | "timesheet">("summary");
   const [timesheetRows, setTimesheetRows] = useState<any[]>([]);
@@ -65,6 +67,16 @@ export default function Reports() {
     load();
     loadTimesheet();
   }, [load, loadTimesheet]);
+
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([load(), loadTimesheet()]);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const exportTimesheet = async (kind: "csv" | "pdf" | "excel") => {
     setTimesheetExporting(kind);
@@ -128,13 +140,12 @@ export default function Reports() {
 
   const runAbsenteeCheck = async () => {
     setAbsentBusy(true);
-    setAbsentMsg(null);
     try {
       const res = await api.post(endpoints.markAbsent(`?date=${absentDate}`));
-      setAbsentMsg({ type: "success", text: res.detail });
+      toast.show(res.detail);
       await load();
     } catch (err: any) {
-      setAbsentMsg({ type: "error", text: err.message });
+      toast.show(err.message, "error");
     } finally {
       setAbsentBusy(false);
     }
@@ -142,7 +153,10 @@ export default function Reports() {
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={T.teal} colors={[T.teal]} />}
+      >
         <Card style={styles.card}>
           <View style={styles.iconTitleRow}>
             <IconChip bg={T.tealBg}>
@@ -194,7 +208,11 @@ export default function Reports() {
               </View>
 
               {loading ? (
-                <ActivityIndicator color={T.navy} />
+                <View style={{ gap: 10 }}>
+                  {[0, 1, 2, 3].map((i) => (
+                    <Skeleton key={i} width="100%" height={16} radius={4} />
+                  ))}
+                </View>
               ) : rows.length === 0 ? (
                 <Text style={styles.bodyMuted}>No attendance or leave records in this range.</Text>
               ) : (
@@ -241,7 +259,11 @@ export default function Reports() {
               </View>
 
               {timesheetLoading ? (
-                <ActivityIndicator color={T.navy} />
+                <View style={{ gap: 10 }}>
+                  {[0, 1, 2, 3].map((i) => (
+                    <Skeleton key={i} width="100%" height={16} radius={4} />
+                  ))}
+                </View>
               ) : timesheetRows.length === 0 ? (
                 <Text style={styles.bodyMuted}>No clock-in/out records in this range.</Text>
               ) : (
@@ -293,9 +315,6 @@ export default function Reports() {
               <Text style={styles.exportButtonText}>{absentBusy ? "Running…" : "Run check"}</Text>
             </Pressable>
           </View>
-          {absentMsg && (
-            <Text style={[styles.messageText, { color: absentMsg.type === "error" ? T.coral : T.teal }]}>{absentMsg.text}</Text>
-          )}
         </Card>
       </ScrollView>
     </SafeAreaView>
