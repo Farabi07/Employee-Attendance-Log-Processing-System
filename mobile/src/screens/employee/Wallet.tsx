@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, ScrollView, TextInput, Pressable, StyleSheet, ActivityIndicator, Linking } from "react-native";
+import { View, Text, ScrollView, TextInput, Pressable, StyleSheet, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
 import * as DocumentPicker from "expo-document-picker";
@@ -19,6 +19,8 @@ import { endpoints } from "../../lib/endpoints";
 import { useAuth } from "../../lib/auth";
 import { formatMoney, currencySymbol } from "../../lib/currency";
 import Card from "../../components/Card";
+import Skeleton from "../../components/Skeleton";
+import EmptyState from "../../components/EmptyState";
 import IconChip from "../../components/IconChip";
 import StatusPill from "../../components/StatusPill";
 import { PrimaryButton } from "../../components/Button";
@@ -274,8 +276,21 @@ export default function Wallet() {
 
   if (wallet === undefined) {
     return (
-      <SafeAreaView style={styles.loadingSafe} edges={[]}>
-        <ActivityIndicator color={T.navy} />
+      <SafeAreaView style={styles.safe} edges={[]}>
+        <ScrollView contentContainerStyle={styles.scrollContent} scrollEnabled={false}>
+          <Card style={[styles.card, styles.balanceCard]}>
+            <Skeleton width={110} height={12} radius={4} style={{ backgroundColor: "rgba(255,255,255,0.3)", marginBottom: 12 }} />
+            <Skeleton width={150} height={30} radius={6} style={{ backgroundColor: "rgba(255,255,255,0.3)" }} />
+          </Card>
+          <Card style={styles.card}>
+            <Skeleton width={130} height={12} radius={4} style={{ marginBottom: 12 }} />
+            <Skeleton width={90} height={20} radius={4} />
+          </Card>
+          <Card style={styles.card}>
+            <Skeleton width={100} height={14} radius={4} style={{ marginBottom: 16 }} />
+            <Skeleton width="100%" height={38} radius={9} />
+          </Card>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -385,7 +400,9 @@ export default function Wallet() {
 
         <Card style={styles.card}>
           <Text style={styles.cardTitle}>Earnings & payout history</Text>
-          {wallet.history.length === 0 && <Text style={styles.bodyMuted}>Nothing here yet — check in to start earning.</Text>}
+          {wallet.history.length === 0 && (
+            <EmptyState icon={History} title="Nothing here yet" subtitle="Check in to start earning." />
+          )}
           {wallet.history.map((t: any, i: number) => (
             <View key={t.id} style={[styles.historyRow, i > 0 && styles.borderTop]}>
               <View style={{ flex: 1 }}>
@@ -480,7 +497,6 @@ export default function Wallet() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: T.paper },
-  loadingSafe: { flex: 1, backgroundColor: T.paper, alignItems: "center", justifyContent: "center" },
   scrollContent: { padding: 16, gap: 16 },
   card: { padding: 20 },
   balanceCard: { backgroundColor: T.teal },

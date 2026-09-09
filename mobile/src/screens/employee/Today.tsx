@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Bell, MapPin, Clock, CalendarDays, AlertCircle, CalendarClock } from "lucide-react-native";
 import { T, fonts } from "../../theme";
@@ -12,6 +12,8 @@ import Card from "../../components/Card";
 import StatusPill from "../../components/StatusPill";
 import ShiftRing from "../../components/ShiftRing";
 import QrScannerModal from "../../components/QrScannerModal";
+import Skeleton from "../../components/Skeleton";
+import EmptyState from "../../components/EmptyState";
 
 // Ported from frontend/src/pages/employee/Today.jsx. The web version's
 // isMobile grid-vs-sidebar layout switch doesn't apply here — a phone
@@ -95,8 +97,33 @@ export default function Today() {
 
   if (attendance === undefined) {
     return (
-      <SafeAreaView style={styles.loadingSafe} edges={[]}>
-        <ActivityIndicator color={T.navy} />
+      <SafeAreaView style={styles.safe} edges={[]}>
+        <ScrollView contentContainerStyle={styles.scrollContent} scrollEnabled={false}>
+          <Card style={[styles.ringCard, { backgroundColor: T.navyBg }]}>
+            <Skeleton width={90} height={11} radius={4} style={{ marginBottom: 18 }} />
+            <Skeleton width={176} height={176} radius={88} />
+            <Skeleton width={80} height={20} radius={10} style={{ marginTop: 20 }} />
+          </Card>
+          <View style={styles.metricsRow}>
+            {[0, 1, 2].map((i) => (
+              <Card key={i} style={styles.metricCard}>
+                <Skeleton width={28} height={28} radius={9} style={{ marginBottom: 10 }} />
+                <Skeleton width={60} height={11} radius={4} style={{ marginBottom: 8 }} />
+                <Skeleton width={44} height={16} radius={4} />
+              </Card>
+            ))}
+          </View>
+          <Card style={styles.sectionCard}>
+            <Skeleton width={130} height={15} radius={4} style={{ marginBottom: 16 }} />
+            {[0, 1, 2].map((i) => (
+              <View key={i} style={[styles.shiftRow, i > 0 && styles.shiftRowBorder]}>
+                <Skeleton width={26} height={26} radius={8} />
+                <Skeleton width={70} height={12} radius={4} style={{ marginLeft: 10 }} />
+                <Skeleton width={90} height={12} radius={4} style={{ marginLeft: 10, flex: 1 }} />
+              </View>
+            ))}
+          </Card>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -214,7 +241,9 @@ export default function Today() {
             <CalendarClock size={16} color={T.tealDeep} strokeWidth={2} />
             <Text style={styles.sectionTitle}>Upcoming shifts</Text>
           </View>
-          {upcoming.length === 0 && <Text style={styles.emptyText}>No shifts assigned yet.</Text>}
+          {upcoming.length === 0 && (
+            <EmptyState icon={CalendarClock} title="No shifts assigned yet" subtitle="Your manager hasn't scheduled anything for you yet." />
+          )}
           {upcoming.map((r, i) => {
             const meta = shiftMeta(r.shift?.name);
             return (
@@ -256,7 +285,6 @@ export default function Today() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: T.paper },
-  loadingSafe: { flex: 1, backgroundColor: T.paper, alignItems: "center", justifyContent: "center" },
   scrollContent: { padding: 16, gap: 16 },
   ringCard: { padding: 24, alignItems: "center" },
   dayLabel: {
@@ -297,7 +325,6 @@ const styles = StyleSheet.create({
   sectionCard: { padding: 20 },
   sectionTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
   sectionTitle: { fontFamily: fonts.display.semibold, fontSize: 15.5, color: T.ink },
-  emptyText: { fontFamily: fonts.body.regular, fontSize: 13, color: T.muted },
   shiftRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10 },
   shiftRowBorder: { borderTopWidth: 1, borderTopColor: T.line2 },
   shiftChip: { width: 26, height: 26, borderRadius: 8, alignItems: "center", justifyContent: "center" },

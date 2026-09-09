@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, ScrollView, TextInput, Pressable, Switch, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, TextInput, Pressable, Switch, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
 import { Repeat, Check, X, CalendarClock } from "lucide-react-native";
 import IconChip from "../../components/IconChip";
+import Skeleton from "../../components/Skeleton";
 import { T, fonts } from "../../theme";
 import { useAuth } from "../../lib/auth";
 import { api } from "../../lib/api";
@@ -170,7 +171,15 @@ export default function Shifts() {
             {formatDayLabel(days[0])} – {formatDayLabel(days[6])} · assigned by your manager
           </Text>
           {loading ? (
-            <ActivityIndicator color={T.navy} />
+            <View style={styles.row}>
+              {[0, 1, 2, 3, 4].map((i) => (
+                <View key={i} style={[styles.dayCard, { alignItems: "stretch" }]}>
+                  <Skeleton width={40} height={11} radius={4} style={{ marginBottom: 12, alignSelf: "center" }} />
+                  <Skeleton width="100%" height={12} radius={4} style={{ marginBottom: 6 }} />
+                  <Skeleton width="70%" height={10} radius={4} style={{ alignSelf: "center" }} />
+                </View>
+              ))}
+            </View>
           ) : (
             <>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
