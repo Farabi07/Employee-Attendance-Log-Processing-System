@@ -1,8 +1,9 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet, Modal } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { X, KeyRound } from "lucide-react-native";
-import { T, fonts } from "../theme";
+import { fonts } from "../theme";
+import { useTheme } from "../lib/ThemeContext";
 import Card from "./Card";
 
 // Ported from frontend/src/components/QrScannerModal.jsx. html5-qrcode's
@@ -21,6 +22,52 @@ export default function QrScannerModal({
   onClose: () => void;
   onToken: (code: string) => void;
 }) {
+  const T = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        backdrop: {
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.55)",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 16,
+        },
+        card: { width: "100%", maxWidth: 360, padding: 22 },
+        header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
+        title: { fontFamily: fonts.display.semibold, fontSize: 15.5, color: T.ink },
+        cameraBox: {
+          width: "100%",
+          height: 240,
+          borderRadius: 10,
+          overflow: "hidden",
+          backgroundColor: T.line2,
+        },
+        permissionPrompt: { flex: 1, alignItems: "center", justifyContent: "center", padding: 16, gap: 12 },
+        permissionText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, textAlign: "center" },
+        permissionButton: { backgroundColor: T.teal, paddingVertical: 9, paddingHorizontal: 16, borderRadius: 8 },
+        permissionButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.onAccent },
+        manualSection: { marginTop: 18, paddingTop: 16, borderTopWidth: 1, borderTopColor: T.line2 },
+        manualLabelRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
+        manualLabel: { fontFamily: fonts.body.regular, fontSize: 12, color: T.muted },
+        manualRow: { flexDirection: "row", gap: 8 },
+        manualInput: {
+          flex: 1,
+          paddingVertical: 9,
+          paddingHorizontal: 10,
+          borderRadius: 8,
+          borderWidth: 1,
+          borderColor: T.line,
+          fontFamily: fonts.mono.regular,
+          fontSize: 12.5,
+          color: T.ink,
+        },
+        useButton: { paddingVertical: 9, paddingHorizontal: 14, borderRadius: 8, backgroundColor: T.teal, alignItems: "center", justifyContent: "center" },
+        useButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.onAccent },
+      }),
+    [T]
+  );
+
   const [permission, requestPermission] = useCameraPermissions();
   const [manualToken, setManualToken] = useState("");
   const firedRef = useRef(false);
@@ -107,44 +154,3 @@ export default function QrScannerModal({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(22,35,58,0.55)",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
-  },
-  card: { width: "100%", maxWidth: 360, padding: 22 },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
-  title: { fontFamily: fonts.display.semibold, fontSize: 15.5, color: T.ink },
-  cameraBox: {
-    width: "100%",
-    height: 240,
-    borderRadius: 10,
-    overflow: "hidden",
-    backgroundColor: T.line2,
-  },
-  permissionPrompt: { flex: 1, alignItems: "center", justifyContent: "center", padding: 16, gap: 12 },
-  permissionText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, textAlign: "center" },
-  permissionButton: { backgroundColor: T.teal, paddingVertical: 9, paddingHorizontal: 16, borderRadius: 8 },
-  permissionButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.paper },
-  manualSection: { marginTop: 18, paddingTop: 16, borderTopWidth: 1, borderTopColor: T.line2 },
-  manualLabelRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
-  manualLabel: { fontFamily: fonts.body.regular, fontSize: 12, color: T.muted },
-  manualRow: { flexDirection: "row", gap: 8 },
-  manualInput: {
-    flex: 1,
-    paddingVertical: 9,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: T.line,
-    fontFamily: fonts.mono.regular,
-    fontSize: 12.5,
-    color: T.ink,
-  },
-  useButton: { paddingVertical: 9, paddingHorizontal: 14, borderRadius: 8, backgroundColor: T.teal, alignItems: "center", justifyContent: "center" },
-  useButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.paper },
-});

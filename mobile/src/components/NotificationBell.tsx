@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, Pressable, Modal, FlatList, StyleSheet } from "react-native";
 import { Bell } from "lucide-react-native";
-import { T, fonts } from "../theme";
+import { fonts } from "../theme";
+import { useTheme } from "../lib/ThemeContext";
 import { api } from "../lib/api";
 import { endpoints } from "../lib/endpoints";
 
@@ -21,6 +22,60 @@ function timeAgo(iso: string) {
 }
 
 export default function NotificationBell() {
+  const T = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        bellButton: {
+          width: 28,
+          height: 28,
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        badge: {
+          position: "absolute",
+          top: -4,
+          right: -4,
+          minWidth: 16,
+          height: 16,
+          paddingHorizontal: 3,
+          borderRadius: 8,
+          backgroundColor: T.coral,
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        badgeText: { fontFamily: fonts.body.semibold, fontSize: 10, color: "#fff" },
+        backdrop: { flex: 1, backgroundColor: "rgba(22,35,58,0.25)", alignItems: "flex-end", padding: 16, paddingTop: 60 },
+        panel: {
+          width: 320,
+          maxWidth: "100%",
+          maxHeight: 460,
+          backgroundColor: T.card,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: T.line,
+          overflow: "hidden",
+        },
+        panelHeader: {
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: 14,
+          borderBottomWidth: 1,
+          borderBottomColor: T.line2,
+        },
+        panelTitle: { fontFamily: fonts.display.semibold, fontSize: 13.5, color: T.ink },
+        markAllText: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.teal },
+        emptyText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, padding: 16 },
+        notifRow: { padding: 14, borderBottomWidth: 1, borderBottomColor: T.line2, flexDirection: "row", gap: 8 },
+        notifRowUnread: { backgroundColor: T.tealBg },
+        unreadDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: T.teal, marginTop: 5 },
+        notifTitle: { fontFamily: fonts.body.semibold, fontSize: 13, color: T.ink, marginBottom: 2 },
+        notifMessage: { fontFamily: fonts.body.regular, fontSize: 12, color: T.muted, marginBottom: 4, lineHeight: 17 },
+        notifTime: { fontFamily: fonts.body.regular, fontSize: 11, color: T.faint },
+      }),
+    [T]
+  );
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -111,53 +166,3 @@ export default function NotificationBell() {
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  bellButton: {
-    width: 28,
-    height: 28,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  badge: {
-    position: "absolute",
-    top: -4,
-    right: -4,
-    minWidth: 16,
-    height: 16,
-    paddingHorizontal: 3,
-    borderRadius: 8,
-    backgroundColor: T.coral,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  badgeText: { fontFamily: fonts.body.semibold, fontSize: 10, color: "#fff" },
-  backdrop: { flex: 1, backgroundColor: "rgba(22,35,58,0.25)", alignItems: "flex-end", padding: 16, paddingTop: 60 },
-  panel: {
-    width: 320,
-    maxWidth: "100%",
-    maxHeight: 460,
-    backgroundColor: T.card,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: T.line,
-    overflow: "hidden",
-  },
-  panelHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: T.line2,
-  },
-  panelTitle: { fontFamily: fonts.display.semibold, fontSize: 13.5, color: T.ink },
-  markAllText: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.teal },
-  emptyText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, padding: 16 },
-  notifRow: { padding: 14, borderBottomWidth: 1, borderBottomColor: T.line2, flexDirection: "row", gap: 8 },
-  notifRowUnread: { backgroundColor: T.tealBg },
-  unreadDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: T.teal, marginTop: 5 },
-  notifTitle: { fontFamily: fonts.body.semibold, fontSize: 13, color: T.ink, marginBottom: 2 },
-  notifMessage: { fontFamily: fonts.body.regular, fontSize: 12, color: T.muted, marginBottom: 4, lineHeight: 17 },
-  notifTime: { fontFamily: fonts.body.regular, fontSize: 11, color: T.faint },
-});

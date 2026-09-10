@@ -6,8 +6,18 @@
 // @expo-google-fonts registers via useFonts() (see lib/useAppFonts.js) —
 // so `fonts` below maps semantic name + weight to that exact string,
 // instead of the web's single font-family-with-fallbacks strings.
+//
+// Dark mode note: `teal`, `navy`, `amber`, `coral` (the brand accent
+// colors, always used as solid button/pill/icon fills) and `onAccent`
+// (always-light text/icon color for on top of those fills) stay constant
+// across both themes — they're already vivid enough to read on a dark
+// page. Everything else here is a "neutral scaffolding" token (page
+// background, card surface, borders, body text, tinted pill
+// backgrounds) that genuinely flips between light and dark — see
+// lib/ThemeContext.tsx, which is what screens actually consume via
+// useTheme() instead of importing a palette directly.
 
-export const T = {
+export const lightColors = {
   ink: "#132A38",
   paper: "#EAF8F4",
   card: "#FFFFFF",
@@ -25,6 +35,30 @@ export const T = {
   amberBg: "#FBF0DF",
   coral: "#C4503B",
   coralBg: "#FBEAE6",
+  onAccent: "#EAF8F4",
+  shadow: "#0F2B24",
+};
+
+export const darkColors = {
+  ink: "#EDF6F6",
+  paper: "#0B1317",
+  card: "#151F24",
+  line: "#2C3D45",
+  line2: "#1C282D",
+  muted: "#93A9B2",
+  faint: "#647880",
+  teal: "#0EC0B4",
+  tealDeep: "#7BEEE0",
+  tealBg: "#10322E",
+  navy: "#2369A5",
+  navyDeep: "#BFE3FB",
+  navyBg: "#132B3D",
+  amber: "#E3A94A",
+  amberBg: "#3A2A13",
+  coral: "#E2695A",
+  coralBg: "#3B1D18",
+  onAccent: "#EAF8F4",
+  shadow: "#000000",
 };
 
 export const fonts = {

@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, TextInput, ScrollView, Pressable, StyleSheet, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
 import { Wallet, CheckCircle2, XCircle, ListChecks, Download, FileText, FileSpreadsheet, CreditCard, Banknote } from "lucide-react-native";
-import { T, fonts } from "../../theme";
+import { fonts } from "../../theme";
+import { useTheme } from "../../lib/ThemeContext";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import { downloadAndShare } from "../../lib/download";
@@ -46,6 +47,86 @@ function extractQueryParam(url: string, key: string): string | null {
 export default function Payroll() {
   const { isManager } = useAuth();
   const toast = useToast();
+  const T = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        safe: { flex: 1, backgroundColor: T.paper },
+        scrollContent: { padding: 16, gap: 14 },
+        card: { padding: 20 },
+        cardTitle: { fontFamily: fonts.display.semibold, fontSize: 15.5, color: T.ink, marginBottom: 12 },
+        cardTitleSmall: { fontFamily: fonts.display.semibold, fontSize: 14.5, color: T.ink },
+        iconTitleRow: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 12 },
+        bodyMuted: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 8 },
+        hintText: { fontFamily: fonts.body.regular, fontSize: 12, color: T.muted },
+        warningText: { fontFamily: fonts.body.regular, fontSize: 12, color: T.amber, marginBottom: 14 },
+        currencyRow: { flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" },
+        currencyLabel: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted },
+        metricsRow: { flexDirection: "row", gap: 10 },
+        metricCard: { flex: 1, padding: 16 },
+        metricLabel: { fontFamily: fonts.body.regular, fontSize: 12, color: T.muted, marginBottom: 6 },
+        metricValue: { fontFamily: fonts.display.semibold, fontSize: 22, color: T.ink },
+        mixedCurrencyNote: { fontFamily: fonts.body.regular, fontSize: 10.5, color: T.faint, marginTop: 4 },
+        runPayrollButton: { flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", backgroundColor: T.teal, borderRadius: 9, paddingVertical: 11 },
+        runPayrollButtonText: { fontFamily: fonts.body.semibold, fontSize: 13.5, color: "#fff" },
+        cardStatusRow: { flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap" },
+        cardBrandText: { fontFamily: fonts.mono.regular, fontSize: 13, color: T.ink, textTransform: "capitalize" },
+        cardBadge: { backgroundColor: T.tealBg, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 999 },
+        cardBadgeText: { fontFamily: fonts.body.semibold, fontSize: 11.5, color: T.tealDeep },
+        outlineButtonSmall: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: T.line },
+        outlineButtonSmallText: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.ink },
+        navyButtonSmall: { alignSelf: "flex-start", paddingVertical: 9, paddingHorizontal: 16, borderRadius: 9, backgroundColor: T.navy },
+        navyButtonSmallText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.onAccent },
+        messageText: { fontFamily: fonts.body.regular, fontSize: 13, textAlign: "center" },
+        exportDateRow: { flexDirection: "row", gap: 10, marginBottom: 12 },
+        exportButtonRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+        exportButton: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 9, paddingHorizontal: 14, borderRadius: 9, backgroundColor: T.navyBg },
+        exportButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.navyDeep },
+        tableHeaderRow: { flexDirection: "row", paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: T.line },
+        tableHeaderCell: { fontFamily: fonts.body.semibold, fontSize: 11, color: T.faint, textTransform: "uppercase", letterSpacing: 0.3 },
+        tableRow: { flexDirection: "row", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: T.line2 },
+        tableCell: { fontFamily: fonts.body.regular, fontSize: 13, color: T.ink },
+        tableCellMono: { fontFamily: fonts.mono.regular, fontSize: 12.5, color: T.muted },
+        tableCellBold: { fontFamily: fonts.mono.regular, fontWeight: "600" as any, fontSize: 13, color: T.ink },
+        borderTop: { borderTopWidth: 1, borderTopColor: T.line2 },
+        payoutRow: { paddingVertical: 12 },
+        payoutRowTop: { flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap" },
+        payoutName: { fontFamily: fonts.body.medium, fontSize: 13.5, color: T.ink },
+        payoutDate: { fontFamily: fonts.mono.regular, fontSize: 11, color: T.faint },
+        payoutAmount: { fontFamily: fonts.mono.regular, fontSize: 14, fontWeight: "600" as any, color: T.ink },
+        payoutActions: { flexDirection: "row", gap: 8 },
+        approveBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 8, backgroundColor: T.tealBg },
+        approveBtnText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.tealDeep },
+        cashBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 8, backgroundColor: T.amberBg },
+        cashBtnText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.amber },
+        rejectBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 8, backgroundColor: T.coralBg },
+        rejectBtnText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.coral },
+        confirmBox: { marginTop: 10, padding: 14, borderRadius: 9, backgroundColor: T.navyBg },
+        confirmLine: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
+        confirmLabel: { fontFamily: fonts.mono.regular, fontSize: 12.5, color: T.navyDeep },
+        confirmLabelBold: { fontFamily: fonts.mono.regular, fontSize: 12.5, color: T.navyDeep, fontWeight: "700" as any },
+        confirmValue: { fontFamily: fonts.mono.regular, fontSize: 12.5, color: T.navyDeep, fontWeight: "600" as any },
+        confirmValueLight: { fontFamily: fonts.mono.regular, fontSize: 12.5, color: T.navyDeep },
+        confirmValueBold: { fontFamily: fonts.mono.regular, fontSize: 12.5, color: T.navyDeep, fontWeight: "700" as any },
+        actionRow: { flexDirection: "row", gap: 8, marginTop: 10 },
+        payNowButton: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, backgroundColor: T.teal },
+        payNowButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.onAccent },
+        cancelButton: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: T.line },
+        cancelButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.muted },
+        cashConfirmBox: { marginTop: 10, padding: 14, borderRadius: 9, backgroundColor: T.amberBg },
+        cashConfirmText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink, lineHeight: 18, marginBottom: 10 },
+        cashNoteInput: { borderWidth: 1, borderColor: T.line, borderRadius: 7, paddingVertical: 8, paddingHorizontal: 10, fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink, backgroundColor: T.card },
+        cashPayButton: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, backgroundColor: T.amber },
+        cashPayButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.onAccent },
+        payCashBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 6, paddingHorizontal: 9, borderRadius: 7, backgroundColor: T.amberBg, alignSelf: "flex-start" },
+        payCashBtnText: { fontFamily: fonts.body.semibold, fontSize: 11, color: T.amber },
+        txRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 11 },
+        txName: { fontFamily: fonts.body.regular, fontSize: 13, color: T.ink },
+        txId: { fontFamily: fonts.mono.regular, fontSize: 10.5, color: T.faint },
+        txAmount: { fontFamily: fonts.mono.regular, fontSize: 13, fontWeight: "600" as any },
+      }),
+    [T]
+  );
   const [summary, setSummary] = useState<any>(undefined);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [running, setRunning] = useState(false);
@@ -306,7 +387,7 @@ export default function Payroll() {
             disabled={running || Number(summary.total_payable) <= 0}
             style={[styles.runPayrollButton, { opacity: running || Number(summary.total_payable) <= 0 ? 0.6 : 1 }]}
           >
-            <Wallet size={15} color={T.paper} />
+            <Wallet size={15} color={T.onAccent} />
             <Text style={styles.runPayrollButtonText}>{running ? "Processing…" : "Run Payroll"}</Text>
           </Pressable>
         ) : (
@@ -618,79 +699,3 @@ const columnWidths: Record<string, number> = {
   Pending: 90,
   Action: 100,
 };
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: T.paper },
-  scrollContent: { padding: 16, gap: 14 },
-  card: { padding: 20 },
-  cardTitle: { fontFamily: fonts.display.semibold, fontSize: 15.5, color: T.ink, marginBottom: 12 },
-  cardTitleSmall: { fontFamily: fonts.display.semibold, fontSize: 14.5, color: T.ink },
-  iconTitleRow: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 12 },
-  bodyMuted: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 8 },
-  hintText: { fontFamily: fonts.body.regular, fontSize: 12, color: T.muted },
-  warningText: { fontFamily: fonts.body.regular, fontSize: 12, color: T.amber, marginBottom: 14 },
-  currencyRow: { flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" },
-  currencyLabel: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted },
-  metricsRow: { flexDirection: "row", gap: 10 },
-  metricCard: { flex: 1, padding: 16 },
-  metricLabel: { fontFamily: fonts.body.regular, fontSize: 12, color: T.muted, marginBottom: 6 },
-  metricValue: { fontFamily: fonts.display.semibold, fontSize: 22, color: T.ink },
-  mixedCurrencyNote: { fontFamily: fonts.body.regular, fontSize: 10.5, color: T.faint, marginTop: 4 },
-  runPayrollButton: { flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", backgroundColor: T.teal, borderRadius: 9, paddingVertical: 11 },
-  runPayrollButtonText: { fontFamily: fonts.body.semibold, fontSize: 13.5, color: "#fff" },
-  cardStatusRow: { flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap" },
-  cardBrandText: { fontFamily: fonts.mono.regular, fontSize: 13, color: T.ink, textTransform: "capitalize" },
-  cardBadge: { backgroundColor: T.tealBg, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 999 },
-  cardBadgeText: { fontFamily: fonts.body.semibold, fontSize: 11.5, color: T.tealDeep },
-  outlineButtonSmall: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: T.line },
-  outlineButtonSmallText: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.ink },
-  navyButtonSmall: { alignSelf: "flex-start", paddingVertical: 9, paddingHorizontal: 16, borderRadius: 9, backgroundColor: T.navy },
-  navyButtonSmallText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.paper },
-  messageText: { fontFamily: fonts.body.regular, fontSize: 13, textAlign: "center" },
-  exportDateRow: { flexDirection: "row", gap: 10, marginBottom: 12 },
-  exportButtonRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
-  exportButton: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 9, paddingHorizontal: 14, borderRadius: 9, backgroundColor: T.navyBg },
-  exportButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.navyDeep },
-  tableHeaderRow: { flexDirection: "row", paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: T.line },
-  tableHeaderCell: { fontFamily: fonts.body.semibold, fontSize: 11, color: T.faint, textTransform: "uppercase", letterSpacing: 0.3 },
-  tableRow: { flexDirection: "row", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: T.line2 },
-  tableCell: { fontFamily: fonts.body.regular, fontSize: 13, color: T.ink },
-  tableCellMono: { fontFamily: fonts.mono.regular, fontSize: 12.5, color: T.muted },
-  tableCellBold: { fontFamily: fonts.mono.regular, fontWeight: "600" as any, fontSize: 13, color: T.ink },
-  borderTop: { borderTopWidth: 1, borderTopColor: T.line2 },
-  payoutRow: { paddingVertical: 12 },
-  payoutRowTop: { flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap" },
-  payoutName: { fontFamily: fonts.body.medium, fontSize: 13.5, color: T.ink },
-  payoutDate: { fontFamily: fonts.mono.regular, fontSize: 11, color: T.faint },
-  payoutAmount: { fontFamily: fonts.mono.regular, fontSize: 14, fontWeight: "600" as any, color: T.ink },
-  payoutActions: { flexDirection: "row", gap: 8 },
-  approveBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 8, backgroundColor: T.tealBg },
-  approveBtnText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.tealDeep },
-  cashBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 8, backgroundColor: T.amberBg },
-  cashBtnText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.amber },
-  rejectBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 8, backgroundColor: T.coralBg },
-  rejectBtnText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.coral },
-  confirmBox: { marginTop: 10, padding: 14, borderRadius: 9, backgroundColor: T.navyBg },
-  confirmLine: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
-  confirmLabel: { fontFamily: fonts.mono.regular, fontSize: 12.5, color: T.navyDeep },
-  confirmLabelBold: { fontFamily: fonts.mono.regular, fontSize: 12.5, color: T.navyDeep, fontWeight: "700" as any },
-  confirmValue: { fontFamily: fonts.mono.regular, fontSize: 12.5, color: T.navyDeep, fontWeight: "600" as any },
-  confirmValueLight: { fontFamily: fonts.mono.regular, fontSize: 12.5, color: T.navyDeep },
-  confirmValueBold: { fontFamily: fonts.mono.regular, fontSize: 12.5, color: T.navyDeep, fontWeight: "700" as any },
-  actionRow: { flexDirection: "row", gap: 8, marginTop: 10 },
-  payNowButton: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, backgroundColor: T.teal },
-  payNowButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.paper },
-  cancelButton: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: T.line },
-  cancelButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.muted },
-  cashConfirmBox: { marginTop: 10, padding: 14, borderRadius: 9, backgroundColor: T.amberBg },
-  cashConfirmText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink, lineHeight: 18, marginBottom: 10 },
-  cashNoteInput: { borderWidth: 1, borderColor: T.line, borderRadius: 7, paddingVertical: 8, paddingHorizontal: 10, fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink, backgroundColor: T.card },
-  cashPayButton: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, backgroundColor: T.amber },
-  cashPayButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.paper },
-  payCashBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 6, paddingHorizontal: 9, borderRadius: 7, backgroundColor: T.amberBg, alignSelf: "flex-start" },
-  payCashBtnText: { fontFamily: fonts.body.semibold, fontSize: 11, color: T.amber },
-  txRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 11 },
-  txName: { fontFamily: fonts.body.regular, fontSize: 13, color: T.ink },
-  txId: { fontFamily: fonts.mono.regular, fontSize: 10.5, color: T.faint },
-  txAmount: { fontFamily: fonts.mono.regular, fontSize: 13, fontWeight: "600" as any },
-});

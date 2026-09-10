@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { AlertTriangle, ChevronLeft } from "lucide-react-native";
-import { T, fonts } from "../../theme";
+import { fonts } from "../../theme";
+import { useTheme } from "../../lib/ThemeContext";
 import { useAuth } from "../../lib/auth";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
@@ -21,6 +22,37 @@ import { endpoints } from "../../lib/endpoints";
 // route just for one back-and-forth.
 export default function AccountDeletion({ onBack }: { onBack: () => void }) {
   const { logout } = useAuth();
+  const T = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        header: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 10,
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          borderBottomWidth: 1,
+          borderBottomColor: T.line,
+          backgroundColor: T.card,
+        },
+        backButton: { padding: 2 },
+        headerTitle: { fontFamily: fonts.display.semibold, fontSize: 17, color: T.ink },
+        content: { padding: 24, alignItems: "center" },
+        iconCircle: { width: 44, height: 44, borderRadius: 12, backgroundColor: T.coralBg, alignItems: "center", justifyContent: "center", marginBottom: 16 },
+        title: { fontFamily: fonts.display.semibold, fontSize: 17, color: T.ink, marginBottom: 10, textAlign: "center" },
+        body: { fontFamily: fonts.body.regular, fontSize: 13, color: T.muted, textAlign: "center", lineHeight: 19, marginBottom: 12 },
+        errorText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.coral, marginBottom: 10, textAlign: "center" },
+        deleteButton: { backgroundColor: T.coral, borderRadius: 9, paddingVertical: 11, paddingHorizontal: 20, marginTop: 8, alignItems: "center" },
+        deleteButtonText: { fontFamily: fonts.body.semibold, fontSize: 13.5, color: "#fff" },
+        confirmBlock: { width: "100%", marginTop: 6 },
+        confirmText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink, textAlign: "center", marginBottom: 12 },
+        confirmRow: { flexDirection: "row", gap: 8 },
+        cancelButton: { paddingVertical: 11, paddingHorizontal: 16, borderRadius: 9, borderWidth: 1, borderColor: T.line, marginTop: 8, alignItems: "center", justifyContent: "center" },
+        cancelButtonText: { fontFamily: fonts.body.semibold, fontSize: 13, color: T.muted },
+      }),
+    [T]
+  );
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -80,30 +112,3 @@ export default function AccountDeletion({ onBack }: { onBack: () => void }) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: T.line,
-    backgroundColor: T.card,
-  },
-  backButton: { padding: 2 },
-  headerTitle: { fontFamily: fonts.display.semibold, fontSize: 17, color: T.ink },
-  content: { padding: 24, alignItems: "center" },
-  iconCircle: { width: 44, height: 44, borderRadius: 12, backgroundColor: T.coralBg, alignItems: "center", justifyContent: "center", marginBottom: 16 },
-  title: { fontFamily: fonts.display.semibold, fontSize: 17, color: T.ink, marginBottom: 10, textAlign: "center" },
-  body: { fontFamily: fonts.body.regular, fontSize: 13, color: T.muted, textAlign: "center", lineHeight: 19, marginBottom: 12 },
-  errorText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.coral, marginBottom: 10, textAlign: "center" },
-  deleteButton: { backgroundColor: T.coral, borderRadius: 9, paddingVertical: 11, paddingHorizontal: 20, marginTop: 8, alignItems: "center" },
-  deleteButtonText: { fontFamily: fonts.body.semibold, fontSize: 13.5, color: "#fff" },
-  confirmBlock: { width: "100%", marginTop: 6 },
-  confirmText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink, textAlign: "center", marginBottom: 12 },
-  confirmRow: { flexDirection: "row", gap: 8 },
-  cancelButton: { paddingVertical: 11, paddingHorizontal: 16, borderRadius: 9, borderWidth: 1, borderColor: T.line, marginTop: 8, alignItems: "center", justifyContent: "center" },
-  cancelButtonText: { fontFamily: fonts.body.semibold, fontSize: 13, color: T.muted },
-});

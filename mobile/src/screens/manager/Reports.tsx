@@ -4,7 +4,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Download, FileText, FileSpreadsheet, UserX, ClipboardList } from "lucide-react-native";
 import Skeleton from "../../components/Skeleton";
 import EmptyState from "../../components/EmptyState";
-import { T, fonts } from "../../theme";
+import { fonts } from "../../theme";
+import { useTheme } from "../../lib/ThemeContext";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import { downloadAndShare, writeAndShareText } from "../../lib/download";
@@ -30,6 +31,34 @@ function overlapDays(start: string, end: string, rangeFrom: string, rangeTo: str
 
 export default function Reports() {
   const toast = useToast();
+  const T = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        safe: { flex: 1, backgroundColor: T.paper },
+        scrollContent: { padding: 16, gap: 16 },
+        card: { padding: 20 },
+        cardTitle: { fontFamily: fonts.display.semibold, fontSize: 16, color: T.ink },
+        subtitle: { fontFamily: fonts.body.regular, fontSize: 13, color: T.muted, marginTop: 4, marginBottom: 14 },
+        iconTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
+        bodyMuted: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 14 },
+        dateRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
+        viewToggleRow: { flexDirection: "row", gap: 8, marginBottom: 14 },
+        viewToggle: { paddingVertical: 7, paddingHorizontal: 14, borderRadius: 8 },
+        viewToggleText: { fontFamily: fonts.body.semibold, fontSize: 12.5 },
+        exportRow: { flexDirection: "row", gap: 8, flexWrap: "wrap", marginBottom: 18 },
+        exportButton: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 9, paddingHorizontal: 14, borderRadius: 9, backgroundColor: T.navyBg },
+        exportButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.navyDeep },
+        tableHeaderRow: { flexDirection: "row", paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: T.line },
+        tableHeaderCell: { fontFamily: fonts.body.semibold, fontSize: 11, color: T.faint, textTransform: "uppercase", letterSpacing: 0.3 },
+        tableRow: { flexDirection: "row", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: T.line2 },
+        tableCell: { fontFamily: fonts.body.regular, fontSize: 13, color: T.ink },
+        tableCellMono: { fontFamily: fonts.mono.regular, fontSize: 12.5, color: T.muted },
+        absentRow: { flexDirection: "row", gap: 8, alignItems: "flex-end" },
+        messageText: { fontFamily: fonts.body.regular, fontSize: 12.5, marginTop: 10 },
+      }),
+    [T]
+  );
   const defaultWeek = weekDates();
   const [dateFrom, setDateFrom] = useState(defaultWeek[0]);
   const [dateTo, setDateTo] = useState(defaultWeek[6]);
@@ -186,7 +215,7 @@ export default function Reports() {
                 onPress={() => setView(v.key)}
                 style={[styles.viewToggle, { backgroundColor: view === v.key ? T.navy : T.navyBg }]}
               >
-                <Text style={[styles.viewToggleText, { color: view === v.key ? T.paper : T.navyDeep }]}>{v.label}</Text>
+                <Text style={[styles.viewToggleText, { color: view === v.key ? T.onAccent : T.navyDeep }]}>{v.label}</Text>
               </Pressable>
             ))}
           </View>
@@ -338,27 +367,3 @@ const timesheetColumnWidths: Record<string, number> = {
   Hours: 80,
   Status: 130,
 };
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: T.paper },
-  scrollContent: { padding: 16, gap: 16 },
-  card: { padding: 20 },
-  cardTitle: { fontFamily: fonts.display.semibold, fontSize: 16, color: T.ink },
-  subtitle: { fontFamily: fonts.body.regular, fontSize: 13, color: T.muted, marginTop: 4, marginBottom: 14 },
-  iconTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
-  bodyMuted: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 14 },
-  dateRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
-  viewToggleRow: { flexDirection: "row", gap: 8, marginBottom: 14 },
-  viewToggle: { paddingVertical: 7, paddingHorizontal: 14, borderRadius: 8 },
-  viewToggleText: { fontFamily: fonts.body.semibold, fontSize: 12.5 },
-  exportRow: { flexDirection: "row", gap: 8, flexWrap: "wrap", marginBottom: 18 },
-  exportButton: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 9, paddingHorizontal: 14, borderRadius: 9, backgroundColor: T.navyBg },
-  exportButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.navyDeep },
-  tableHeaderRow: { flexDirection: "row", paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: T.line },
-  tableHeaderCell: { fontFamily: fonts.body.semibold, fontSize: 11, color: T.faint, textTransform: "uppercase", letterSpacing: 0.3 },
-  tableRow: { flexDirection: "row", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: T.line2 },
-  tableCell: { fontFamily: fonts.body.regular, fontSize: 13, color: T.ink },
-  tableCellMono: { fontFamily: fonts.mono.regular, fontSize: 12.5, color: T.muted },
-  absentRow: { flexDirection: "row", gap: 8, alignItems: "flex-end" },
-  messageText: { fontFamily: fonts.body.regular, fontSize: 12.5, marginTop: 10 },
-});

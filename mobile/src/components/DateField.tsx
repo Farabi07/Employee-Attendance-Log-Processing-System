@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { T, fonts } from "../theme";
+import { fonts } from "../theme";
+import { useTheme } from "../lib/ThemeContext";
 import { toISODate } from "../lib/dates";
 
 // Shared date-picker field for the leave request form and any other date
@@ -17,6 +18,24 @@ export default function DateField({
   value: string; // ISO date "YYYY-MM-DD" or ""
   onChange: (iso: string) => void;
 }) {
+  const T = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: { flex: 1 },
+        label: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 6 },
+        input: {
+          paddingVertical: 10,
+          paddingHorizontal: 12,
+          borderRadius: 8,
+          borderWidth: 1,
+          borderColor: T.line,
+        },
+        valueText: { fontFamily: fonts.body.regular, fontSize: 13.5, color: T.ink },
+        placeholderText: { fontFamily: fonts.body.regular, fontSize: 13.5, color: T.faint },
+      }),
+    [T]
+  );
   const [open, setOpen] = useState(false);
 
   const handleChange = (_event: any, selectedDate?: Date) => {
@@ -41,17 +60,3 @@ export default function DateField({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  label: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 6 },
-  input: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: T.line,
-  },
-  valueText: { fontFamily: fonts.body.regular, fontSize: 13.5, color: T.ink },
-  placeholderText: { fontFamily: fonts.body.regular, fontSize: 13.5, color: T.faint },
-});

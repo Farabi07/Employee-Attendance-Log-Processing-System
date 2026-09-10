@@ -1,6 +1,7 @@
-import React, { useRef } from "react";
+import React, { useMemo, useRef } from "react";
 import { Pressable, Text, StyleSheet, ActivityIndicator, Animated } from "react-native";
-import { T, fonts } from "../theme";
+import { fonts } from "../theme";
+import { useTheme } from "../lib/ThemeContext";
 
 // A subtle spring-back scale on press-in/out — the single biggest "does
 // this feel expensive" tell on a button, and the main CTA is used on
@@ -28,6 +29,36 @@ export function PrimaryButton({
   disabled?: boolean;
   loading?: boolean;
 }) {
+  const T = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        primary: {
+          width: "100%",
+          paddingVertical: 11,
+          borderRadius: 9,
+          backgroundColor: T.teal,
+          alignItems: "center",
+          justifyContent: "center",
+          shadowColor: T.tealDeep,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 10,
+          elevation: 2,
+        },
+        primaryLabel: {
+          fontFamily: fonts.body.semibold,
+          fontSize: 13.5,
+          color: T.onAccent,
+        },
+        textLabel: {
+          fontFamily: fonts.body.semibold,
+          fontSize: 12.5,
+          textAlign: "center",
+        },
+      }),
+    [T]
+  );
   const isDisabled = disabled || loading;
   const { scale, onPressIn, onPressOut } = usePressScale(isDisabled);
   return (
@@ -39,7 +70,7 @@ export function PrimaryButton({
         disabled={isDisabled}
         style={[styles.primary, { opacity: isDisabled ? 0.7 : 1 }]}
       >
-        {loading ? <ActivityIndicator color={T.paper} /> : <Text style={styles.primaryLabel}>{title}</Text>}
+        {loading ? <ActivityIndicator color={T.onAccent} /> : <Text style={styles.primaryLabel}>{title}</Text>}
       </Pressable>
     </Animated.View>
   );
@@ -49,42 +80,28 @@ export function TextButton({
   title,
   onPress,
   disabled,
-  color = T.teal,
+  color,
 }: {
   title: string;
   onPress: () => void;
   disabled?: boolean;
   color?: string;
 }) {
+  const T = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        textLabel: {
+          fontFamily: fonts.body.semibold,
+          fontSize: 12.5,
+          textAlign: "center",
+        },
+      }),
+    [T]
+  );
   return (
     <Pressable onPress={onPress} disabled={disabled} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
-      <Text style={[styles.textLabel, { color }]}>{title}</Text>
+      <Text style={[styles.textLabel, { color: color ?? T.teal }]}>{title}</Text>
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  primary: {
-    width: "100%",
-    paddingVertical: 11,
-    borderRadius: 9,
-    backgroundColor: T.teal,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: T.tealDeep,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  primaryLabel: {
-    fontFamily: fonts.body.semibold,
-    fontSize: 13.5,
-    color: T.paper,
-  },
-  textLabel: {
-    fontFamily: fonts.body.semibold,
-    fontSize: 12.5,
-    textAlign: "center",
-  },
-});

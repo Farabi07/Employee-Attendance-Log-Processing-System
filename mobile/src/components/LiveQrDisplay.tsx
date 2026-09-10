@@ -3,7 +3,11 @@ import { View, Text, Pressable, Modal, StyleSheet, Animated, Easing } from "reac
 import Svg, { Circle } from "react-native-svg";
 import QRCode from "react-native-qrcode-svg";
 import { X } from "lucide-react-native";
-import { T, fonts } from "../theme";
+// Deliberately not theme-reactive: this is a kiosk-style display meant to
+// sit on a counter and be scanned, not read — it stays on the same dark
+// panel + white QR card regardless of the viewer's light/dark preference
+// (and the QR card in particular has to stay light for the code to scan).
+import { lightColors as T, fonts } from "../theme";
 import { api } from "../lib/api";
 import { endpoints } from "../lib/endpoints";
 

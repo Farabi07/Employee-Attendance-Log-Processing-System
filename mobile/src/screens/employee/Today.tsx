@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, ScrollView, StyleSheet, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Bell, MapPin, Clock, CalendarDays, AlertCircle, CalendarClock } from "lucide-react-native";
-import { T, fonts } from "../../theme";
+import { fonts } from "../../theme";
+import { useTheme } from "../../lib/ThemeContext";
 import { useAuth } from "../../lib/auth";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
@@ -22,19 +23,73 @@ import { useToast } from "../../components/Toast";
 // column. Everything else (GPS-first-then-camera check-in orchestration,
 // week/month hour totals, upcoming shifts, pending-leave banner) ports
 // as-is.
-const SHIFT_META: Record<string, { color: string; bg: string }> = {
-  Morning: { color: T.amber, bg: T.amberBg },
-  Evening: { color: T.teal, bg: T.tealBg },
-  Night: { color: T.ink, bg: T.line2 },
-};
-
-function shiftMeta(name?: string) {
-  return (name && SHIFT_META[name]) || { color: T.muted, bg: T.line2 };
+function shiftMeta(name: string | undefined, T: ReturnType<typeof useTheme>) {
+  const map: Record<string, { color: string; bg: string }> = {
+    Morning: { color: T.amber, bg: T.amberBg },
+    Evening: { color: T.teal, bg: T.tealBg },
+    Night: { color: T.ink, bg: T.line2 },
+  };
+  return (name && map[name]) || { color: T.muted, bg: T.line2 };
 }
 
 export default function Today() {
   const { user } = useAuth();
   const toast = useToast();
+  const T = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        safe: { flex: 1, backgroundColor: T.paper },
+        scrollContent: { padding: 16, gap: 16 },
+        ringCard: { padding: 24, alignItems: "center" },
+        dayLabel: {
+          fontFamily: fonts.body.regular,
+          fontSize: 12.5,
+          color: T.muted,
+          marginBottom: 18,
+          textTransform: "uppercase",
+          letterSpacing: 0.4,
+        },
+        sinceText: { fontFamily: fonts.mono.regular, fontSize: 12.5, color: T.muted, marginTop: 10 },
+        earningsText: { fontFamily: fonts.display.semibold, fontSize: 15, color: T.teal, marginTop: 6 },
+        branchRow: {
+          marginTop: 18,
+          paddingTop: 18,
+          borderTopWidth: 1,
+          borderTopColor: T.line2,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 6,
+          width: "100%",
+          justifyContent: "center",
+        },
+        branchText: { fontFamily: fonts.body.regular, fontSize: 12, color: T.faint },
+        metricsRow: { flexDirection: "row", gap: 10 },
+        metricCard: { flex: 1, padding: 14 },
+        metricIconPill: {
+          width: 28,
+          height: 28,
+          borderRadius: 9,
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: 10,
+        },
+        metricLabel: { fontFamily: fonts.body.regular, fontSize: 11.5, color: T.muted, marginBottom: 6 },
+        metricValue: { fontFamily: fonts.display.semibold, fontSize: 18, color: T.ink },
+        sectionCard: { padding: 20 },
+        sectionTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
+        sectionTitle: { fontFamily: fonts.display.semibold, fontSize: 15.5, color: T.ink },
+        shiftRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10 },
+        shiftRowBorder: { borderTopWidth: 1, borderTopColor: T.line2 },
+        shiftChip: { width: 26, height: 26, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+        shiftDate: { fontFamily: fonts.body.regular, fontSize: 13, color: T.ink, width: 100 },
+        shiftName: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, flex: 1 },
+        shiftTime: { fontFamily: fonts.mono.regular, fontSize: 12, color: T.faint },
+        leaveCard: { padding: 16, flexDirection: "row", alignItems: "center", gap: 10 },
+        leaveText: { fontFamily: fonts.body.regular, fontSize: 13, color: T.ink, flex: 1, flexShrink: 1 },
+      }),
+    [T]
+  );
   const [attendance, setAttendance] = useState<any>(undefined); // undefined = loading
   const [rosterToday, setRosterToday] = useState<any>(null);
   const [upcoming, setUpcoming] = useState<any[]>([]);
@@ -252,7 +307,7 @@ export default function Today() {
             <EmptyState icon={CalendarClock} title="No shifts assigned yet" subtitle="Your manager hasn't scheduled anything for you yet." />
           )}
           {upcoming.map((r, i) => {
-            const meta = shiftMeta(r.shift?.name);
+            const meta = shiftMeta(r.shift?.name, T);
             return (
               <View key={r.id} style={[styles.shiftRow, i > 0 && styles.shiftRowBorder]}>
                 <View style={[styles.shiftChip, { backgroundColor: meta.color }]}>
@@ -289,54 +344,3 @@ export default function Today() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: T.paper },
-  scrollContent: { padding: 16, gap: 16 },
-  ringCard: { padding: 24, alignItems: "center" },
-  dayLabel: {
-    fontFamily: fonts.body.regular,
-    fontSize: 12.5,
-    color: T.muted,
-    marginBottom: 18,
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
-  sinceText: { fontFamily: fonts.mono.regular, fontSize: 12.5, color: T.muted, marginTop: 10 },
-  earningsText: { fontFamily: fonts.display.semibold, fontSize: 15, color: T.teal, marginTop: 6 },
-  branchRow: {
-    marginTop: 18,
-    paddingTop: 18,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(19,42,56,0.08)",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    width: "100%",
-    justifyContent: "center",
-  },
-  branchText: { fontFamily: fonts.body.regular, fontSize: 12, color: T.faint },
-  metricsRow: { flexDirection: "row", gap: 10 },
-  metricCard: { flex: 1, padding: 14 },
-  metricIconPill: {
-    width: 28,
-    height: 28,
-    borderRadius: 9,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 10,
-  },
-  metricLabel: { fontFamily: fonts.body.regular, fontSize: 11.5, color: T.muted, marginBottom: 6 },
-  metricValue: { fontFamily: fonts.display.semibold, fontSize: 18, color: T.ink },
-  sectionCard: { padding: 20 },
-  sectionTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
-  sectionTitle: { fontFamily: fonts.display.semibold, fontSize: 15.5, color: T.ink },
-  shiftRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10 },
-  shiftRowBorder: { borderTopWidth: 1, borderTopColor: T.line2 },
-  shiftChip: { width: 26, height: 26, borderRadius: 8, alignItems: "center", justifyContent: "center" },
-  shiftDate: { fontFamily: fonts.body.regular, fontSize: 13, color: T.ink, width: 100 },
-  shiftName: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, flex: 1 },
-  shiftTime: { fontFamily: fonts.mono.regular, fontSize: 12, color: T.faint },
-  leaveCard: { padding: 16, flexDirection: "row", alignItems: "center", gap: 10 },
-  leaveText: { fontFamily: fonts.body.regular, fontSize: 13, color: T.ink, flex: 1, flexShrink: 1 },
-});

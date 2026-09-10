@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet, TextInputProps } from "react-native";
 import { Eye, EyeOff } from "lucide-react-native";
-import { T, fonts } from "../theme";
+import { fonts } from "../theme";
+import { useTheme } from "../lib/ThemeContext";
 
 // Small shared wrapper for the label+input pairs repeated across every
 // auth screen in the web app (inputStyle/labelStyle objects there).
@@ -14,6 +15,34 @@ export default function FormField({
   secureTextEntry,
   ...inputProps
 }: { label: string; containerStyle?: object } & TextInputProps) {
+  const T = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: { marginBottom: 14 },
+        label: {
+          fontFamily: fonts.body.regular,
+          fontSize: 12.5,
+          color: T.muted,
+          marginBottom: 6,
+        },
+        inputWrap: { position: "relative", justifyContent: "center" },
+        input: {
+          width: "100%",
+          paddingVertical: 10,
+          paddingHorizontal: 12,
+          borderRadius: 8,
+          borderWidth: 1,
+          borderColor: T.line,
+          fontFamily: fonts.body.regular,
+          fontSize: 13.5,
+          color: T.ink,
+        },
+        inputWithIcon: { paddingRight: 40 },
+        eyeButton: { position: "absolute", right: 10 },
+      }),
+    [T]
+  );
   const [show, setShow] = useState(false);
   const isPassword = !!secureTextEntry;
 
@@ -37,27 +66,3 @@ export default function FormField({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { marginBottom: 14 },
-  label: {
-    fontFamily: fonts.body.regular,
-    fontSize: 12.5,
-    color: T.muted,
-    marginBottom: 6,
-  },
-  inputWrap: { position: "relative", justifyContent: "center" },
-  input: {
-    width: "100%",
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: T.line,
-    fontFamily: fonts.body.regular,
-    fontSize: 13.5,
-    color: T.ink,
-  },
-  inputWithIcon: { paddingRight: 40 },
-  eyeButton: { position: "absolute", right: 10 },
-});

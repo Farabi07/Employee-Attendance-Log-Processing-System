@@ -2,7 +2,8 @@ import React, { useEffect, useRef } from "react";
 import { View, Text, StyleSheet, Animated, Easing } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { QrCode } from "lucide-react-native";
-import { T, fonts } from "../theme";
+import { fonts } from "../theme";
+import { useTheme } from "../lib/ThemeContext";
 import PressScale from "./PressScale";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -29,6 +30,7 @@ export default function ShiftRing({
   disabled?: boolean;
   label?: string;
 }) {
+  const T = useTheme();
   const size = 176;
   const stroke = 10;
   const r = (size - stroke) / 2;

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, ScrollView, TextInput, Pressable, Switch, StyleSheet, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
@@ -6,7 +6,8 @@ import { Repeat, Check, X, CalendarClock } from "lucide-react-native";
 import IconChip from "../../components/IconChip";
 import Skeleton from "../../components/Skeleton";
 import { useToast } from "../../components/Toast";
-import { T, fonts } from "../../theme";
+import { fonts } from "../../theme";
+import { useTheme, Colors } from "../../lib/ThemeContext";
 import { useAuth } from "../../lib/auth";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
@@ -32,7 +33,64 @@ function defaultWeek() {
   return DAY_LABELS.map((_, i) => ({ day_of_week: i, is_available: true, start_time: "", end_time: "" }));
 }
 
+// Shared by SwapRow and the default-exported Shifts — see Wallet.tsx's
+// makeStyles for why this is a factory rather than a module-scope
+// StyleSheet.create.
+function makeStyles(T: Colors) {
+  return StyleSheet.create({
+    safe: { flex: 1, backgroundColor: T.paper },
+    scrollContent: { padding: 16, gap: 16 },
+    card: { padding: 20 },
+    title: { fontFamily: fonts.display.semibold, fontSize: 16.5, color: T.ink, marginBottom: 4 },
+    subtitle: { fontFamily: fonts.body.regular, fontSize: 13, color: T.muted, marginBottom: 16 },
+    iconTitleRow: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 4 },
+    row: { gap: 10 },
+    dayCard: {
+      width: 108,
+      borderWidth: 1,
+      borderColor: T.line,
+      borderRadius: 12,
+      padding: 12,
+      alignItems: "center",
+    },
+    dayLabel: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.muted, marginBottom: 10 },
+    shiftName: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.ink, marginTop: 8, marginBottom: 2, textAlign: "center" },
+    shiftTime: { fontFamily: fonts.mono.regular, fontSize: 10.5, color: T.muted, marginBottom: 8 },
+    offLabel: { fontFamily: fonts.body.regular, fontSize: 12, color: T.faint, marginTop: 14 },
+    swapBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 7, backgroundColor: T.card },
+    swapBtnText: { fontFamily: fonts.body.semibold, fontSize: 10.5, color: T.navyDeep },
+    swapForm: { marginTop: 16, padding: 14, borderRadius: 9, backgroundColor: T.line2 },
+    swapFormTitle: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.ink, marginBottom: 10 },
+    pickerBox: { borderWidth: 1, borderColor: T.line, borderRadius: 8, marginBottom: 8, overflow: "hidden", backgroundColor: T.card },
+    reasonInput: { borderWidth: 1, borderColor: T.line, borderRadius: 7, paddingVertical: 8, paddingHorizontal: 10, fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink, marginBottom: 10, backgroundColor: T.card },
+    actionRow: { flexDirection: "row", gap: 8 },
+    sendButton: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, backgroundColor: T.teal },
+    sendButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.onAccent },
+    cancelButton: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: T.line },
+    cancelButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.muted },
+    messageText: { fontFamily: fonts.body.regular, fontSize: 12.5, marginTop: 14, textAlign: "center" },
+    subHeading: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.muted, marginTop: 16, marginBottom: 2 },
+    swapRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, borderTopWidth: 1, borderTopColor: T.line2 },
+    swapTitle: { fontFamily: fonts.body.regular, fontSize: 13, color: T.ink, marginBottom: 2 },
+    swapMeta: { fontFamily: fonts.mono.regular, fontSize: 11, color: T.faint },
+    acceptBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 7, backgroundColor: T.tealBg },
+    acceptBtnText: { fontFamily: fonts.body.semibold, fontSize: 11.5, color: T.tealDeep },
+    declineBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 7, backgroundColor: T.coralBg },
+    declineBtnText: { fontFamily: fonts.body.semibold, fontSize: 11.5, color: T.coral },
+    cancelChip: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 7, borderWidth: 1, borderColor: T.line },
+    cancelChipText: { fontFamily: fonts.body.semibold, fontSize: 11.5, color: T.muted },
+    availRow: { paddingVertical: 12, gap: 10 },
+    availRowBorder: { borderTopWidth: 1, borderTopColor: T.line2 },
+    availDay: { fontFamily: fonts.body.medium, fontSize: 13.5, color: T.ink },
+    availSwitchRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+    availSwitchLabel: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted },
+    availTimeRow: { flexDirection: "row", gap: 10 },
+  });
+}
+
 function SwapRow({ swap, right }: { swap: any; right: React.ReactNode }) {
+  const T = useTheme();
+  const styles = useMemo(() => makeStyles(T), [T]);
   return (
     <View style={styles.swapRow}>
       <View style={{ flex: 1, minWidth: 0 }}>
@@ -53,6 +111,8 @@ function SwapRow({ swap, right }: { swap: any; right: React.ReactNode }) {
 export default function Shifts() {
   const { user } = useAuth();
   const toast = useToast();
+  const T = useTheme();
+  const styles = useMemo(() => makeStyles(T), [T]);
   const [rosters, setRosters] = useState<any[]>([]);
   const [teammates, setTeammates] = useState<any[]>([]);
   const [swaps, setSwaps] = useState<{ outgoing: any[]; incoming: any[]; open: any[] }>({ outgoing: [], incoming: [], open: [] });
@@ -372,53 +432,3 @@ export default function Shifts() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: T.paper },
-  scrollContent: { padding: 16, gap: 16 },
-  card: { padding: 20 },
-  title: { fontFamily: fonts.display.semibold, fontSize: 16.5, color: T.ink, marginBottom: 4 },
-  subtitle: { fontFamily: fonts.body.regular, fontSize: 13, color: T.muted, marginBottom: 16 },
-  iconTitleRow: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 4 },
-  row: { gap: 10 },
-  dayCard: {
-    width: 108,
-    borderWidth: 1,
-    borderColor: T.line,
-    borderRadius: 12,
-    padding: 12,
-    alignItems: "center",
-  },
-  dayLabel: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.muted, marginBottom: 10 },
-  shiftName: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.ink, marginTop: 8, marginBottom: 2, textAlign: "center" },
-  shiftTime: { fontFamily: fonts.mono.regular, fontSize: 10.5, color: T.muted, marginBottom: 8 },
-  offLabel: { fontFamily: fonts.body.regular, fontSize: 12, color: T.faint, marginTop: 14 },
-  swapBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 7, backgroundColor: T.card },
-  swapBtnText: { fontFamily: fonts.body.semibold, fontSize: 10.5, color: T.navyDeep },
-  swapForm: { marginTop: 16, padding: 14, borderRadius: 9, backgroundColor: T.line2 },
-  swapFormTitle: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.ink, marginBottom: 10 },
-  pickerBox: { borderWidth: 1, borderColor: T.line, borderRadius: 8, marginBottom: 8, overflow: "hidden", backgroundColor: T.card },
-  reasonInput: { borderWidth: 1, borderColor: T.line, borderRadius: 7, paddingVertical: 8, paddingHorizontal: 10, fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink, marginBottom: 10, backgroundColor: T.card },
-  actionRow: { flexDirection: "row", gap: 8 },
-  sendButton: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, backgroundColor: T.teal },
-  sendButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.paper },
-  cancelButton: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: T.line },
-  cancelButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.muted },
-  messageText: { fontFamily: fonts.body.regular, fontSize: 12.5, marginTop: 14, textAlign: "center" },
-  subHeading: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.muted, marginTop: 16, marginBottom: 2 },
-  swapRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, borderTopWidth: 1, borderTopColor: T.line2 },
-  swapTitle: { fontFamily: fonts.body.regular, fontSize: 13, color: T.ink, marginBottom: 2 },
-  swapMeta: { fontFamily: fonts.mono.regular, fontSize: 11, color: T.faint },
-  acceptBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 7, backgroundColor: T.tealBg },
-  acceptBtnText: { fontFamily: fonts.body.semibold, fontSize: 11.5, color: T.tealDeep },
-  declineBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 7, backgroundColor: T.coralBg },
-  declineBtnText: { fontFamily: fonts.body.semibold, fontSize: 11.5, color: T.coral },
-  cancelChip: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 7, borderWidth: 1, borderColor: T.line },
-  cancelChipText: { fontFamily: fonts.body.semibold, fontSize: 11.5, color: T.muted },
-  availRow: { paddingVertical: 12, gap: 10 },
-  availRowBorder: { borderTopWidth: 1, borderTopColor: T.line2 },
-  availDay: { fontFamily: fonts.body.medium, fontSize: 13.5, color: T.ink },
-  availSwitchRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  availSwitchLabel: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted },
-  availTimeRow: { flexDirection: "row", gap: 10 },
-});

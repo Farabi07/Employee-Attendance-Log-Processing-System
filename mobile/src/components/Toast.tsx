@@ -1,8 +1,9 @@
-import React, { createContext, useCallback, useContext, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import { Text, StyleSheet, Animated, Easing } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CheckCircle2, XCircle } from "lucide-react-native";
-import { T, fonts } from "../theme";
+import { fonts } from "../theme";
+import { useTheme } from "../lib/ThemeContext";
 
 // A floating toast that slides in from the top and auto-dismisses, mounted
 // once at the app root — any screen can call useToast().show(...) instead
@@ -13,6 +14,30 @@ type ToastState = { text: string; type: ToastType; id: number } | null;
 const ToastContext = createContext<{ show: (text: string, type?: ToastType) => void } | null>(null);
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
+  const T = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        wrap: { position: "absolute", top: 0, left: 0, right: 0, alignItems: "center", zIndex: 999 },
+        toast: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 8,
+          marginTop: 6,
+          paddingVertical: 11,
+          paddingHorizontal: 16,
+          borderRadius: 12,
+          maxWidth: "92%",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.2,
+          shadowRadius: 10,
+          elevation: 6,
+        },
+        text: { fontFamily: fonts.body.medium, fontSize: 13, color: "#fff", flexShrink: 1 },
+      }),
+    [T]
+  );
   const [toast, setToast] = useState<ToastState>(null);
   const translateY = useRef(new Animated.Value(-120)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -49,7 +74,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             style={[
               styles.toast,
               {
-                backgroundColor: toast.type === "error" ? T.coral : T.tealDeep,
+                // Solid fill + white text always — use the constant `teal`
+                // accent, not `tealDeep` (that token flips to a *light*
+                // teal in dark mode, meant for text on a tinted surface,
+                // which would make a poor solid toast background).
+                backgroundColor: toast.type === "error" ? T.coral : T.teal,
                 transform: [{ translateY }],
                 opacity,
               },
@@ -71,23 +100,3 @@ export function useToast() {
   if (!ctx) throw new Error("useToast must be used within ToastProvider");
   return ctx;
 }
-
-const styles = StyleSheet.create({
-  wrap: { position: "absolute", top: 0, left: 0, right: 0, alignItems: "center", zIndex: 999 },
-  toast: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 6,
-    paddingVertical: 11,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    maxWidth: "92%",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  text: { fontFamily: fonts.body.medium, fontSize: 13, color: "#fff", flexShrink: 1 },
-});

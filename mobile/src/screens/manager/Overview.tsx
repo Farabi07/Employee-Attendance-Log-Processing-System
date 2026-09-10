@@ -4,7 +4,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Search, Users, CheckCircle2, Coffee, UserX, LayoutGrid, ClipboardCheck } from "lucide-react-native";
 import Skeleton from "../../components/Skeleton";
 import EmptyState from "../../components/EmptyState";
-import { T, fonts } from "../../theme";
+import { fonts } from "../../theme";
+import { useTheme, Colors } from "../../lib/ThemeContext";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import { formatTime, todayISO } from "../../lib/dates";
@@ -34,7 +35,61 @@ function initialsOf(emp: any) {
   return `${(emp.first_name || "?")[0]}${(emp.last_name || "?")[0]}`.toUpperCase();
 }
 
+// Shared by OverviewDashboard and the default-exported Overview — see
+// Wallet.tsx's makeStyles for why this is a factory rather than a
+// module-scope StyleSheet.create.
+function makeStyles(T: Colors) {
+  return StyleSheet.create({
+    safe: { flex: 1, backgroundColor: T.paper },
+    segmentedRow: { flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
+    segment: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 9,
+      backgroundColor: T.line2,
+    },
+    segmentActive: { backgroundColor: T.navy },
+    segmentText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.muted },
+    segmentTextActive: { color: T.onAccent },
+    scrollContent: { padding: 16, gap: 16 },
+    metricsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+    metricCard: { flexBasis: "47%", flexGrow: 1, padding: 16 },
+    metricHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+    metricLabel: { fontFamily: fonts.body.regular, fontSize: 12, color: T.muted, flexShrink: 1 },
+    metricIconBox: { width: 28, height: 28, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+    metricValue: { fontFamily: fonts.display.semibold, fontSize: 26, color: T.ink },
+    tableCard: { padding: 20 },
+    tableTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
+    tableTitle: { fontFamily: fonts.display.semibold, fontSize: 16, color: T.ink, marginBottom: 12 },
+    searchBox: { position: "relative", marginBottom: 12 },
+    searchIcon: { position: "absolute", left: 10, top: 10, zIndex: 1 },
+    searchInput: {
+      paddingVertical: 8,
+      paddingLeft: 30,
+      paddingRight: 10,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: T.line,
+      fontFamily: fonts.body.regular,
+      fontSize: 12.5,
+      color: T.ink,
+    },
+    tableHeaderRow: { flexDirection: "row", paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: T.line },
+    tableHeaderText: { fontFamily: fonts.body.semibold, fontSize: 11, color: T.faint, textTransform: "uppercase", letterSpacing: 0.4 },
+    row: { flexDirection: "row", alignItems: "center", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: T.line2 },
+    employeeCell: { flex: 2, flexDirection: "row", alignItems: "center", gap: 10 },
+    employeeName: { fontFamily: fonts.body.medium, fontSize: 13.5, color: T.ink },
+    employeeEmail: { fontFamily: fonts.mono.regular, fontSize: 11, color: T.faint },
+    sinceText: { fontFamily: fonts.mono.regular, fontSize: 12.5, color: T.muted },
+  });
+}
+
 function OverviewDashboard() {
+  const T = useTheme();
+  const styles = useMemo(() => makeStyles(T), [T]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [attendanceByEmp, setAttendanceByEmp] = useState<Record<number, any>>({});
   const [leaveEmployeeIds, setLeaveEmployeeIds] = useState<Set<number>>(new Set());
@@ -198,6 +253,8 @@ function OverviewDashboard() {
 }
 
 export default function Overview() {
+  const T = useTheme();
+  const styles = useMemo(() => makeStyles(T), [T]);
   const [section, setSection] = useState<Section>("overview");
 
   return (
@@ -211,7 +268,7 @@ export default function Overview() {
               onPress={() => setSection(s.key)}
               style={[styles.segment, active && styles.segmentActive]}
             >
-              <s.icon size={14} color={active ? T.paper : T.muted} strokeWidth={2.2} />
+              <s.icon size={14} color={active ? T.onAccent : T.muted} strokeWidth={2.2} />
               <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{s.label}</Text>
             </Pressable>
           );
@@ -225,50 +282,3 @@ export default function Overview() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: T.paper },
-  segmentedRow: { flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
-  segment: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 9,
-    backgroundColor: T.line2,
-  },
-  segmentActive: { backgroundColor: T.navy },
-  segmentText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.muted },
-  segmentTextActive: { color: T.paper },
-  scrollContent: { padding: 16, gap: 16 },
-  metricsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  metricCard: { flexBasis: "47%", flexGrow: 1, padding: 16 },
-  metricHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-  metricLabel: { fontFamily: fonts.body.regular, fontSize: 12, color: T.muted, flexShrink: 1 },
-  metricIconBox: { width: 28, height: 28, borderRadius: 8, alignItems: "center", justifyContent: "center" },
-  metricValue: { fontFamily: fonts.display.semibold, fontSize: 26, color: T.ink },
-  tableCard: { padding: 20 },
-  tableTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
-  tableTitle: { fontFamily: fonts.display.semibold, fontSize: 16, color: T.ink, marginBottom: 12 },
-  searchBox: { position: "relative", marginBottom: 12 },
-  searchIcon: { position: "absolute", left: 10, top: 10, zIndex: 1 },
-  searchInput: {
-    paddingVertical: 8,
-    paddingLeft: 30,
-    paddingRight: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: T.line,
-    fontFamily: fonts.body.regular,
-    fontSize: 12.5,
-    color: T.ink,
-  },
-  tableHeaderRow: { flexDirection: "row", paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: T.line },
-  tableHeaderText: { fontFamily: fonts.body.semibold, fontSize: 11, color: T.faint, textTransform: "uppercase", letterSpacing: 0.4 },
-  row: { flexDirection: "row", alignItems: "center", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: T.line2 },
-  employeeCell: { flex: 2, flexDirection: "row", alignItems: "center", gap: 10 },
-  employeeName: { fontFamily: fonts.body.medium, fontSize: 13.5, color: T.ink },
-  employeeEmail: { fontFamily: fonts.mono.regular, fontSize: 11, color: T.faint },
-  sinceText: { fontFamily: fonts.mono.regular, fontSize: 12.5, color: T.muted },
-});

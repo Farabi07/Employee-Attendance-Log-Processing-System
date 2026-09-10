@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, StyleSheet } from "react-native";
 import { Picker } from "@react-native-picker/picker";
-import { T } from "../theme";
+import { useTheme } from "../lib/ThemeContext";
 
 // Shared bordered-box wrapper for @react-native-picker/picker, used
 // anywhere the web app had an inline <select> (Team.jsx, Roster.jsx).
@@ -16,6 +16,16 @@ export default function InlinePicker({
   items: { value: string; label: string }[];
   style?: object;
 }) {
+  const T = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        box: { borderWidth: 1, borderColor: T.line, borderRadius: 8, overflow: "hidden" },
+        picker: { color: T.ink, backgroundColor: T.card },
+      }),
+    [T]
+  );
+
   return (
     <View style={[styles.box, style]}>
       <Picker selectedValue={selectedValue} onValueChange={onValueChange} style={styles.picker}>
@@ -26,8 +36,3 @@ export default function InlinePicker({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  box: { borderWidth: 1, borderColor: T.line, borderRadius: 8, overflow: "hidden" },
-  picker: { color: T.ink },
-});

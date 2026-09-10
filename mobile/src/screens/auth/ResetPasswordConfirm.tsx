@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Text, StyleSheet } from "react-native";
-import { T, fonts } from "../../theme";
+import { fonts } from "../../theme";
+import { useTheme } from "../../lib/ThemeContext";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import AuthShell from "../../components/AuthShell";
@@ -12,6 +13,17 @@ import { PrimaryButton } from "../../components/Button";
 // load; here they arrive as real route params from the emailed deep link
 // (timetap://password/reset/confirm/:uid/:token — see navigation/linking.ts).
 export default function ResetPasswordConfirm({ route, navigation }: any) {
+  const T = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        title: { fontFamily: fonts.display.semibold, fontSize: 19, color: T.ink, marginBottom: 4 },
+        subtitle: { fontFamily: fonts.body.regular, fontSize: 13, color: T.muted, marginBottom: 16 },
+        done: { fontFamily: fonts.body.regular, fontSize: 13.5, color: T.teal, marginVertical: 16 },
+        error: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.coral, marginBottom: 14 },
+      }),
+    [T]
+  );
   const { uid, token } = route.params;
   const [newPassword, setNewPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -57,10 +69,3 @@ export default function ResetPasswordConfirm({ route, navigation }: any) {
     </AuthShell>
   );
 }
-
-const styles = StyleSheet.create({
-  title: { fontFamily: fonts.display.semibold, fontSize: 19, color: T.ink, marginBottom: 4 },
-  subtitle: { fontFamily: fonts.body.regular, fontSize: 13, color: T.muted, marginBottom: 16 },
-  done: { fontFamily: fonts.body.regular, fontSize: 13.5, color: T.teal, marginVertical: 16 },
-  error: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.coral, marginBottom: 14 },
-});

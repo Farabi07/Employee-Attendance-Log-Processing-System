@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, TextInput, Pressable, Modal, StyleSheet } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
-import { X, Camera, Eye, EyeOff } from "lucide-react-native";
-import { T, fonts } from "../theme";
+import { X, Camera, Eye, EyeOff, Sun, Moon, Smartphone } from "lucide-react-native";
+import { fonts } from "../theme";
+import { useTheme, useThemeSetting, ThemePreference } from "../lib/ThemeContext";
 import { useAuth } from "../lib/auth";
 import { api, mediaUrl, BASE_URL, getToken } from "../lib/api";
 import { endpoints } from "../lib/endpoints";
@@ -12,15 +13,88 @@ import Avatar from "./Avatar";
 import { PrimaryButton, TextButton } from "./Button";
 import AccountDeletion from "../screens/settings/AccountDeletion";
 
+const APPEARANCE_OPTIONS: { value: ThemePreference; label: string; icon: any }[] = [
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon },
+  { value: "system", label: "System", icon: Smartphone },
+];
+
 // Ported from frontend/src/components/ProfileModal.jsx, plus a
 // "Delete account" entry point (new, Apple-required — see
-// screens/settings/AccountDeletion.tsx) swapped in within the same Modal.
+// screens/settings/AccountDeletion.tsx) and an Appearance picker (new —
+// the web app has no dark mode to match, this is mobile-only) swapped in
+// within the same Modal.
 // Photo picking reuses expo-document-picker (already a dependency for
 // pay-adjustment attachments) filtered to images, rather than adding
 // expo-image-picker as a new native module — that would need a fresh
 // native build instead of shipping over OTA.
 export default function ProfileModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { user, isManager, isManagerOrModerator, logout, refreshUser } = useAuth();
+  const T = useTheme();
+  const { preference, setPreference } = useThemeSetting();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center", padding: 16 },
+        card: { width: "100%", maxWidth: 360, padding: 22, maxHeight: "88%" },
+        headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 },
+        identityRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+        cameraButton: {
+          position: "absolute",
+          bottom: -2,
+          right: -2,
+          width: 20,
+          height: 20,
+          borderRadius: 10,
+          borderWidth: 2,
+          borderColor: T.card,
+          backgroundColor: T.teal,
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        name: { fontFamily: fonts.display.semibold, fontSize: 15, color: T.ink },
+        email: { fontFamily: fonts.body.regular, fontSize: 12, color: T.muted },
+        role: { fontFamily: fonts.body.regular, fontSize: 11.5, color: T.faint, marginTop: 2 },
+        section: { borderTopWidth: 1, borderTopColor: T.line2, paddingTop: 16, marginBottom: 4 },
+        sectionTitle: { fontFamily: fonts.display.semibold, fontSize: 13.5, color: T.ink, marginBottom: 12 },
+        nameRow: { flexDirection: "row", gap: 8 },
+        input: {
+          width: "100%",
+          paddingVertical: 9,
+          paddingHorizontal: 10,
+          borderRadius: 8,
+          borderWidth: 1,
+          borderColor: T.line,
+          fontFamily: fonts.body.regular,
+          fontSize: 13,
+          color: T.ink,
+          marginBottom: 10,
+        },
+        messageText: { fontFamily: fonts.body.regular, fontSize: 12, marginTop: 10, textAlign: "center" },
+        deleteAccountRow: { marginTop: 16, alignItems: "center" },
+        passwordInputWrap: { position: "relative", justifyContent: "center" },
+        inputWithIcon: { paddingRight: 40 },
+        eyeButton: { position: "absolute", right: 10, top: 9 },
+        appearanceRow: { flexDirection: "row", gap: 8 },
+        appearanceOption: {
+          flex: 1,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+          paddingVertical: 10,
+          borderRadius: 9,
+          borderWidth: 1,
+          borderColor: T.line,
+          backgroundColor: T.card,
+        },
+        appearanceOptionActive: { borderColor: T.teal, backgroundColor: T.tealBg },
+        appearanceLabel: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.muted },
+        appearanceLabelActive: { color: T.tealDeep },
+      }),
+    [T]
+  );
+
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -160,6 +234,25 @@ export default function ProfileModal({ visible, onClose }: { visible: boolean; o
             </Pressable>
           </View>
 
+          <View style={[styles.section, { borderTopWidth: 0, paddingTop: 0 }]}>
+            <Text style={styles.sectionTitle}>Appearance</Text>
+            <View style={styles.appearanceRow}>
+              {APPEARANCE_OPTIONS.map((opt) => {
+                const active = preference === opt.value;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => setPreference(opt.value)}
+                    style={[styles.appearanceOption, active && styles.appearanceOptionActive]}
+                  >
+                    <opt.icon size={14} color={active ? T.tealDeep : T.muted} strokeWidth={2} />
+                    <Text style={[styles.appearanceLabel, active && styles.appearanceLabelActive]}>{opt.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Edit profile</Text>
             <View style={styles.nameRow}>
@@ -237,46 +330,3 @@ export default function ProfileModal({ visible, onClose }: { visible: boolean; o
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: "rgba(22,35,58,0.55)", alignItems: "center", justifyContent: "center", padding: 16 },
-  card: { width: "100%", maxWidth: 360, padding: 22, maxHeight: "88%" },
-  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 },
-  identityRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  cameraButton: {
-    position: "absolute",
-    bottom: -2,
-    right: -2,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: T.card,
-    backgroundColor: T.teal,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  name: { fontFamily: fonts.display.semibold, fontSize: 15, color: T.ink },
-  email: { fontFamily: fonts.body.regular, fontSize: 12, color: T.muted },
-  role: { fontFamily: fonts.body.regular, fontSize: 11.5, color: T.faint, marginTop: 2 },
-  section: { borderTopWidth: 1, borderTopColor: T.line2, paddingTop: 16, marginBottom: 4 },
-  sectionTitle: { fontFamily: fonts.display.semibold, fontSize: 13.5, color: T.ink, marginBottom: 12 },
-  nameRow: { flexDirection: "row", gap: 8 },
-  input: {
-    width: "100%",
-    paddingVertical: 9,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: T.line,
-    fontFamily: fonts.body.regular,
-    fontSize: 13,
-    color: T.ink,
-    marginBottom: 10,
-  },
-  messageText: { fontFamily: fonts.body.regular, fontSize: 12, marginTop: 10, textAlign: "center" },
-  deleteAccountRow: { marginTop: 16, alignItems: "center" },
-  passwordInputWrap: { position: "relative", justifyContent: "center" },
-  inputWithIcon: { paddingRight: 40 },
-  eyeButton: { position: "absolute", right: 10, top: 9 },
-});

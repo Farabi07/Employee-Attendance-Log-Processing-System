@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, TextInput, ScrollView, Pressable, Alert, StyleSheet, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Plus, QrCode, Trash2, Pencil, MapPin, Building2, Tag, Maximize2, CalendarDays } from "lucide-react-native";
 import Skeleton from "../../components/Skeleton";
 import EmptyState from "../../components/EmptyState";
-import { T, fonts } from "../../theme";
+import { fonts } from "../../theme";
+import { useTheme } from "../../lib/ThemeContext";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import { formatDayLabel, todayISO } from "../../lib/dates";
@@ -32,6 +33,82 @@ function dayOfWeekFromDate(isoDate: string) {
 export default function Roster() {
   const { isManager, billing } = useAuth();
   const toast = useToast();
+  const T = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        safe: { flex: 1, backgroundColor: T.paper },
+        loadingSafe: { flex: 1, backgroundColor: T.paper, alignItems: "center", justifyContent: "center" },
+        scrollContent: { padding: 16, gap: 16 },
+        card: { padding: 20 },
+        cardTitle: { fontFamily: fonts.display.semibold, fontSize: 15.5, color: T.ink },
+        iconTitleRow: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 12 },
+        label: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 6 },
+        bodyMuted: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 12 },
+        errorText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.coral, marginBottom: 12 },
+        messageText: { fontFamily: fonts.body.regular, fontSize: 12.5, marginTop: 10, textAlign: "center" },
+        availabilityHint: { fontFamily: fonts.body.regular, fontSize: 11.5, marginTop: 6 },
+        rowHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
+        linkText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.teal },
+        shiftRow: { flexDirection: "row", alignItems: "center", paddingVertical: 8, borderTopWidth: 1, borderTopColor: T.line2, gap: 4 },
+        shiftText: { fontFamily: fonts.body.regular, fontSize: 13, color: T.ink, flex: 1 },
+        shiftTime: { fontFamily: fonts.mono.regular, color: T.muted, fontSize: 12 },
+        iconBtn: { padding: 6 },
+        shiftEditRow: { paddingVertical: 8, borderTopWidth: 1, borderTopColor: T.line2 },
+        shiftEditFields: { flexDirection: "row", gap: 6, marginBottom: 6 },
+        shiftEditActions: { flexDirection: "row", gap: 6 },
+        compactInput: {
+          paddingVertical: 7,
+          paddingHorizontal: 9,
+          borderRadius: 7,
+          borderWidth: 1,
+          borderColor: T.line,
+          fontFamily: fonts.body.regular,
+          fontSize: 12.5,
+          color: T.ink,
+        },
+        smallSaveButton: { backgroundColor: T.teal, borderRadius: 6, paddingVertical: 5, paddingHorizontal: 10 },
+        smallSaveButtonText: { fontFamily: fonts.body.semibold, fontSize: 12, color: "#fff" },
+        smallCancelButton: { borderWidth: 1, borderColor: T.line, borderRadius: 6, paddingVertical: 5, paddingHorizontal: 10 },
+        smallCancelButtonText: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.ink },
+        timeRow: { flexDirection: "row", gap: 10 },
+        tealFullButton: { backgroundColor: T.teal, borderRadius: 9, paddingVertical: 10, alignItems: "center" },
+        tealFullButtonText: { fontFamily: fonts.body.semibold, fontSize: 13, color: "#fff" },
+        plainListItem: { fontFamily: fonts.body.regular, fontSize: 13, color: T.ink, marginVertical: 6 },
+        inlineFormRow: { flexDirection: "row", gap: 8, marginTop: 10 },
+        addButton: { backgroundColor: T.teal, borderRadius: 8, paddingVertical: 9, paddingHorizontal: 14, alignItems: "center", justifyContent: "center" },
+        addButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: "#fff" },
+        leaveTypeRow: { flexDirection: "row", alignItems: "center" },
+        leaveTypeDays: { fontFamily: fonts.mono.regular, fontSize: 12, color: T.muted, marginRight: 10 },
+        assignmentRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12 },
+        borderTop: { borderTopWidth: 1, borderTopColor: T.line2 },
+        assignmentName: { fontFamily: fonts.body.regular, fontSize: 13.5, color: T.ink },
+        assignmentDate: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, width: 100 },
+        assignmentShift: { fontFamily: fonts.mono.regular, fontSize: 12, color: T.teal },
+        outlineIconButton: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 7,
+          alignSelf: "flex-start",
+          paddingVertical: 9,
+          paddingHorizontal: 14,
+          borderRadius: 8,
+          borderWidth: 1,
+          borderColor: T.line,
+        },
+        outlineIconButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.ink },
+        geofenceBlock: { marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: T.line2 },
+        iconLabelRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 },
+        geofenceLabel: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, flexShrink: 1 },
+        geoRow: { flexDirection: "row", gap: 8, marginBottom: 10 },
+        outlineButtonSmall: { paddingVertical: 9, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: T.line, justifyContent: "center" },
+        outlineButtonSmallText: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.ink },
+        darkButtonSmall: { backgroundColor: T.teal, borderRadius: 8, paddingVertical: 9, paddingHorizontal: 14, alignSelf: "flex-start" },
+        darkButtonSmallText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.onAccent },
+        footHint: { fontFamily: fonts.body.regular, fontSize: 11.5, color: T.faint, marginTop: 8 },
+      }),
+    [T]
+  );
   const canManageQr = isManager || !!billing?.can_manage_qr;
 
   const [employees, setEmployees] = useState<any[]>([]);
@@ -582,75 +659,3 @@ export default function Roster() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: T.paper },
-  loadingSafe: { flex: 1, backgroundColor: T.paper, alignItems: "center", justifyContent: "center" },
-  scrollContent: { padding: 16, gap: 16 },
-  card: { padding: 20 },
-  cardTitle: { fontFamily: fonts.display.semibold, fontSize: 15.5, color: T.ink },
-  iconTitleRow: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 12 },
-  label: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 6 },
-  bodyMuted: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 12 },
-  errorText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.coral, marginBottom: 12 },
-  messageText: { fontFamily: fonts.body.regular, fontSize: 12.5, marginTop: 10, textAlign: "center" },
-  availabilityHint: { fontFamily: fonts.body.regular, fontSize: 11.5, marginTop: 6 },
-  rowHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
-  linkText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.teal },
-  shiftRow: { flexDirection: "row", alignItems: "center", paddingVertical: 8, borderTopWidth: 1, borderTopColor: T.line2, gap: 4 },
-  shiftText: { fontFamily: fonts.body.regular, fontSize: 13, color: T.ink, flex: 1 },
-  shiftTime: { fontFamily: fonts.mono.regular, color: T.muted, fontSize: 12 },
-  iconBtn: { padding: 6 },
-  shiftEditRow: { paddingVertical: 8, borderTopWidth: 1, borderTopColor: T.line2 },
-  shiftEditFields: { flexDirection: "row", gap: 6, marginBottom: 6 },
-  shiftEditActions: { flexDirection: "row", gap: 6 },
-  compactInput: {
-    paddingVertical: 7,
-    paddingHorizontal: 9,
-    borderRadius: 7,
-    borderWidth: 1,
-    borderColor: T.line,
-    fontFamily: fonts.body.regular,
-    fontSize: 12.5,
-    color: T.ink,
-  },
-  smallSaveButton: { backgroundColor: T.teal, borderRadius: 6, paddingVertical: 5, paddingHorizontal: 10 },
-  smallSaveButtonText: { fontFamily: fonts.body.semibold, fontSize: 12, color: "#fff" },
-  smallCancelButton: { borderWidth: 1, borderColor: T.line, borderRadius: 6, paddingVertical: 5, paddingHorizontal: 10 },
-  smallCancelButtonText: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.ink },
-  timeRow: { flexDirection: "row", gap: 10 },
-  tealFullButton: { backgroundColor: T.teal, borderRadius: 9, paddingVertical: 10, alignItems: "center" },
-  tealFullButtonText: { fontFamily: fonts.body.semibold, fontSize: 13, color: "#fff" },
-  plainListItem: { fontFamily: fonts.body.regular, fontSize: 13, color: T.ink, marginVertical: 6 },
-  inlineFormRow: { flexDirection: "row", gap: 8, marginTop: 10 },
-  addButton: { backgroundColor: T.teal, borderRadius: 8, paddingVertical: 9, paddingHorizontal: 14, alignItems: "center", justifyContent: "center" },
-  addButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: "#fff" },
-  leaveTypeRow: { flexDirection: "row", alignItems: "center" },
-  leaveTypeDays: { fontFamily: fonts.mono.regular, fontSize: 12, color: T.muted, marginRight: 10 },
-  assignmentRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12 },
-  borderTop: { borderTopWidth: 1, borderTopColor: T.line2 },
-  assignmentName: { fontFamily: fonts.body.regular, fontSize: 13.5, color: T.ink },
-  assignmentDate: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, width: 100 },
-  assignmentShift: { fontFamily: fonts.mono.regular, fontSize: 12, color: T.teal },
-  outlineIconButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    alignSelf: "flex-start",
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: T.line,
-  },
-  outlineIconButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.ink },
-  geofenceBlock: { marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: T.line2 },
-  iconLabelRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 },
-  geofenceLabel: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, flexShrink: 1 },
-  geoRow: { flexDirection: "row", gap: 8, marginBottom: 10 },
-  outlineButtonSmall: { paddingVertical: 9, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: T.line, justifyContent: "center" },
-  outlineButtonSmallText: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.ink },
-  darkButtonSmall: { backgroundColor: T.teal, borderRadius: 8, paddingVertical: 9, paddingHorizontal: 14, alignSelf: "flex-start" },
-  darkButtonSmallText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.paper },
-  footHint: { fontFamily: fonts.body.regular, fontSize: 11.5, color: T.faint, marginTop: 8 },
-});

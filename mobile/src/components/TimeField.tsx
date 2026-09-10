@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { T, fonts } from "../theme";
+import { fonts } from "../theme";
+import { useTheme } from "../lib/ThemeContext";
 
 // Time-of-day counterpart to DateField — RN has no native <input
 // type="time">, wraps @react-native-community/datetimepicker in "time"
@@ -18,6 +19,18 @@ export default function TimeField({
   onChange: (hhmm: string) => void;
   disabled?: boolean;
 }) {
+  const T = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        label: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 6 },
+        input: { paddingVertical: 9, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: T.line },
+        inputDisabled: { opacity: 0.4 },
+        valueText: { fontFamily: fonts.body.regular, fontSize: 13.5, color: T.ink },
+        valueTextDisabled: { color: T.faint },
+      }),
+    [T]
+  );
   const [open, setOpen] = useState(false);
 
   const toDate = () => {
@@ -48,11 +61,3 @@ export default function TimeField({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  label: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 6 },
-  input: { paddingVertical: 9, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: T.line },
-  inputDisabled: { opacity: 0.4 },
-  valueText: { fontFamily: fonts.body.regular, fontSize: 13.5, color: T.ink },
-  valueTextDisabled: { color: T.faint },
-});

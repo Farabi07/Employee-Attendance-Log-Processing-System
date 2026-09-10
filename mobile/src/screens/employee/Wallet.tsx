@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, ScrollView, TextInput, Pressable, StyleSheet, Linking, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
@@ -13,7 +13,8 @@ import {
   CheckCircle2,
   Paperclip,
 } from "lucide-react-native";
-import { T, fonts } from "../../theme";
+import { fonts } from "../../theme";
+import { useTheme, Colors } from "../../lib/ThemeContext";
 import { api, BASE_URL, getToken } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import { useAuth } from "../../lib/auth";
@@ -38,7 +39,98 @@ const CYCLE_LABEL: Record<string, string> = { hourly: "hourly", weekly: "weekly"
 const KIND_LABEL: Record<string, string> = { overtime: "Overtime", shortfall: "Shortfall" };
 const CONNECT_RETURN_URL = "timetap://wallet/connect/success";
 
+// Shared by all four components below (KindBadge, EligibleClaimRow,
+// MyAdjustmentRow, the default-exported Wallet) — a plain factory instead
+// of a module-scope StyleSheet.create so each can build its own themed
+// copy via useMemo(() => makeStyles(T), [T]) without duplicating every
+// style object's source.
+function makeStyles(T: Colors) {
+  return StyleSheet.create({
+    safe: { flex: 1, backgroundColor: T.paper },
+    scrollContent: { padding: 16, gap: 16 },
+    card: { padding: 20 },
+    balanceCard: { backgroundColor: T.teal },
+    balanceHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
+    balanceLabel: { fontFamily: fonts.body.regular, fontSize: 12.5, color: "rgba(255,255,255,0.85)" },
+    balanceValue: { fontFamily: fonts.display.semibold, fontSize: 34, color: "#fff" },
+    balanceSub: { fontFamily: fonts.mono.regular, fontSize: 11.5, color: "rgba(255,255,255,0.75)", marginTop: 8 },
+    iconLabelRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
+    mutedLabel: { fontFamily: fonts.body.regular, fontSize: 12, color: T.muted },
+    midValue: { fontFamily: fonts.display.semibold, fontSize: 20, color: T.ink, marginBottom: 12 },
+    dividedBlock: { borderTopWidth: 1, borderTopColor: T.line2, paddingTop: 12 },
+    iconTitleRow: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 6 },
+    cardTitle: { fontFamily: fonts.display.semibold, fontSize: 15, color: T.ink },
+    readyText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.tealDeep },
+    bodyMuted: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 14 },
+    outlineButton: { width: "100%", paddingVertical: 9, borderRadius: 9, borderWidth: 1, borderColor: T.line, alignItems: "center" },
+    outlineButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.ink },
+    navyButton: { width: "100%", paddingVertical: 10, borderRadius: 9, backgroundColor: T.navy, alignItems: "center" },
+    navyButtonText: { fontFamily: fonts.body.semibold, fontSize: 13.5, color: T.onAccent },
+    amountInput: {
+      width: "100%",
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: T.line,
+      fontFamily: fonts.body.regular,
+      fontSize: 13.5,
+      color: T.ink,
+      marginBottom: 10,
+    },
+    messageText: { fontFamily: fonts.body.regular, fontSize: 12, marginTop: 10, textAlign: "center" },
+    historyRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, flexWrap: "wrap" },
+    confirmCashButton: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 8, backgroundColor: T.teal },
+    confirmCashButtonText: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.onAccent },
+    borderTop: { borderTopWidth: 1, borderTopColor: T.line2 },
+    historyTitle: { fontFamily: fonts.body.medium, fontSize: 13.5, color: T.ink },
+    historyDate: { fontFamily: fonts.mono.regular, fontSize: 11, color: T.faint },
+    historyAmount: { fontFamily: fonts.mono.regular, fontSize: 13.5, fontWeight: "600" as any },
+    rowGroup: { gap: 10 },
+    subHeading: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.muted, marginTop: 18, marginBottom: 10 },
+    rateHistoryRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 7 },
+    rateHistoryDate: { fontFamily: fonts.mono.regular, fontSize: 12.5, color: T.faint, width: 110 },
+    rateHistoryText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink, flex: 1 },
+
+    rowCard: { borderWidth: 1, borderColor: T.line, borderRadius: 12, padding: 14 },
+    rowHeader: { flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" },
+    rowMeta: { fontFamily: fonts.mono.regular, fontSize: 12, color: T.muted, flex: 1, minWidth: 100 },
+    badge: { paddingVertical: 2, paddingHorizontal: 8, borderRadius: 999 },
+    badgeText: { fontFamily: fonts.body.semibold, fontSize: 11 },
+    smallDarkButton: { paddingVertical: 7, paddingHorizontal: 13, borderRadius: 8, backgroundColor: T.teal },
+    smallDarkButtonText: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.onAccent },
+    acceptButton: { backgroundColor: T.teal, marginTop: 10, alignSelf: "flex-start" },
+    expandedBox: { marginTop: 12, padding: 14, borderRadius: 9, backgroundColor: T.line2 },
+    claimTextarea: {
+      borderWidth: 1,
+      borderColor: T.line,
+      borderRadius: 7,
+      padding: 8,
+      fontFamily: fonts.body.regular,
+      fontSize: 12.5,
+      color: T.ink,
+      minHeight: 60,
+      textAlignVertical: "top",
+      marginBottom: 10,
+      backgroundColor: T.card,
+    },
+    attachRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 },
+    attachText: { fontFamily: fonts.body.regular, fontSize: 12, color: T.muted, flexShrink: 1 },
+    attachLinkText: { fontFamily: fonts.body.regular, fontSize: 12, color: T.navyDeep },
+    actionRow: { flexDirection: "row", gap: 8 },
+    tealButton: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, backgroundColor: T.teal },
+    tealButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.onAccent },
+    ghostButton: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: T.line },
+    ghostButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.muted },
+    quotedNote: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink, marginTop: 8, lineHeight: 18 },
+    managerNote: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginTop: 6, lineHeight: 18 },
+    errorText: { fontFamily: fonts.body.regular, fontSize: 12, color: T.coral, marginTop: 8 },
+  });
+}
+
 function KindBadge({ kind }: { kind: string }) {
+  const T = useTheme();
+  const styles = useMemo(() => makeStyles(T), [T]);
   return (
     <View style={[styles.badge, { backgroundColor: kind === "overtime" ? T.tealBg : T.amberBg }]}>
       <Text style={[styles.badgeText, { color: kind === "overtime" ? T.tealDeep : T.amber }]}>{KIND_LABEL[kind]}</Text>
@@ -55,6 +147,8 @@ function EligibleClaimRow({
   currency: string;
   onSubmitted: () => void;
 }) {
+  const T = useTheme();
+  const styles = useMemo(() => makeStyles(T), [T]);
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
   const [attachment, setAttachment] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
@@ -152,6 +246,8 @@ function EligibleClaimRow({
 }
 
 function MyAdjustmentRow({ request: r, onAccepted }: { request: any; onAccepted: () => void }) {
+  const T = useTheme();
+  const styles = useMemo(() => makeStyles(T), [T]);
   const [accepting, setAccepting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -199,6 +295,8 @@ function MyAdjustmentRow({ request: r, onAccepted }: { request: any; onAccepted:
 export default function Wallet() {
   const { user } = useAuth();
   const toast = useToast();
+  const T = useTheme();
+  const styles = useMemo(() => makeStyles(T), [T]);
   const [wallet, setWallet] = useState<any>(undefined);
   const [rateHistory, setRateHistory] = useState<any[]>([]);
   const [amount, setAmount] = useState("");
@@ -313,7 +411,7 @@ export default function Wallet() {
       >
         <Card style={[styles.card, styles.balanceCard]}>
           <View style={styles.balanceHeader}>
-            <WalletIcon size={16} color={T.paper} strokeWidth={1.8} />
+            <WalletIcon size={16} color={T.onAccent} strokeWidth={1.8} />
             <Text style={styles.balanceLabel}>Current balance</Text>
           </View>
           <Text style={styles.balanceValue}>{money(wallet.current_balance)}</Text>
@@ -502,85 +600,3 @@ export default function Wallet() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: T.paper },
-  scrollContent: { padding: 16, gap: 16 },
-  card: { padding: 20 },
-  balanceCard: { backgroundColor: T.teal },
-  balanceHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
-  balanceLabel: { fontFamily: fonts.body.regular, fontSize: 12.5, color: "rgba(255,255,255,0.85)" },
-  balanceValue: { fontFamily: fonts.display.semibold, fontSize: 34, color: "#fff" },
-  balanceSub: { fontFamily: fonts.mono.regular, fontSize: 11.5, color: "rgba(255,255,255,0.75)", marginTop: 8 },
-  iconLabelRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
-  mutedLabel: { fontFamily: fonts.body.regular, fontSize: 12, color: T.muted },
-  midValue: { fontFamily: fonts.display.semibold, fontSize: 20, color: T.ink, marginBottom: 12 },
-  dividedBlock: { borderTopWidth: 1, borderTopColor: T.line2, paddingTop: 12 },
-  iconTitleRow: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 6 },
-  cardTitle: { fontFamily: fonts.display.semibold, fontSize: 15, color: T.ink },
-  readyText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.tealDeep },
-  bodyMuted: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 14 },
-  outlineButton: { width: "100%", paddingVertical: 9, borderRadius: 9, borderWidth: 1, borderColor: T.line, alignItems: "center" },
-  outlineButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.ink },
-  navyButton: { width: "100%", paddingVertical: 10, borderRadius: 9, backgroundColor: T.navy, alignItems: "center" },
-  navyButtonText: { fontFamily: fonts.body.semibold, fontSize: 13.5, color: T.paper },
-  amountInput: {
-    width: "100%",
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: T.line,
-    fontFamily: fonts.body.regular,
-    fontSize: 13.5,
-    color: T.ink,
-    marginBottom: 10,
-  },
-  messageText: { fontFamily: fonts.body.regular, fontSize: 12, marginTop: 10, textAlign: "center" },
-  historyRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, flexWrap: "wrap" },
-  confirmCashButton: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 8, backgroundColor: T.teal },
-  confirmCashButtonText: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.paper },
-  borderTop: { borderTopWidth: 1, borderTopColor: T.line2 },
-  historyTitle: { fontFamily: fonts.body.medium, fontSize: 13.5, color: T.ink },
-  historyDate: { fontFamily: fonts.mono.regular, fontSize: 11, color: T.faint },
-  historyAmount: { fontFamily: fonts.mono.regular, fontSize: 13.5, fontWeight: "600" as any },
-  rowGroup: { gap: 10 },
-  subHeading: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.muted, marginTop: 18, marginBottom: 10 },
-  rateHistoryRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 7 },
-  rateHistoryDate: { fontFamily: fonts.mono.regular, fontSize: 12.5, color: T.faint, width: 110 },
-  rateHistoryText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink, flex: 1 },
-
-  rowCard: { borderWidth: 1, borderColor: T.line, borderRadius: 12, padding: 14 },
-  rowHeader: { flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" },
-  rowMeta: { fontFamily: fonts.mono.regular, fontSize: 12, color: T.muted, flex: 1, minWidth: 100 },
-  badge: { paddingVertical: 2, paddingHorizontal: 8, borderRadius: 999 },
-  badgeText: { fontFamily: fonts.body.semibold, fontSize: 11 },
-  smallDarkButton: { paddingVertical: 7, paddingHorizontal: 13, borderRadius: 8, backgroundColor: T.teal },
-  smallDarkButtonText: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.paper },
-  acceptButton: { backgroundColor: T.teal, marginTop: 10, alignSelf: "flex-start" },
-  expandedBox: { marginTop: 12, padding: 14, borderRadius: 9, backgroundColor: T.line2 },
-  claimTextarea: {
-    borderWidth: 1,
-    borderColor: T.line,
-    borderRadius: 7,
-    padding: 8,
-    fontFamily: fonts.body.regular,
-    fontSize: 12.5,
-    color: T.ink,
-    minHeight: 60,
-    textAlignVertical: "top",
-    marginBottom: 10,
-    backgroundColor: T.card,
-  },
-  attachRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 },
-  attachText: { fontFamily: fonts.body.regular, fontSize: 12, color: T.muted, flexShrink: 1 },
-  attachLinkText: { fontFamily: fonts.body.regular, fontSize: 12, color: T.navyDeep },
-  actionRow: { flexDirection: "row", gap: 8 },
-  tealButton: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, backgroundColor: T.teal },
-  tealButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.paper },
-  ghostButton: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: T.line },
-  ghostButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.muted },
-  quotedNote: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink, marginTop: 8, lineHeight: 18 },
-  managerNote: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginTop: 6, lineHeight: 18 },
-  errorText: { fontFamily: fonts.body.regular, fontSize: 12, color: T.coral, marginTop: 8 },
-});

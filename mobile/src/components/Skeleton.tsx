@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, StyleProp, ViewStyle } from "react-native";
-import { T } from "../theme";
+import { useTheme } from "../lib/ThemeContext";
 
 // A pulsing placeholder block — used in place of a spinner while a
 // screen's first load is in flight, shaped like the content that's
@@ -16,6 +16,7 @@ export default function Skeleton({
   radius?: number;
   style?: StyleProp<ViewStyle>;
 }) {
+  const T = useTheme();
   const opacity = useRef(new Animated.Value(0.45)).current;
 
   useEffect(() => {

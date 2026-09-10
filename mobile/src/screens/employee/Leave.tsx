@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, ScrollView, TextInput, Pressable, StyleSheet, Linking, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
@@ -9,7 +9,8 @@ import Skeleton from "../../components/Skeleton";
 import EmptyState from "../../components/EmptyState";
 import IconChip from "../../components/IconChip";
 import { useToast } from "../../components/Toast";
-import { T, fonts } from "../../theme";
+import { fonts } from "../../theme";
+import { useTheme } from "../../lib/ThemeContext";
 import { useAuth } from "../../lib/auth";
 import { api, BASE_URL, getToken, mediaUrl } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
@@ -25,6 +26,50 @@ import { PrimaryButton } from "../../components/Button";
 export default function Leave() {
   const { user } = useAuth();
   const toast = useToast();
+  const T = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        safe: { flex: 1, backgroundColor: T.paper },
+        scrollContent: { padding: 16, gap: 16 },
+        card: { padding: 20 },
+        title: { fontFamily: fonts.display.semibold, fontSize: 15.5, color: T.ink, marginBottom: 16 },
+        label: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 6 },
+        pickerBox: { borderWidth: 1, borderColor: T.line, borderRadius: 8, marginBottom: 14, overflow: "hidden" },
+        dateRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
+        textarea: {
+          borderWidth: 1,
+          borderColor: T.line,
+          borderRadius: 8,
+          padding: 10,
+          fontFamily: fonts.body.regular,
+          fontSize: 13,
+          color: T.ink,
+          minHeight: 80,
+          textAlignVertical: "top",
+          marginBottom: 16,
+        },
+        messageText: { fontFamily: fonts.body.regular, fontSize: 12.5, marginTop: 10, textAlign: "center" },
+        emptyText: { fontFamily: fonts.body.regular, fontSize: 13, color: T.muted },
+        historyRow: { flexDirection: "row", alignItems: "center", paddingVertical: 13 },
+        historyRowBorder: { borderTopWidth: 1, borderTopColor: T.line2 },
+        historyType: { fontFamily: fonts.body.medium, fontSize: 13.5, color: T.ink, marginBottom: 3 },
+        historyDates: { fontFamily: fonts.mono.regular, fontSize: 12, color: T.muted },
+        iconTitleRow: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 4 },
+        balanceSubtitle: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 14 },
+        balanceRow: { marginBottom: 12 },
+        balanceRowTop: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
+        balanceName: { fontFamily: fonts.body.regular, fontSize: 13, color: T.ink },
+        balanceValue: { fontFamily: fonts.mono.regular, fontSize: 12.5, color: T.muted },
+        balanceTrack: { height: 6, borderRadius: 3, backgroundColor: T.line2, overflow: "hidden" },
+        balanceFill: { height: "100%", borderRadius: 3 },
+        attachRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 16 },
+        attachText: { fontFamily: fonts.body.regular, fontSize: 12, color: T.muted, flexShrink: 1 },
+        historyAttachRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 4 },
+        historyAttachText: { fontFamily: fonts.body.regular, fontSize: 11.5, color: T.navyDeep },
+      }),
+    [T]
+  );
   const [leaveTypes, setLeaveTypes] = useState<any[]>([]);
   const [balance, setBalance] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
@@ -240,43 +285,3 @@ export default function Leave() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: T.paper },
-  scrollContent: { padding: 16, gap: 16 },
-  card: { padding: 20 },
-  title: { fontFamily: fonts.display.semibold, fontSize: 15.5, color: T.ink, marginBottom: 16 },
-  label: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 6 },
-  pickerBox: { borderWidth: 1, borderColor: T.line, borderRadius: 8, marginBottom: 14, overflow: "hidden" },
-  dateRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
-  textarea: {
-    borderWidth: 1,
-    borderColor: T.line,
-    borderRadius: 8,
-    padding: 10,
-    fontFamily: fonts.body.regular,
-    fontSize: 13,
-    color: T.ink,
-    minHeight: 80,
-    textAlignVertical: "top",
-    marginBottom: 16,
-  },
-  messageText: { fontFamily: fonts.body.regular, fontSize: 12.5, marginTop: 10, textAlign: "center" },
-  emptyText: { fontFamily: fonts.body.regular, fontSize: 13, color: T.muted },
-  historyRow: { flexDirection: "row", alignItems: "center", paddingVertical: 13 },
-  historyRowBorder: { borderTopWidth: 1, borderTopColor: T.line2 },
-  historyType: { fontFamily: fonts.body.medium, fontSize: 13.5, color: T.ink, marginBottom: 3 },
-  historyDates: { fontFamily: fonts.mono.regular, fontSize: 12, color: T.muted },
-  iconTitleRow: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 4 },
-  balanceSubtitle: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 14 },
-  balanceRow: { marginBottom: 12 },
-  balanceRowTop: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
-  balanceName: { fontFamily: fonts.body.regular, fontSize: 13, color: T.ink },
-  balanceValue: { fontFamily: fonts.mono.regular, fontSize: 12.5, color: T.muted },
-  balanceTrack: { height: 6, borderRadius: 3, backgroundColor: T.line2, overflow: "hidden" },
-  balanceFill: { height: "100%", borderRadius: 3 },
-  attachRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 16 },
-  attachText: { fontFamily: fonts.body.regular, fontSize: 12, color: T.muted, flexShrink: 1 },
-  historyAttachRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 4 },
-  historyAttachText: { fontFamily: fonts.body.regular, fontSize: 11.5, color: T.navyDeep },
-});

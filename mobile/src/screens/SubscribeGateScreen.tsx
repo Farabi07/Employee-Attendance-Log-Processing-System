@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
 import { Clock } from "lucide-react-native";
-import { T, fonts } from "../theme";
+import { fonts } from "../theme";
+import { useTheme } from "../lib/ThemeContext";
 import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
 import { endpoints } from "../lib/endpoints";
@@ -24,6 +25,17 @@ function extractQueryParam(url: string, key: string): string | null {
 }
 
 function PlanButtons({ onPick, busy }: { onPick: (plan: "monthly" | "yearly") => void; busy: boolean }) {
+  const T = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        planRow: { flexDirection: "row", gap: 10, width: "100%" },
+        planButton: { flex: 1, paddingVertical: 12, borderRadius: 9, backgroundColor: T.navy, alignItems: "center" },
+        planButtonTeal: { backgroundColor: T.teal },
+        planButtonText: { fontFamily: fonts.body.semibold, fontSize: 13.5, color: T.onAccent },
+      }),
+    [T]
+  );
   const [pricing, setPricing] = useState<any>(null);
 
   useEffect(() => {
@@ -55,6 +67,32 @@ function PlanButtons({ onPick, busy }: { onPick: (plan: "monthly" | "yearly") =>
 
 export default function SubscribeGateScreen() {
   const { billing, logout, refreshBilling } = useAuth();
+  const T = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        safe: { flex: 1, backgroundColor: T.paper },
+        container: { flex: 1, alignItems: "center", justifyContent: "center", padding: 16 },
+        card: { width: "100%", maxWidth: 420, padding: 28, alignItems: "center" },
+        iconCircle: { width: 44, height: 44, borderRadius: 12, backgroundColor: T.coralBg, alignItems: "center", justifyContent: "center", marginBottom: 18 },
+        title: { fontFamily: fonts.display.semibold, fontSize: 19, color: T.ink, marginBottom: 8, textAlign: "center" },
+        subtitle: { fontFamily: fonts.body.regular, fontSize: 13, color: T.muted, marginBottom: 24, textAlign: "center", lineHeight: 19 },
+        errorText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.coral, marginTop: 12 },
+        askManagerText: {
+          fontFamily: fonts.body.regular,
+          fontSize: 13,
+          color: T.ink,
+          backgroundColor: T.line2,
+          paddingVertical: 12,
+          paddingHorizontal: 14,
+          borderRadius: 9,
+          textAlign: "center",
+          width: "100%",
+        },
+        logoutText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted },
+      }),
+    [T]
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -111,29 +149,3 @@ export default function SubscribeGateScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: T.paper },
-  container: { flex: 1, alignItems: "center", justifyContent: "center", padding: 16 },
-  card: { width: "100%", maxWidth: 420, padding: 28, alignItems: "center" },
-  iconCircle: { width: 44, height: 44, borderRadius: 12, backgroundColor: T.coralBg, alignItems: "center", justifyContent: "center", marginBottom: 18 },
-  title: { fontFamily: fonts.display.semibold, fontSize: 19, color: T.ink, marginBottom: 8, textAlign: "center" },
-  subtitle: { fontFamily: fonts.body.regular, fontSize: 13, color: T.muted, marginBottom: 24, textAlign: "center", lineHeight: 19 },
-  planRow: { flexDirection: "row", gap: 10, width: "100%" },
-  planButton: { flex: 1, paddingVertical: 12, borderRadius: 9, backgroundColor: T.navy, alignItems: "center" },
-  planButtonTeal: { backgroundColor: T.teal },
-  planButtonText: { fontFamily: fonts.body.semibold, fontSize: 13.5, color: T.paper },
-  errorText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.coral, marginTop: 12 },
-  askManagerText: {
-    fontFamily: fonts.body.regular,
-    fontSize: 13,
-    color: T.ink,
-    backgroundColor: T.line2,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 9,
-    textAlign: "center",
-    width: "100%",
-  },
-  logoutText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted },
-});

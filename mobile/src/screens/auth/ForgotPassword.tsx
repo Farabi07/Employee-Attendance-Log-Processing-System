@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Text, StyleSheet } from "react-native";
-import { T, fonts } from "../../theme";
+import { fonts } from "../../theme";
+import { useTheme } from "../../lib/ThemeContext";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import AuthShell from "../../components/AuthShell";
@@ -10,6 +11,17 @@ import { PrimaryButton, TextButton } from "../../components/Button";
 // Ported from frontend/src/pages/ForgotPassword.jsx. Promoted from an
 // inline sub-view of Login to its own pushed screen (see AuthStack.tsx).
 export default function ForgotPassword({ navigation }: any) {
+  const T = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        title: { fontFamily: fonts.display.semibold, fontSize: 19, color: T.ink, marginBottom: 4 },
+        subtitle: { fontFamily: fonts.body.regular, fontSize: 13, color: T.muted, marginBottom: 16 },
+        body: { fontFamily: fonts.body.regular, fontSize: 13.5, color: T.ink, marginVertical: 16 },
+        error: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.coral, marginBottom: 14 },
+      }),
+    [T]
+  );
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
@@ -59,10 +71,3 @@ export default function ForgotPassword({ navigation }: any) {
     </AuthShell>
   );
 }
-
-const styles = StyleSheet.create({
-  title: { fontFamily: fonts.display.semibold, fontSize: 19, color: T.ink, marginBottom: 4 },
-  subtitle: { fontFamily: fonts.body.regular, fontSize: 13, color: T.muted, marginBottom: 16 },
-  body: { fontFamily: fonts.body.regular, fontSize: 13.5, color: T.ink, marginVertical: 16 },
-  error: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.coral, marginBottom: 14 },
-});

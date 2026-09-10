@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { T, fonts } from "../../theme";
+import { fonts } from "../../theme";
+import { useTheme } from "../../lib/ThemeContext";
 import { useAuth } from "../../lib/auth";
 import AuthShell from "../../components/AuthShell";
 import FormField from "../../components/FormField";
@@ -11,6 +12,19 @@ import { PrimaryButton, TextButton } from "../../components/Button";
 // pushed screen instead (see navigation/AuthStack.tsx), so this only
 // handles the sign-in form.
 export default function Login({ navigation }: any) {
+  const T = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        title: { fontFamily: fonts.display.semibold, fontSize: 19, color: T.ink, marginBottom: 4 },
+        subtitle: { fontFamily: fonts.body.regular, fontSize: 13, color: T.muted, marginBottom: 22 },
+        forgotRow: { alignItems: "flex-end", marginBottom: 18, marginTop: -4 },
+        error: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.coral, marginBottom: 14 },
+        signupRow: { flexDirection: "row", justifyContent: "center", marginTop: 16 },
+        signupText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted },
+      }),
+    [T]
+  );
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -66,12 +80,3 @@ export default function Login({ navigation }: any) {
     </AuthShell>
   );
 }
-
-const styles = StyleSheet.create({
-  title: { fontFamily: fonts.display.semibold, fontSize: 19, color: T.ink, marginBottom: 4 },
-  subtitle: { fontFamily: fonts.body.regular, fontSize: 13, color: T.muted, marginBottom: 22 },
-  forgotRow: { alignItems: "flex-end", marginBottom: 18, marginTop: -4 },
-  error: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.coral, marginBottom: 14 },
-  signupRow: { flexDirection: "row", justifyContent: "center", marginTop: 16 },
-  signupText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted },
-});

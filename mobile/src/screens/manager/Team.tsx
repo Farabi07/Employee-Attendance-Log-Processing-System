@@ -4,7 +4,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Search, UserPlus, DollarSign, ShieldCheck, History, User, Users } from "lucide-react-native";
 import Skeleton from "../../components/Skeleton";
 import EmptyState from "../../components/EmptyState";
-import { T, fonts } from "../../theme";
+import { fonts } from "../../theme";
+import { useTheme, Colors } from "../../lib/ThemeContext";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import { useAuth } from "../../lib/auth";
@@ -24,10 +25,12 @@ const DAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Sat
 // side-by-side (forms | team list) grid becomes one scrollable column;
 // checkboxes become RN Switch; the inline pay-edit/history rows keep the
 // same expand-in-place pattern.
-const ROLE_BADGE: Record<string, { label: string; color: string; bg: string }> = {
-  manager: { label: "Manager", color: T.teal, bg: T.tealBg },
-  moderator: { label: "Moderator", color: T.amber, bg: T.amberBg },
-};
+function roleBadge(T: Colors): Record<string, { label: string; color: string; bg: string }> {
+  return {
+    manager: { label: "Manager", color: T.teal, bg: T.tealBg },
+    moderator: { label: "Moderator", color: T.amber, bg: T.amberBg },
+  };
+}
 
 const PAYOUT_CYCLES = [
   { value: "hourly", label: "Hourly" },
@@ -49,6 +52,94 @@ function initialsOf(emp: any) {
 export default function Team() {
   const { isManager, billing, refreshBilling } = useAuth();
   const toast = useToast();
+  const T = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        safe: { flex: 1, backgroundColor: T.paper },
+        scrollContent: { padding: 16, gap: 16 },
+        card: { padding: 20 },
+        cardTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 },
+        cardTitle: { fontFamily: fonts.display.semibold, fontSize: 15, color: T.ink },
+        label: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 6 },
+        hintText: { fontFamily: fonts.body.regular, fontSize: 11, color: T.faint, marginBottom: 14 },
+        bodyMuted: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted },
+        plainInput: {
+          paddingVertical: 9,
+          paddingHorizontal: 10,
+          borderRadius: 8,
+          borderWidth: 1,
+          borderColor: T.line,
+          fontFamily: fonts.body.regular,
+          fontSize: 13.5,
+          color: T.ink,
+        },
+        rateRow: { flexDirection: "row", gap: 8, marginBottom: 14 },
+        currencyPickerBox: { width: 100, borderWidth: 1, borderColor: T.line, borderRadius: 8, overflow: "hidden" },
+        inlinePickerBox: { borderWidth: 1, borderColor: T.line, borderRadius: 8, overflow: "hidden", marginBottom: 14 },
+        inlinePicker: { color: T.ink },
+        messageText: { fontFamily: fonts.body.regular, fontSize: 12.5, marginTop: 10, textAlign: "center" },
+        permissionRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+        permissionLabel: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink },
+        permissionHint: { fontFamily: fonts.body.regular, fontSize: 11, color: T.faint, marginTop: 2 },
+        teamHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 10 },
+        searchBox: { position: "relative" },
+        searchIcon: { position: "absolute", left: 10, top: 10, zIndex: 1 },
+        searchInput: {
+          paddingVertical: 8,
+          paddingLeft: 30,
+          paddingRight: 10,
+          borderRadius: 8,
+          borderWidth: 1,
+          borderColor: T.line,
+          fontFamily: fonts.body.regular,
+          fontSize: 12.5,
+          color: T.ink,
+          width: 150,
+        },
+        empBlock: { paddingVertical: 13 },
+        borderTop: { borderTopWidth: 1, borderTopColor: T.line2 },
+        empRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+        empNameRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
+        empName: { fontFamily: fonts.body.semibold, fontSize: 13.5, color: T.ink },
+        empMeta: { fontFamily: fonts.mono.regular, fontSize: 11, color: T.faint, marginTop: 2 },
+        roleBadge: { paddingVertical: 2, paddingHorizontal: 7, borderRadius: 999 },
+        roleBadgeText: { fontFamily: fonts.body.semibold, fontSize: 10.5 },
+        iconButton: { padding: 6, borderRadius: 8, backgroundColor: T.tealBg, borderWidth: 1.5, borderColor: "transparent" },
+        iconButtonActive: { borderColor: T.teal },
+        editRow: { flexDirection: "row", gap: 8, alignItems: "center", paddingTop: 10, paddingLeft: 46, flexWrap: "wrap" },
+        editRateInput: {
+          width: 100,
+          paddingVertical: 7,
+          paddingHorizontal: 9,
+          borderRadius: 7,
+          borderWidth: 1,
+          borderColor: T.line,
+          fontFamily: fonts.body.regular,
+          fontSize: 12.5,
+          color: T.ink,
+        },
+        editPickerBox: { width: 100, borderWidth: 1, borderColor: T.line, borderRadius: 7, overflow: "hidden" },
+        saveButton: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 7, backgroundColor: T.teal },
+        saveButtonText: { fontFamily: fonts.body.semibold, fontSize: 12, color: "#fff" },
+        historyBlock: { paddingTop: 10, paddingLeft: 46 },
+        historyRow: { flexDirection: "row", gap: 8, paddingVertical: 5 },
+        historyDate: { fontFamily: fonts.mono.regular, fontSize: 12, color: T.faint, width: 110 },
+        historyText: { fontFamily: fonts.body.regular, fontSize: 12, color: T.ink, flex: 1, flexWrap: "wrap" },
+        profileBlock: { paddingTop: 12, paddingLeft: 46, gap: 12 },
+        profileFieldsRow: { flexDirection: "row", flexWrap: "wrap", gap: 18 },
+        profileField: { minWidth: 100 },
+        profileFieldLabel: { fontFamily: fonts.body.regular, fontSize: 11.5, color: T.muted, marginBottom: 3 },
+        profileFieldValue: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink },
+        profileSectionLabel: { fontFamily: fonts.body.regular, fontSize: 11.5, color: T.muted, marginTop: 2, marginBottom: 6 },
+        availPillRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+        availPill: { paddingVertical: 3, paddingHorizontal: 8, borderRadius: 999 },
+        availPillText: { fontFamily: fonts.body.semibold, fontSize: 10.5 },
+        upcomingRow: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink, marginBottom: 4 },
+      }),
+    [T]
+  );
+  const ROLE_BADGE = useMemo(() => roleBadge(T), [T]);
   const canAddEmployees = isManager || !!billing?.can_add_employees;
   const [savingAccess, setSavingAccess] = useState<string | null>(null);
   const [employees, setEmployees] = useState<any[]>([]);
@@ -515,86 +606,3 @@ export default function Team() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: T.paper },
-  scrollContent: { padding: 16, gap: 16 },
-  card: { padding: 20 },
-  cardTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 },
-  cardTitle: { fontFamily: fonts.display.semibold, fontSize: 15, color: T.ink },
-  label: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 6 },
-  hintText: { fontFamily: fonts.body.regular, fontSize: 11, color: T.faint, marginBottom: 14 },
-  bodyMuted: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted },
-  plainInput: {
-    paddingVertical: 9,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: T.line,
-    fontFamily: fonts.body.regular,
-    fontSize: 13.5,
-    color: T.ink,
-  },
-  rateRow: { flexDirection: "row", gap: 8, marginBottom: 14 },
-  currencyPickerBox: { width: 100, borderWidth: 1, borderColor: T.line, borderRadius: 8, overflow: "hidden" },
-  inlinePickerBox: { borderWidth: 1, borderColor: T.line, borderRadius: 8, overflow: "hidden", marginBottom: 14 },
-  inlinePicker: { color: T.ink },
-  messageText: { fontFamily: fonts.body.regular, fontSize: 12.5, marginTop: 10, textAlign: "center" },
-  permissionRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  permissionLabel: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink },
-  permissionHint: { fontFamily: fonts.body.regular, fontSize: 11, color: T.faint, marginTop: 2 },
-  teamHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 10 },
-  searchBox: { position: "relative" },
-  searchIcon: { position: "absolute", left: 10, top: 10, zIndex: 1 },
-  searchInput: {
-    paddingVertical: 8,
-    paddingLeft: 30,
-    paddingRight: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: T.line,
-    fontFamily: fonts.body.regular,
-    fontSize: 12.5,
-    color: T.ink,
-    width: 150,
-  },
-  empBlock: { paddingVertical: 13 },
-  borderTop: { borderTopWidth: 1, borderTopColor: T.line2 },
-  empRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  empNameRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
-  empName: { fontFamily: fonts.body.semibold, fontSize: 13.5, color: T.ink },
-  empMeta: { fontFamily: fonts.mono.regular, fontSize: 11, color: T.faint, marginTop: 2 },
-  roleBadge: { paddingVertical: 2, paddingHorizontal: 7, borderRadius: 999 },
-  roleBadgeText: { fontFamily: fonts.body.semibold, fontSize: 10.5 },
-  iconButton: { padding: 6, borderRadius: 8, backgroundColor: T.tealBg, borderWidth: 1.5, borderColor: "transparent" },
-  iconButtonActive: { borderColor: T.teal },
-  editRow: { flexDirection: "row", gap: 8, alignItems: "center", paddingTop: 10, paddingLeft: 46, flexWrap: "wrap" },
-  editRateInput: {
-    width: 100,
-    paddingVertical: 7,
-    paddingHorizontal: 9,
-    borderRadius: 7,
-    borderWidth: 1,
-    borderColor: T.line,
-    fontFamily: fonts.body.regular,
-    fontSize: 12.5,
-    color: T.ink,
-  },
-  editPickerBox: { width: 100, borderWidth: 1, borderColor: T.line, borderRadius: 7, overflow: "hidden" },
-  saveButton: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 7, backgroundColor: T.teal },
-  saveButtonText: { fontFamily: fonts.body.semibold, fontSize: 12, color: "#fff" },
-  historyBlock: { paddingTop: 10, paddingLeft: 46 },
-  historyRow: { flexDirection: "row", gap: 8, paddingVertical: 5 },
-  historyDate: { fontFamily: fonts.mono.regular, fontSize: 12, color: T.faint, width: 110 },
-  historyText: { fontFamily: fonts.body.regular, fontSize: 12, color: T.ink, flex: 1, flexWrap: "wrap" },
-  profileBlock: { paddingTop: 12, paddingLeft: 46, gap: 12 },
-  profileFieldsRow: { flexDirection: "row", flexWrap: "wrap", gap: 18 },
-  profileField: { minWidth: 100 },
-  profileFieldLabel: { fontFamily: fonts.body.regular, fontSize: 11.5, color: T.muted, marginBottom: 3 },
-  profileFieldValue: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink },
-  profileSectionLabel: { fontFamily: fonts.body.regular, fontSize: 11.5, color: T.muted, marginTop: 2, marginBottom: 6 },
-  availPillRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  availPill: { paddingVertical: 3, paddingHorizontal: 8, borderRadius: 999 },
-  availPillText: { fontFamily: fonts.body.semibold, fontSize: 10.5 },
-  upcomingRow: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink, marginBottom: 4 },
-});

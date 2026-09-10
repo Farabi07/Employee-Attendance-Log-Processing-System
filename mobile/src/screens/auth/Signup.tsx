@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { T, fonts } from "../../theme";
+import { fonts } from "../../theme";
+import { useTheme } from "../../lib/ThemeContext";
 import { useAuth } from "../../lib/auth";
 import AuthShell from "../../components/AuthShell";
 import FormField from "../../components/FormField";
@@ -8,6 +9,19 @@ import { PrimaryButton, TextButton } from "../../components/Button";
 
 // Ported from frontend/src/pages/Signup.jsx.
 export default function Signup({ navigation }: any) {
+  const T = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        title: { fontFamily: fonts.display.semibold, fontSize: 19, color: T.ink, marginBottom: 4 },
+        subtitle: { fontFamily: fonts.body.regular, fontSize: 13, color: T.muted, marginBottom: 20 },
+        row: { flexDirection: "row", gap: 10 },
+        rowField: { flex: 1 },
+        error: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.coral, marginBottom: 14 },
+        backRow: { marginTop: 10, alignItems: "center" },
+      }),
+    [T]
+  );
   const { signup } = useAuth();
   const [organizationName, setOrganizationName] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -92,12 +106,3 @@ export default function Signup({ navigation }: any) {
     </AuthShell>
   );
 }
-
-const styles = StyleSheet.create({
-  title: { fontFamily: fonts.display.semibold, fontSize: 19, color: T.ink, marginBottom: 4 },
-  subtitle: { fontFamily: fonts.body.regular, fontSize: 13, color: T.muted, marginBottom: 20 },
-  row: { flexDirection: "row", gap: 10 },
-  rowField: { flex: 1 },
-  error: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.coral, marginBottom: 14 },
-  backRow: { marginTop: 10, alignItems: "center" },
-});

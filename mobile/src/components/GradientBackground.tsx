@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { StyleSheet, View, ViewStyle, StyleProp, LayoutChangeEvent } from "react-native";
 import Svg, { Defs, LinearGradient, Stop, Rect } from "react-native-svg";
-import { T } from "../theme";
+import { useTheme } from "../lib/ThemeContext";
 
 // A left-to-right, lighter navy->teal gradient panel, used behind the top header
 // and bottom tab bar so the app's "chrome" reads as one smart, branded
@@ -20,6 +20,7 @@ import { T } from "../theme";
 // the status-bar row and the title row instead of one smooth blend.
 // Measuring first and drawing in real pixels removes that ambiguity.
 export default function GradientBackground({ style }: { style?: StyleProp<ViewStyle> }) {
+  const T = useTheme();
   const [size, setSize] = useState<{ width: number; height: number } | null>(null);
 
   const onLayout = useCallback((e: LayoutChangeEvent) => {

@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { View, ActivityIndicator } from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { T } from "../theme";
+import { useTheme } from "../lib/ThemeContext";
 import { useAuth } from "../lib/auth";
 import AuthStack from "./AuthStack";
 import AppTabs from "./AppTabs";
@@ -15,6 +15,7 @@ const Stack = createNativeStackNavigator();
 // dead end (no explanatory dialog — just an immediate, silent logout).
 function PlatformOwnerNotSupported() {
   const { logout } = useAuth();
+  const T = useTheme();
 
   useEffect(() => {
     logout();
@@ -37,6 +38,7 @@ function PlatformOwnerNotSupported() {
 // screen inside AuthStack on its own, no manual pathname parsing needed.
 export default function RootNavigator() {
   const { loading, isAuthenticated, isPlatformOwner, isManagerOrModerator, billing } = useAuth();
+  const T = useTheme();
 
   if (loading) {
     return (

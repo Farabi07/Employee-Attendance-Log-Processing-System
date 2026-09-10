@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { Clock } from "lucide-react-native";
-import { T, fonts } from "../theme";
+import { fonts } from "../theme";
+import { useTheme } from "../lib/ThemeContext";
 import Card from "./Card";
 
 // Shared centered-card-with-logo shell used by Login, Signup, and
@@ -10,13 +11,43 @@ import Card from "./Card";
 // this specific screen; a plain card with a colored logo mark on the
 // app's own tinted page background is the simpler, more reliable look.
 export default function AuthShell({ children, maxWidth = 360 }: { children: React.ReactNode; maxWidth?: number }) {
+  const T = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        flex: { flex: 1, backgroundColor: T.paper },
+        scrollContent: {
+          flexGrow: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 16,
+        },
+        card: { width: "100%", padding: 28 },
+        logoRow: { flexDirection: "row", alignItems: "center", gap: 9, marginBottom: 26 },
+        logoMark: {
+          width: 34,
+          height: 34,
+          borderRadius: 9,
+          backgroundColor: T.navy,
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        logoText: {
+          fontFamily: fonts.display.semibold,
+          fontSize: 18,
+          color: T.ink,
+        },
+      }),
+    [T]
+  );
+
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <Card style={[styles.card, { maxWidth }]}>
           <View style={styles.logoRow}>
             <View style={styles.logoMark}>
-              <Clock size={16} color={T.paper} strokeWidth={2} />
+              <Clock size={16} color={T.onAccent} strokeWidth={2} />
             </View>
             <Text style={styles.logoText}>TimeTap</Text>
           </View>
@@ -26,28 +57,3 @@ export default function AuthShell({ children, maxWidth = 360 }: { children: Reac
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: T.paper },
-  scrollContent: {
-    flexGrow: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
-  },
-  card: { width: "100%", padding: 28 },
-  logoRow: { flexDirection: "row", alignItems: "center", gap: 9, marginBottom: 26 },
-  logoMark: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
-    backgroundColor: T.navy,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logoText: {
-    fontFamily: fonts.display.semibold,
-    fontSize: 18,
-    color: T.ink,
-  },
-});

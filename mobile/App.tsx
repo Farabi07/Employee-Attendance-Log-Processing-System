@@ -3,13 +3,13 @@ import { View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, DefaultTheme, DarkTheme } from "@react-navigation/native";
 import * as SplashScreen from "expo-splash-screen";
 import * as Updates from "expo-updates";
 
 import { AuthProvider } from "./src/lib/auth";
 import { useAppFonts } from "./src/lib/useAppFonts";
-import { T } from "./src/theme";
+import { ThemeProvider, useThemeSetting } from "./src/lib/ThemeContext";
 import { linking } from "./src/navigation/linking";
 import RootNavigator from "./src/navigation/RootNavigator";
 import { ToastProvider } from "./src/components/Toast";
@@ -72,17 +72,46 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutRootView}>
       <SafeAreaProvider>
-        <View style={{ flex: 1, backgroundColor: T.paper }}>
+        <ThemeProvider>
           <ToastProvider>
             <AuthProvider>
-              <NavigationContainer linking={linking}>
-                <RootNavigator />
-              </NavigationContainer>
+              <AppShell />
             </AuthProvider>
           </ToastProvider>
-          <StatusBar style="light" />
-        </View>
+        </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
+  );
+}
+
+// Every top-level screen either sits under the navy AppHeader/AuthShell
+// banner (tab screens, auth screens) or is a brief transient state
+// (loading spinner, subscribe gate) — the banner is navy in both themes
+// (see theme.js), so light status bar icons are correct regardless of
+// scheme; there's no light-mode screen with a light banner to flip for.
+function AppShell() {
+  const { colors: T, scheme } = useThemeSetting();
+  // React Navigation paints its own background during screen transitions
+  // (the gap before a new screen's own SafeAreaView takes over) — theme it
+  // to match, or dark mode gets a white flash on every navigation.
+  const navTheme = {
+    ...(scheme === "dark" ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(scheme === "dark" ? DarkTheme.colors : DefaultTheme.colors),
+      background: T.paper,
+      card: T.card,
+      text: T.ink,
+      border: T.line,
+      primary: T.navy,
+    },
+  };
+
+  return (
+    <View style={{ flex: 1, backgroundColor: T.paper }}>
+      <NavigationContainer linking={linking} theme={navTheme}>
+        <RootNavigator />
+      </NavigationContainer>
+      <StatusBar style="light" />
+    </View>
   );
 }
