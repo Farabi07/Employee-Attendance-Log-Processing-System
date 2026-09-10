@@ -22,7 +22,6 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
       ]
@@ -47,7 +46,8 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Used to scan the QR code at check-in/check-out — no photos are taken or stored."
+          "cameraPermission": "Used to scan the QR code at check-in/check-out — no photos are taken or stored.",
+          "microphonePermission": false
         }
       ],
       [
@@ -57,7 +57,16 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableProguardInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
+          }
+        }
+      ]
     ],
     "extra": {
       "eas": {
