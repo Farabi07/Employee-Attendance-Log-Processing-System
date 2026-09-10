@@ -1,14 +1,27 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { View, ActivityIndicator } from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { T } from "../theme";
 import { useAuth } from "../lib/auth";
 import AuthStack from "./AuthStack";
 import AppTabs from "./AppTabs";
-import Organizations from "../screens/platform/Organizations";
 import SubscribeGateScreen from "../screens/SubscribeGateScreen";
 
 const Stack = createNativeStackNavigator();
+
+// Platform-owner accounts have no organization and no mobile-relevant
+// dashboard — that role only exists on the web app. Rather than mount any
+// admin UI here, sign them straight back out so login never lands on a
+// dead end (no explanatory dialog — just an immediate, silent logout).
+function PlatformOwnerNotSupported() {
+  const { logout } = useAuth();
+
+  useEffect(() => {
+    logout();
+  }, [logout]);
+
+  return <View style={{ flex: 1, backgroundColor: T.paper }} />;
+}
 
 // Ported from frontend/src/App.jsx's AppContent() gate cascade: loading ->
 // not authenticated -> platform owner -> billing paywall -> app. Kept as
@@ -41,7 +54,7 @@ export default function RootNavigator() {
       {!isAuthenticated ? (
         <Stack.Screen name="Auth" component={AuthStack} />
       ) : isPlatformOwner ? (
-        <Stack.Screen name="PlatformOwner" component={Organizations} />
+        <Stack.Screen name="PlatformOwner" component={PlatformOwnerNotSupported} />
       ) : needsSubscription ? (
         <Stack.Screen name="Subscribe" component={SubscribeGateScreen} />
       ) : (
