@@ -3,6 +3,7 @@ import { View, Text, TextInput, ScrollView, StyleSheet, Pressable, RefreshContro
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Search, Users, CheckCircle2, Coffee, UserX, LayoutGrid, ClipboardCheck } from "lucide-react-native";
 import Skeleton from "../../components/Skeleton";
+import EmptyState from "../../components/EmptyState";
 import { T, fonts } from "../../theme";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
@@ -159,6 +160,12 @@ function OverviewDashboard() {
               </View>
             ))}
           </View>
+        ) : rows.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title={query ? "No matches" : "No employees yet"}
+            subtitle={query ? `No one matches "${query}".` : "Add your first employee from the Team tab."}
+          />
         ) : (
           <>
             <View style={styles.tableHeaderRow}>

@@ -3,6 +3,7 @@ import { View, Text, ScrollView, Pressable, StyleSheet, RefreshControl } from "r
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Download, FileText, FileSpreadsheet, UserX, ClipboardList } from "lucide-react-native";
 import Skeleton from "../../components/Skeleton";
+import EmptyState from "../../components/EmptyState";
 import { T, fonts } from "../../theme";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
@@ -214,7 +215,7 @@ export default function Reports() {
                   ))}
                 </View>
               ) : rows.length === 0 ? (
-                <Text style={styles.bodyMuted}>No attendance or leave records in this range.</Text>
+                <EmptyState icon={ClipboardList} title="Nothing in this range" subtitle="No attendance or leave records for the selected dates." />
               ) : (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <View>
@@ -265,7 +266,7 @@ export default function Reports() {
                   ))}
                 </View>
               ) : timesheetRows.length === 0 ? (
-                <Text style={styles.bodyMuted}>No clock-in/out records in this range.</Text>
+                <EmptyState icon={ClipboardList} title="Nothing in this range" subtitle="No clock-in/out records for the selected dates." />
               ) : (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <View>

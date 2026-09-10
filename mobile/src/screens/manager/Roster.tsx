@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { View, Text, TextInput, ScrollView, Pressable, Alert, StyleSheet, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Plus, QrCode, Trash2, Pencil, MapPin, Building2, Tag, Maximize2 } from "lucide-react-native";
+import { Plus, QrCode, Trash2, Pencil, MapPin, Building2, Tag, Maximize2, CalendarDays } from "lucide-react-native";
 import Skeleton from "../../components/Skeleton";
+import EmptyState from "../../components/EmptyState";
 import { T, fonts } from "../../theme";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
@@ -482,7 +483,9 @@ export default function Roster() {
 
         <Card style={styles.card}>
           <Text style={styles.cardTitle}>Upcoming assignments</Text>
-          {assignments.length === 0 && <Text style={styles.bodyMuted}>No upcoming assignments.</Text>}
+          {assignments.length === 0 && (
+            <EmptyState icon={CalendarDays} title="No upcoming assignments" subtitle="Assigned shifts will show up here." />
+          )}
           {assignments.map((a, i) => (
             <View key={a.id} style={[styles.assignmentRow, i > 0 && styles.borderTop]}>
               <Text style={[styles.assignmentName, { flex: 1 }]}>

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { View, Text, TextInput, ScrollView, Pressable, Linking, StyleSheet, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Check, X, Clock3, Paperclip, Repeat, CalendarCheck } from "lucide-react-native";
+import { Check, X, Clock3, Paperclip, Repeat, CalendarCheck, CheckCircle2 } from "lucide-react-native";
 import { T, fonts } from "../../theme";
 import { api, BASE_URL } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
@@ -9,6 +9,9 @@ import { formatMoney } from "../../lib/currency";
 import Card from "../../components/Card";
 import Avatar from "../../components/Avatar";
 import IconChip from "../../components/IconChip";
+import Skeleton from "../../components/Skeleton";
+import EmptyState from "../../components/EmptyState";
+import { useToast } from "../../components/Toast";
 
 // Ported from frontend/src/pages/manager/Approvals.jsx.
 function initialsOf(emp: any) {
@@ -19,6 +22,7 @@ function initialsOf(emp: any) {
 const KIND_LABEL: Record<string, string> = { overtime: "Overtime", shortfall: "Shortfall" };
 
 function PayAdjustmentRow({ request: r, onDecided }: { request: any; onDecided: () => void }) {
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [grantAmount, setGrantAmount] = useState(String(r.requested_amount));
   const [managerNote, setManagerNote] = useState("");
@@ -33,9 +37,11 @@ function PayAdjustmentRow({ request: r, onDecided }: { request: any; onDecided: 
         granted_amount: grantAmount,
         manager_note: managerNote || undefined,
       });
+      toast.show("Decision sent.");
       onDecided();
     } catch (err: any) {
       setError(err.message);
+      toast.show(err.message, "error");
     } finally {
       setSending(false);
     }
@@ -112,6 +118,7 @@ function PayAdjustmentRow({ request: r, onDecided }: { request: any; onDecided: 
 }
 
 export default function Approvals() {
+  const toast = useToast();
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [decidingId, setDecidingId] = useState<number | null>(null);
@@ -156,7 +163,10 @@ export default function Approvals() {
     setDecidingId(id);
     try {
       await api.post(endpoints.leaveRequestReview(id), { status });
+      toast.show(status === "approved" ? "Leave approved." : "Leave rejected.");
       await load();
+    } catch (err: any) {
+      toast.show(err.message, "error");
     } finally {
       setDecidingId(null);
     }
@@ -166,7 +176,10 @@ export default function Approvals() {
     setDecidingSwapId(id);
     try {
       await api.post(endpoints.shiftSwapReview(id), { action });
+      toast.show(action === "approve" ? "Shift swap approved." : "Shift swap rejected.");
       await loadSwaps();
+    } catch (err: any) {
+      toast.show(err.message, "error");
     } finally {
       setDecidingSwapId(null);
     }
@@ -186,7 +199,24 @@ export default function Approvals() {
             <Text style={styles.cardTitle}>Leave approvals</Text>
           </View>
           <Text style={styles.cardSubtitle}>{loading ? "Loading…" : `${requests.length} awaiting your review`}</Text>
-          {!loading && requests.length === 0 && <Text style={styles.emptyText}>Nothing pending — you're all caught up.</Text>}
+          {loading && (
+            <View style={{ gap: 12 }}>
+              {[0, 1].map((i) => (
+                <View key={i} style={styles.rowCard}>
+                  <View style={styles.rowTop}>
+                    <Skeleton width={38} height={38} radius={19} />
+                    <View style={{ flex: 1, gap: 6 }}>
+                      <Skeleton width="45%" height={12} radius={4} />
+                      <Skeleton width="65%" height={10} radius={4} />
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+          {!loading && requests.length === 0 && (
+            <EmptyState icon={CheckCircle2} title="All caught up" subtitle="Nothing pending — no leave requests waiting on you." />
+          )}
           <View style={{ gap: 12 }}>
             {requests.map((r) => (
               <View key={r.id} style={styles.rowCard}>
@@ -235,7 +265,24 @@ export default function Approvals() {
             {loadingAdjustments ? "Loading…" : `${payAdjustments.length} awaiting your review`} — overtime or shortfall
             claims.
           </Text>
-          {!loadingAdjustments && payAdjustments.length === 0 && <Text style={styles.emptyText}>Nothing pending here either.</Text>}
+          {loadingAdjustments && (
+            <View style={{ gap: 12 }}>
+              {[0, 1].map((i) => (
+                <View key={i} style={styles.rowCard}>
+                  <View style={styles.rowTop}>
+                    <Skeleton width={38} height={38} radius={19} />
+                    <View style={{ flex: 1, gap: 6 }}>
+                      <Skeleton width="45%" height={12} radius={4} />
+                      <Skeleton width="65%" height={10} radius={4} />
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+          {!loadingAdjustments && payAdjustments.length === 0 && (
+            <EmptyState icon={CheckCircle2} title="All caught up" subtitle="Nothing pending here either." />
+          )}
           <View style={{ gap: 12 }}>
             {payAdjustments.map((r) => (
               <PayAdjustmentRow key={r.id} request={r} onDecided={loadAdjustments} />
@@ -254,7 +301,24 @@ export default function Approvals() {
             {loadingSwaps ? "Loading…" : `${swapRequests.length} awaiting your review`} — a colleague already agreed; this
             finalizes it.
           </Text>
-          {!loadingSwaps && swapRequests.length === 0 && <Text style={styles.emptyText}>Nothing pending here either.</Text>}
+          {loadingSwaps && (
+            <View style={{ gap: 12 }}>
+              {[0, 1].map((i) => (
+                <View key={i} style={styles.rowCard}>
+                  <View style={styles.rowTop}>
+                    <Skeleton width={38} height={38} radius={19} />
+                    <View style={{ flex: 1, gap: 6 }}>
+                      <Skeleton width="45%" height={12} radius={4} />
+                      <Skeleton width="65%" height={10} radius={4} />
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+          {!loadingSwaps && swapRequests.length === 0 && (
+            <EmptyState icon={CheckCircle2} title="All caught up" subtitle="Nothing pending here either." />
+          )}
           <View style={{ gap: 12 }}>
             {swapRequests.map((s) => (
               <View key={s.id} style={styles.rowCard}>
@@ -294,7 +358,6 @@ const styles = StyleSheet.create({
   cardTitle: { fontFamily: fonts.display.semibold, fontSize: 16, color: T.ink },
   cardSubtitle: { fontFamily: fonts.body.regular, fontSize: 13, color: T.muted, marginTop: 4, marginBottom: 16 },
   iconTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  emptyText: { fontFamily: fonts.body.regular, fontSize: 13, color: T.muted },
   rowCard: { borderWidth: 1, borderColor: T.line, borderRadius: 12, padding: 16 },
   rowTop: { flexDirection: "row", alignItems: "flex-start", gap: 14 },
   nameRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 },

@@ -15,6 +15,8 @@ import IconChip from "../../components/IconChip";
 import StatusPill from "../../components/StatusPill";
 import DateField from "../../components/DateField";
 import InlinePicker from "../../components/InlinePicker";
+import Skeleton from "../../components/Skeleton";
+import EmptyState from "../../components/EmptyState";
 import { useToast } from "../../components/Toast";
 
 // Ported from frontend/src/pages/manager/Payroll.jsx. The web version's
@@ -238,8 +240,29 @@ export default function Payroll() {
 
   if (summary === undefined) {
     return (
-      <SafeAreaView style={styles.loadingSafe} edges={[]}>
-        <Text style={styles.bodyMuted}>Loading…</Text>
+      <SafeAreaView style={styles.safe} edges={[]}>
+        <View style={styles.scrollContent}>
+          <View style={styles.metricsRow}>
+            {[0, 1].map((i) => (
+              <Card key={i} style={styles.metricCard}>
+                <Skeleton width="60%" height={11} radius={4} style={{ marginBottom: 12 }} />
+                <Skeleton width="40%" height={22} radius={5} />
+              </Card>
+            ))}
+          </View>
+          <Card style={styles.card}>
+            <Skeleton width="50%" height={13} radius={4} style={{ marginBottom: 18 }} />
+            {[0, 1, 2].map((i) => (
+              <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                <View style={{ flex: 1, gap: 6 }}>
+                  <Skeleton width="45%" height={12} radius={4} />
+                  <Skeleton width="30%" height={10} radius={4} />
+                </View>
+                <Skeleton width={60} height={16} radius={4} />
+              </View>
+            ))}
+          </Card>
+        </View>
       </SafeAreaView>
     );
   }
@@ -561,7 +584,9 @@ export default function Payroll() {
             </IconChip>
             <Text style={[styles.cardTitle, { marginBottom: 0 }]}>Recent transactions</Text>
           </View>
-          {transactions.length === 0 && <Text style={styles.bodyMuted}>No transactions yet.</Text>}
+          {transactions.length === 0 && (
+            <EmptyState icon={ListChecks} title="No transactions yet" subtitle="Earnings and payouts will show up here." />
+          )}
           {transactions.map((t, i) => (
             <View key={t.id} style={[styles.txRow, i > 0 && styles.borderTop]}>
               <View style={{ flex: 1 }}>
@@ -596,7 +621,6 @@ const columnWidths: Record<string, number> = {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: T.paper },
-  loadingSafe: { flex: 1, backgroundColor: T.paper, alignItems: "center", justifyContent: "center" },
   scrollContent: { padding: 16, gap: 14 },
   card: { padding: 20 },
   cardTitle: { fontFamily: fonts.display.semibold, fontSize: 15.5, color: T.ink, marginBottom: 12 },
