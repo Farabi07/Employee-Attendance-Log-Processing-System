@@ -2,9 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, TextInput, Pressable, Modal, StyleSheet } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
-import { X, Camera, Eye, EyeOff, Sun, Moon, Smartphone } from "lucide-react-native";
+import { X, Camera, Eye, EyeOff, Settings as SettingsIcon, ChevronRight } from "lucide-react-native";
 import { fonts } from "../theme";
-import { useTheme, useThemeSetting, ThemePreference } from "../lib/ThemeContext";
+import { useTheme } from "../lib/ThemeContext";
 import { useAuth } from "../lib/auth";
 import { api, mediaUrl, BASE_URL, getToken } from "../lib/api";
 import { endpoints } from "../lib/endpoints";
@@ -12,18 +12,13 @@ import Card from "./Card";
 import Avatar from "./Avatar";
 import { PrimaryButton, TextButton } from "./Button";
 import AccountDeletion from "../screens/settings/AccountDeletion";
+import Settings from "../screens/settings/Settings";
 
-const APPEARANCE_OPTIONS: { value: ThemePreference; label: string; icon: any }[] = [
-  { value: "light", label: "Light", icon: Sun },
-  { value: "dark", label: "Dark", icon: Moon },
-  { value: "system", label: "System", icon: Smartphone },
-];
-
-// Ported from frontend/src/components/ProfileModal.jsx, plus a
-// "Delete account" entry point (new, Apple-required — see
-// screens/settings/AccountDeletion.tsx) and an Appearance picker (new —
-// the web app has no dark mode to match, this is mobile-only) swapped in
-// within the same Modal.
+// Ported from frontend/src/components/ProfileModal.jsx, plus a "Delete
+// account" entry point (new, Apple-required — see
+// screens/settings/AccountDeletion.tsx) and a "Settings" entry point (new
+// — appearance today, a natural home for notifications/privacy toggles
+// later) swapped in within the same Modal.
 // Photo picking reuses expo-document-picker (already a dependency for
 // pay-adjustment attachments) filtered to images, rather than adding
 // expo-image-picker as a new native module — that would need a fresh
@@ -31,7 +26,6 @@ const APPEARANCE_OPTIONS: { value: ThemePreference; label: string; icon: any }[]
 export default function ProfileModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { user, isManager, isManagerOrModerator, logout, refreshUser } = useAuth();
   const T = useTheme();
-  const { preference, setPreference } = useThemeSetting();
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -75,22 +69,15 @@ export default function ProfileModal({ visible, onClose }: { visible: boolean; o
         passwordInputWrap: { position: "relative", justifyContent: "center" },
         inputWithIcon: { paddingRight: 40 },
         eyeButton: { position: "absolute", right: 10, top: 9 },
-        appearanceRow: { flexDirection: "row", gap: 8 },
-        appearanceOption: {
-          flex: 1,
+        settingsRow: {
           flexDirection: "row",
           alignItems: "center",
-          justifyContent: "center",
-          gap: 6,
+          gap: 10,
           paddingVertical: 10,
-          borderRadius: 9,
-          borderWidth: 1,
-          borderColor: T.line,
-          backgroundColor: T.card,
+          paddingHorizontal: 2,
+          marginBottom: 4,
         },
-        appearanceOptionActive: { borderColor: T.teal, backgroundColor: T.tealBg },
-        appearanceLabel: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.muted },
-        appearanceLabelActive: { color: T.tealDeep },
+        settingsRowText: { flex: 1, fontFamily: fonts.body.medium, fontSize: 13.5, color: T.ink },
       }),
     [T]
   );
@@ -102,6 +89,7 @@ export default function ProfileModal({ visible, onClose }: { visible: boolean; o
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const [profile, setProfile] = useState<any>(null);
   const [firstName, setFirstName] = useState("");
@@ -205,12 +193,16 @@ export default function ProfileModal({ visible, onClose }: { visible: boolean; o
       visible={visible}
       transparent
       animationType="fade"
-      onRequestClose={() => (showDeleteAccount ? setShowDeleteAccount(false) : onClose())}
+      onRequestClose={() =>
+        showDeleteAccount ? setShowDeleteAccount(false) : showSettings ? setShowSettings(false) : onClose()
+      }
     >
       <View style={styles.backdrop}>
         <Card style={styles.card}>
           {showDeleteAccount ? (
             <AccountDeletion onBack={() => setShowDeleteAccount(false)} />
+          ) : showSettings ? (
+            <Settings onBack={() => setShowSettings(false)} />
           ) : (
             <>
           <View style={styles.headerRow}>
@@ -234,24 +226,11 @@ export default function ProfileModal({ visible, onClose }: { visible: boolean; o
             </Pressable>
           </View>
 
-          <View style={[styles.section, { borderTopWidth: 0, paddingTop: 0 }]}>
-            <Text style={styles.sectionTitle}>Appearance</Text>
-            <View style={styles.appearanceRow}>
-              {APPEARANCE_OPTIONS.map((opt) => {
-                const active = preference === opt.value;
-                return (
-                  <Pressable
-                    key={opt.value}
-                    onPress={() => setPreference(opt.value)}
-                    style={[styles.appearanceOption, active && styles.appearanceOptionActive]}
-                  >
-                    <opt.icon size={14} color={active ? T.tealDeep : T.muted} strokeWidth={2} />
-                    <Text style={[styles.appearanceLabel, active && styles.appearanceLabelActive]}>{opt.label}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
+          <Pressable onPress={() => setShowSettings(true)} style={styles.settingsRow}>
+            <SettingsIcon size={16} color={T.muted} />
+            <Text style={styles.settingsRowText}>Settings</Text>
+            <ChevronRight size={16} color={T.faint} />
+          </Pressable>
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Edit profile</Text>
