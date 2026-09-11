@@ -6,6 +6,8 @@ import { useTheme } from "../../lib/ThemeContext";
 import { getNotificationsEnabled, setNotificationsEnabled } from "../../lib/push";
 import IconChip from "../../components/IconChip";
 import Notifications from "./Notifications";
+import { tapSelection, tapLight } from "../../lib/haptics";
+import { animateLayout } from "../../lib/animateLayout";
 
 // Reached via Settings > Notifications (see Settings.tsx) rather than
 // living inline there or as its own top-level AccountMenu row — grouped
@@ -15,13 +17,18 @@ export default function NotificationSettings({ onBack }: { onBack: () => void })
   const T = useTheme();
   const [enabled, setEnabled] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
+  const [showHistory, setShowHistoryState] = useState(false);
+  const setShowHistory = (v: boolean) => {
+    animateLayout();
+    setShowHistoryState(v);
+  };
 
   useEffect(() => {
     getNotificationsEnabled().then(setEnabled);
   }, []);
 
   const toggle = async (value: boolean) => {
+    tapSelection();
     setEnabled(value);
     setBusy(true);
     try {
@@ -99,7 +106,13 @@ export default function NotificationSettings({ onBack }: { onBack: () => void })
         <View style={styles.divider} />
 
         <Text style={styles.sectionLabel}>History</Text>
-        <Pressable onPress={() => setShowHistory(true)} style={styles.row}>
+        <Pressable
+          onPress={() => {
+            tapLight();
+            setShowHistory(true);
+          }}
+          style={styles.row}
+        >
           <IconChip bg={T.navyBg} size={30}>
             <List size={15} color={T.navy} />
           </IconChip>

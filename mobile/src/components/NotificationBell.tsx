@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, Pressable, Modal, FlatList, StyleSheet } from "react-native";
-import { Bell } from "lucide-react-native";
+import { Bell, BellOff } from "lucide-react-native";
 import { fonts } from "../theme";
 import { useTheme } from "../lib/ThemeContext";
 import { api } from "../lib/api";
 import { endpoints } from "../lib/endpoints";
+import EmptyState from "./EmptyState";
 
 // Ported from frontend/src/components/NotificationBell.jsx. Same 20s
 // polling, same optimistic mark-read/mark-all-read. The web version's
@@ -66,7 +67,7 @@ export default function NotificationBell() {
         },
         panelTitle: { fontFamily: fonts.display.semibold, fontSize: 13.5, color: T.ink },
         markAllText: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.teal },
-        emptyText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, padding: 16 },
+        emptyWrap: { paddingVertical: 12 },
         notifRow: { padding: 14, borderBottomWidth: 1, borderBottomColor: T.line2, flexDirection: "row", gap: 8 },
         notifRowUnread: { backgroundColor: T.tealBg },
         unreadDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: T.teal, marginTop: 5 },
@@ -139,7 +140,9 @@ export default function NotificationBell() {
               )}
             </View>
             {notifications.length === 0 ? (
-              <Text style={styles.emptyText}>No notifications yet.</Text>
+              <View style={styles.emptyWrap}>
+                <EmptyState icon={BellOff} title="No notifications yet" />
+              </View>
             ) : (
               <FlatList
                 data={notifications}

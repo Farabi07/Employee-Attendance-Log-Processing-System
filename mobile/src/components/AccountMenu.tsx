@@ -16,6 +16,9 @@ import { useAuth } from "../lib/auth";
 import { mediaUrl } from "../lib/api";
 import Avatar from "./Avatar";
 import IconChip from "./IconChip";
+import PressScale from "./PressScale";
+import { tapLight } from "../lib/haptics";
+import { animateLayout } from "../lib/animateLayout";
 import ProfileDetails from "../screens/settings/ProfileDetails";
 import Settings from "../screens/settings/Settings";
 import PrivacyPolicy from "../screens/settings/PrivacyPolicy";
@@ -36,7 +39,11 @@ type MenuView = "menu" | "profile" | "privacy" | "settings" | "help";
 export default function AccountMenu({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { user, isManager, isManagerOrModerator, logout } = useAuth();
   const T = useTheme();
-  const [view, setView] = useState<MenuView>("menu");
+  const [view, setViewState] = useState<MenuView>("menu");
+  const setView = (v: MenuView) => {
+    animateLayout();
+    setViewState(v);
+  };
 
   const styles = useMemo(
     () =>
@@ -114,13 +121,21 @@ export default function AccountMenu({ visible, onClose }: { visible: boolean; on
   ];
 
   const renderRow = (item: MenuRow, danger?: boolean) => (
-    <Pressable key={item.key} onPress={item.onPress} style={styles.menuRow}>
+    <PressScale
+      key={item.key}
+      onPress={() => {
+        tapLight();
+        item.onPress();
+      }}
+      pressableStyle={styles.menuRow}
+      scaleTo={0.98}
+    >
       <IconChip bg={item.bg} size={30}>
         <item.icon size={15} color={item.color} />
       </IconChip>
       <Text style={[styles.menuRowText, danger && styles.menuRowTextDanger]}>{item.label}</Text>
       {!danger && <ChevronRight size={16} color={T.faint} />}
-    </Pressable>
+    </PressScale>
   );
 
   return (

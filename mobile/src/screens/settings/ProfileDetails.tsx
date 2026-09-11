@@ -11,6 +11,7 @@ import { endpoints } from "../../lib/endpoints";
 import Avatar from "../../components/Avatar";
 import { PrimaryButton, TextButton } from "../../components/Button";
 import AccountDeletion from "./AccountDeletion";
+import { animateLayout } from "../../lib/animateLayout";
 
 // Ported from the old ProfileModal.jsx-derived component — split out of
 // AccountMenu.tsx (see that file) so "Profile" is one row among several
@@ -86,7 +87,11 @@ export default function ProfileDetails({ onBack }: { onBack: () => void }) {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  const [showDeleteAccount, setShowDeleteAccountState] = useState(false);
+  const setShowDeleteAccount = (v: boolean) => {
+    animateLayout();
+    setShowDeleteAccountState(v);
+  };
 
   const [profile, setProfile] = useState<any>(null);
   const [firstName, setFirstName] = useState("");

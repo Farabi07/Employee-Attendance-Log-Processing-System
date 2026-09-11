@@ -2,6 +2,7 @@ import React, { useMemo, useRef } from "react";
 import { Pressable, Text, StyleSheet, ActivityIndicator, Animated } from "react-native";
 import { fonts } from "../theme";
 import { useTheme } from "../lib/ThemeContext";
+import { tapLight } from "../lib/haptics";
 
 // A subtle spring-back scale on press-in/out — the single biggest "does
 // this feel expensive" tell on a button, and the main CTA is used on
@@ -64,7 +65,10 @@ export function PrimaryButton({
   return (
     <Animated.View style={{ transform: [{ scale }] }}>
       <Pressable
-        onPress={onPress}
+        onPress={() => {
+          tapLight();
+          onPress();
+        }}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         disabled={isDisabled}

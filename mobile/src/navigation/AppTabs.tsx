@@ -6,6 +6,7 @@ import { useTheme } from "../lib/ThemeContext";
 import { EMP_NAV, MGR_NAV } from "./navConfig";
 import AppHeader from "../components/AppHeader";
 import GradientBackground from "../components/GradientBackground";
+import WhatsNewModal from "../components/WhatsNewModal";
 
 const Tab = createBottomTabNavigator();
 
@@ -74,46 +75,49 @@ export default function AppTabs({ role }: { role: "employee" | "manager" }) {
   );
 
   return (
-    <Tab.Navigator
-      screenOptions={{
-        tabBarActiveTintColor: "#fff",
-        tabBarInactiveTintColor: "rgba(255,255,255,0.62)",
-        tabBarStyle: styles.tabBar,
-        tabBarItemStyle: styles.tabItem,
-        tabBarBackground: () => <GradientBackground />,
-        tabBarLabelStyle: { fontFamily: fonts.body.medium, fontSize: 10.5 },
-        animation: "shift",
-      }}
-    >
-      {items.map((item) => (
-        <Tab.Screen
-          key={item.key}
-          name={item.key}
-          component={item.component}
-          options={{
-            title: item.label,
-            header: () => <AppHeader title={item.label} />,
-            tabBarIcon: ({ focused, color, size }) => (
-              <View style={[styles.iconPill, focused && styles.iconPillActive]}>
-                {focused && <View style={styles.activeDot} />}
-                <item.icon color={focused ? "#fff" : color} size={size ?? 19} strokeWidth={focused ? 2.2 : 1.8} />
-              </View>
-            ),
-            tabBarLabel: ({ focused, color }) => (
-              <Text
-                style={[
-                  styles.label,
-                  { color },
-                  focused && styles.labelActive,
-                ]}
-                numberOfLines={1}
-              >
-                {item.label}
-              </Text>
-            ),
-          }}
-        />
-      ))}
-    </Tab.Navigator>
+    <>
+      <WhatsNewModal />
+      <Tab.Navigator
+        screenOptions={{
+          tabBarActiveTintColor: "#fff",
+          tabBarInactiveTintColor: "rgba(255,255,255,0.62)",
+          tabBarStyle: styles.tabBar,
+          tabBarItemStyle: styles.tabItem,
+          tabBarBackground: () => <GradientBackground />,
+          tabBarLabelStyle: { fontFamily: fonts.body.medium, fontSize: 10.5 },
+          animation: "shift",
+        }}
+      >
+        {items.map((item) => (
+          <Tab.Screen
+            key={item.key}
+            name={item.key}
+            component={item.component}
+            options={{
+              title: item.label,
+              header: () => <AppHeader title={item.label} />,
+              tabBarIcon: ({ focused, color, size }) => (
+                <View style={[styles.iconPill, focused && styles.iconPillActive]}>
+                  {focused && <View style={styles.activeDot} />}
+                  <item.icon color={focused ? "#fff" : color} size={size ?? 19} strokeWidth={focused ? 2.2 : 1.8} />
+                </View>
+              ),
+              tabBarLabel: ({ focused, color }) => (
+                <Text
+                  style={[
+                    styles.label,
+                    { color },
+                    focused && styles.labelActive,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {item.label}
+                </Text>
+              ),
+            }}
+          />
+        ))}
+      </Tab.Navigator>
+    </>
   );
 }

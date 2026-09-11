@@ -6,6 +6,8 @@ import { useTheme, useThemeSetting } from "../../lib/ThemeContext";
 import { useAuth } from "../../lib/auth";
 import IconChip from "../../components/IconChip";
 import NotificationSettings from "./NotificationSettings";
+import { tapSelection, tapLight } from "../../lib/haptics";
+import { animateLayout } from "../../lib/animateLayout";
 
 type SettingsView = "root" | "notifications";
 
@@ -19,7 +21,11 @@ export default function Settings({ onBack }: { onBack: () => void }) {
   const T = useTheme();
   const { billing } = useAuth();
   const { preference, setPreference } = useThemeSetting();
-  const [view, setView] = useState<SettingsView>("root");
+  const [view, setViewState] = useState<SettingsView>("root");
+  const setView = (v: SettingsView) => {
+    animateLayout();
+    setViewState(v);
+  };
 
   const styles = useMemo(
     () =>
@@ -77,13 +83,22 @@ export default function Settings({ onBack }: { onBack: () => void }) {
           <Text style={styles.rowLabel}>Night mode</Text>
           <Switch
             value={preference === "dark"}
-            onValueChange={(v) => setPreference(v ? "dark" : "light")}
+            onValueChange={(v) => {
+              tapSelection();
+              setPreference(v ? "dark" : "light");
+            }}
             trackColor={{ false: T.line, true: T.tealBg }}
             thumbColor={preference === "dark" ? T.teal : undefined}
           />
         </View>
 
-        <Pressable onPress={() => setView("notifications")} style={styles.row}>
+        <Pressable
+          onPress={() => {
+            tapLight();
+            setView("notifications");
+          }}
+          style={styles.row}
+        >
           <IconChip bg={T.amberBg} size={30}>
             <Bell size={15} color={T.amber} />
           </IconChip>

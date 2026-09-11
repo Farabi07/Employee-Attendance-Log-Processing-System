@@ -18,6 +18,7 @@ import FormField from "../../components/FormField";
 import { PrimaryButton } from "../../components/Button";
 import InlinePicker from "../../components/InlinePicker";
 import { useToast } from "../../components/Toast";
+import { tapSelection } from "../../lib/haptics";
 
 const DAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -224,6 +225,7 @@ export default function Team() {
   };
 
   const toggleModAccess = async (key: string, checked: boolean) => {
+    tapSelection();
     setSavingAccess(key);
     try {
       await api.put(endpoints.organizationSettings(), { [key]: checked });

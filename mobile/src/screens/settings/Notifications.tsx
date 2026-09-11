@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, Pressable, FlatList, StyleSheet } from "react-native";
-import { ChevronLeft } from "lucide-react-native";
+import { ChevronLeft, BellOff } from "lucide-react-native";
 import { fonts } from "../../theme";
 import { useTheme } from "../../lib/ThemeContext";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
+import EmptyState from "../../components/EmptyState";
 
 // Same data/polling logic as components/NotificationBell.tsx's dropdown
 // panel, rendered full-page instead — this is the "Notification" row
@@ -38,7 +39,7 @@ export default function Notifications({ onBack }: { onBack: () => void }) {
         backButton: { padding: 2 },
         headerTitle: { fontFamily: fonts.display.semibold, fontSize: 17, color: T.ink, flex: 1 },
         markAllText: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.teal },
-        emptyText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, padding: 24, textAlign: "center" },
+        emptyWrap: { paddingTop: 40, paddingHorizontal: 24 },
         notifRow: { padding: 16, borderBottomWidth: 1, borderBottomColor: T.line2, flexDirection: "row", gap: 8 },
         notifRowUnread: { backgroundColor: T.tealBg },
         unreadDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: T.teal, marginTop: 5 },
@@ -101,7 +102,9 @@ export default function Notifications({ onBack }: { onBack: () => void }) {
       </View>
 
       {notifications.length === 0 ? (
-        <Text style={styles.emptyText}>No notifications yet.</Text>
+        <View style={styles.emptyWrap}>
+          <EmptyState icon={BellOff} title="No notifications yet" subtitle="Shift, approval, and payroll updates will show up here." />
+        </View>
       ) : (
         <FlatList
           data={notifications}

@@ -5,6 +5,7 @@ import { Picker } from "@react-native-picker/picker";
 import { Repeat, Check, X, CalendarClock } from "lucide-react-native";
 import IconChip from "../../components/IconChip";
 import Skeleton from "../../components/Skeleton";
+import { tapSelection } from "../../lib/haptics";
 import { useToast } from "../../components/Toast";
 import { fonts } from "../../theme";
 import { useTheme, Colors } from "../../lib/ThemeContext";
@@ -412,7 +413,10 @@ export default function Shifts() {
               <View style={styles.availSwitchRow}>
                 <Switch
                   value={d.is_available}
-                  onValueChange={(v) => updateAvailabilityDay(d.day_of_week, { is_available: v })}
+                  onValueChange={(v) => {
+                    tapSelection();
+                    updateAvailabilityDay(d.day_of_week, { is_available: v });
+                  }}
                   trackColor={{ false: T.line, true: T.tealBg }}
                   thumbColor={d.is_available ? T.teal : undefined}
                 />
