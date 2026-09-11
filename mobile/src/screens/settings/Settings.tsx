@@ -7,8 +7,6 @@ import { useAuth } from "../../lib/auth";
 import IconChip from "../../components/IconChip";
 import NotificationSettings from "./NotificationSettings";
 
-const APP_VERSION = "1.0.0";
-
 type SettingsView = "root" | "notifications";
 
 // Rendered as a swapped-in view inside AccountMenu's existing Modal, same
@@ -49,9 +47,9 @@ export default function Settings({ onBack }: { onBack: () => void }) {
         },
         row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12 },
         rowLabel: { flex: 1, fontFamily: fonts.body.medium, fontSize: 13.5, color: T.ink },
-        footer: { alignItems: "center", marginTop: 28 },
-        footerApp: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.muted },
-        footerOrg: { fontFamily: fonts.body.regular, fontSize: 11.5, color: T.faint, marginTop: 2 },
+        footer: { alignItems: "center", marginTop: 32 },
+        footerApp: { fontFamily: fonts.body.semibold, fontSize: 11, color: T.faint, textTransform: "uppercase", letterSpacing: 1 },
+        footerOrg: { fontFamily: fonts.body.regular, fontSize: 11.5, color: T.faint, marginTop: 3 },
       }),
     [T]
   );
@@ -94,7 +92,7 @@ export default function Settings({ onBack }: { onBack: () => void }) {
         </Pressable>
 
         <View style={styles.footer}>
-          <Text style={styles.footerApp}>TimeTap · v{APP_VERSION}</Text>
+          <Text style={styles.footerApp}>TimeTap</Text>
           {!!billing?.organization_name && <Text style={styles.footerOrg}>{billing.organization_name}</Text>}
         </View>
       </View>
