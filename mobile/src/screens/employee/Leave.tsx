@@ -127,7 +127,7 @@ export default function Leave() {
     try {
       if (attachment) {
         // fetch()+FormData throws "Unsupported FormDataPart implementation"
-        // on Android regardless of HTTP method — see ProfileModal.tsx.
+        // on Android regardless of HTTP method — see screens/settings/ProfileDetails.tsx.
         // Route file uploads through expo-file-system's native multipart
         // upload instead.
         const token = await getToken();

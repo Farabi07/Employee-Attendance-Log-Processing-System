@@ -3,7 +3,7 @@ import { useColorScheme } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import { lightColors, darkColors } from "../theme";
 
-export type ThemePreference = "light" | "dark" | "system";
+export type ThemePreference = "light" | "dark";
 export type ResolvedScheme = "light" | "dark";
 export type Colors = typeof lightColors;
 
@@ -18,20 +18,22 @@ type ThemeContextValue = {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-// System dark/light + a manual override, the same pattern most premium
-// apps use (Settings > Appearance: Light/Dark/System). The preference is
-// persisted the same way the auth token is (see lib/api.js) — SecureStore
-// is already a dependency, no reason to pull in AsyncStorage just for one
-// small string.
+// A plain Light/Night switch — no "System" option, so the app doesn't
+// silently flip when the phone's OS theme changes underneath it. The
+// phone's current scheme only seeds the very first choice (before the
+// user has ever picked one); from then on it's whatever was last picked.
+// The preference is persisted the same way the auth token is (see
+// lib/api.js) — SecureStore is already a dependency, no reason to pull in
+// AsyncStorage just for one small string.
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const systemScheme = useColorScheme();
-  const [preference, setPreferenceState] = useState<ThemePreference>("system");
+  const [preference, setPreferenceState] = useState<ThemePreference>(systemScheme === "dark" ? "dark" : "light");
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     SecureStore.getItemAsync(PREFERENCE_KEY)
       .then((stored) => {
-        if (stored === "light" || stored === "dark" || stored === "system") {
+        if (stored === "light" || stored === "dark") {
           setPreferenceState(stored);
         }
       })
@@ -43,7 +45,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     SecureStore.setItemAsync(PREFERENCE_KEY, pref).catch(() => {});
   }, []);
 
-  const scheme: ResolvedScheme = preference === "system" ? (systemScheme === "dark" ? "dark" : "light") : preference;
+  const scheme: ResolvedScheme = preference;
   const colors = scheme === "dark" ? darkColors : lightColors;
 
   const value = useMemo(() => ({ colors, scheme, preference, setPreference }), [colors, scheme, preference, setPreference]);
@@ -52,7 +54,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // stored preference is read, rather than flashing system-dark for a
   // frame on every cold start.
   if (!loaded) {
-    return <ThemeContext.Provider value={{ colors: lightColors, scheme: "light", preference: "system", setPreference }}>{children}</ThemeContext.Provider>;
+    return <ThemeContext.Provider value={{ colors: lightColors, scheme: "light", preference: "light", setPreference }}>{children}</ThemeContext.Provider>;
   }
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

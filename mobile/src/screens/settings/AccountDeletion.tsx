@@ -15,11 +15,11 @@ import { endpoints } from "../../lib/endpoints";
 // account is fully locked out immediately (Django + SIMPLE_JWT already
 // reject is_active=False both at login and on any already-issued token).
 //
-// Rendered as a swapped-in view inside ProfileModal's existing Modal
-// (see ProfileModal.tsx) rather than a routed screen — ProfileModal
-// itself is a plain RN Modal opened from AppHeader, not a navigator
-// screen, so this follows the same pattern instead of registering a new
-// route just for one back-and-forth.
+// Rendered as a swapped-in view inside ProfileDetails.tsx, itself nested
+// inside AccountMenu's existing Modal (see components/AccountMenu.tsx)
+// rather than a routed screen — AccountMenu is a plain RN Modal opened
+// from AppHeader, not a navigator screen, so this follows the same
+// pattern instead of registering a new route just for one back-and-forth.
 export default function AccountDeletion({ onBack }: { onBack: () => void }) {
   const { logout } = useAuth();
   const T = useTheme();

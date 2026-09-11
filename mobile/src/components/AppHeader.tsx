@@ -1,24 +1,24 @@
 import React, { useMemo, useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { LogOut } from "lucide-react-native";
 import { fonts } from "../theme";
 import { useTheme } from "../lib/ThemeContext";
 import { useAuth } from "../lib/auth";
 import { mediaUrl } from "../lib/api";
 import Avatar from "./Avatar";
 import NotificationBell from "./NotificationBell";
-import ProfileModal from "./ProfileModal";
+import AccountMenu from "./AccountMenu";
 import GradientBackground from "./GradientBackground";
 
 // Ported from the header bar inside frontend/src/App.jsx's Shell(). Used
 // as each AppTabs screen's `header` (see navigation/AppTabs.tsx) so every
-// tab gets title + NotificationBell + profile/avatar + logout, same as
-// the web app's shared header above the page content.
+// tab gets title + NotificationBell + profile/avatar, same as the web
+// app's shared header above the page content. Logout now lives inside
+// AccountMenu (tap the avatar) rather than as its own header button.
 export default function AppHeader({ title }: { title: string }) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const T = useTheme();
-  const [showProfile, setShowProfile] = useState(false);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
 
   const styles = useMemo(
     () =>
@@ -47,16 +47,6 @@ export default function AppHeader({ title }: { title: string }) {
           borderWidth: 2,
           borderColor: "rgba(255,255,255,0.55)",
         },
-        logoutButton: {
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 4,
-        },
-        logoutText: {
-          fontFamily: fonts.body.semibold,
-          fontSize: 12,
-          color: T.coral,
-        },
       }),
     [T]
   );
@@ -73,16 +63,12 @@ export default function AppHeader({ title }: { title: string }) {
         </Text>
         <View style={styles.actions}>
           <NotificationBell />
-          <Pressable onPress={() => setShowProfile(true)} hitSlop={4} style={styles.avatarRing}>
+          <Pressable onPress={() => setShowAccountMenu(true)} hitSlop={4} style={styles.avatarRing}>
             <Avatar initials={initials} size={30} src={mediaUrl(user.image)} />
-          </Pressable>
-          <Pressable onPress={logout} style={styles.logoutButton} hitSlop={6}>
-            <LogOut size={15} color={T.coral} strokeWidth={2.2} />
-            <Text style={styles.logoutText}>Logout</Text>
           </Pressable>
         </View>
       </View>
-      <ProfileModal visible={showProfile} onClose={() => setShowProfile(false)} />
+      <AccountMenu visible={showAccountMenu} onClose={() => setShowAccountMenu(false)} />
     </SafeAreaView>
   );
 }
