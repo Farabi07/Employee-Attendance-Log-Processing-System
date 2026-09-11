@@ -3,7 +3,10 @@ import { View, Text, Pressable, Switch, StyleSheet } from "react-native";
 import { ChevronLeft, Sun, Moon } from "lucide-react-native";
 import { fonts } from "../../theme";
 import { useTheme, useThemeSetting, ThemePreference } from "../../lib/ThemeContext";
+import { useAuth } from "../../lib/auth";
 import { getNotificationsEnabled, setNotificationsEnabled } from "../../lib/push";
+
+const APP_VERSION = "1.0.0";
 
 const APPEARANCE_OPTIONS: { value: ThemePreference; label: string; icon: any }[] = [
   { value: "light", label: "Light", icon: Sun },
@@ -17,6 +20,7 @@ const APPEARANCE_OPTIONS: { value: ThemePreference; label: string; icon: any }[]
 // turning into an endless scroll of unrelated sections.
 export default function Settings({ onBack }: { onBack: () => void }) {
   const T = useTheme();
+  const { billing } = useAuth();
   const { preference, setPreference } = useThemeSetting();
   const [notifEnabled, setNotifEnabled] = useState(true);
   const [notifBusy, setNotifBusy] = useState(false);
@@ -72,6 +76,9 @@ export default function Settings({ onBack }: { onBack: () => void }) {
         appearanceLabelActive: { color: T.tealDeep },
         toggleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
         toggleLabel: { fontFamily: fonts.body.medium, fontSize: 13.5, color: T.ink },
+        footer: { alignItems: "center", marginTop: 28 },
+        footerApp: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.muted },
+        footerOrg: { fontFamily: fonts.body.regular, fontSize: 11.5, color: T.faint, marginTop: 2 },
       }),
     [T]
   );
@@ -119,6 +126,11 @@ export default function Settings({ onBack }: { onBack: () => void }) {
               thumbColor={notifEnabled ? T.teal : undefined}
             />
           </View>
+        </View>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerApp}>TimeTap · v{APP_VERSION}</Text>
+          {!!billing?.organization_name && <Text style={styles.footerOrg}>{billing.organization_name}</Text>}
         </View>
       </View>
     </View>

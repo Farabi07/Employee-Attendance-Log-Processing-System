@@ -5,7 +5,6 @@ import {
   X,
   User,
   Bell,
-  Info,
   ShieldCheck,
   Settings as SettingsIcon,
   LogOut,
@@ -21,15 +20,14 @@ import IconChip from "./IconChip";
 import ProfileDetails from "../screens/settings/ProfileDetails";
 import Settings from "../screens/settings/Settings";
 import Notifications from "../screens/settings/Notifications";
-import About from "../screens/settings/About";
 import PrivacyPolicy from "../screens/settings/PrivacyPolicy";
 import HelpCenter from "../screens/settings/HelpCenter";
 
-type MenuView = "menu" | "profile" | "notifications" | "about" | "privacy" | "settings" | "help";
+type MenuView = "menu" | "profile" | "notifications" | "privacy" | "settings" | "help";
 
 // Opened from AppHeader by tapping the avatar — a full-page menu (Profile,
-// Notification, About, Privacy policy, Settings, Logout, Help center)
-// rather than jumping straight into the profile editor the way the old
+// Notification, Privacy policy, Settings, Logout, Help center) rather
+// than jumping straight into the profile editor the way the old
 // ProfileModal (since split into screens/settings/ProfileDetails.tsx) did.
 // Each row swaps in its own content-only screen inside the same Modal
 // (same pattern screens/settings/Settings.tsx and AccountDeletion.tsx
@@ -96,7 +94,6 @@ export default function AccountMenu({ visible, onClose }: { visible: boolean; on
   const MENU_ITEMS: { key: MenuView | "logout"; label: string; icon: any; bg: string; color: string; onPress: () => void }[] = [
     { key: "profile", label: "Profile", icon: User, bg: T.navyBg, color: T.navy, onPress: () => setView("profile") },
     { key: "notifications", label: "Notification", icon: Bell, bg: T.amberBg, color: T.amber, onPress: () => setView("notifications") },
-    { key: "about", label: "About", icon: Info, bg: T.tealBg, color: T.tealDeep, onPress: () => setView("about") },
     { key: "privacy", label: "Privacy policy", icon: ShieldCheck, bg: T.tealBg, color: T.tealDeep, onPress: () => setView("privacy") },
     { key: "settings", label: "Settings", icon: SettingsIcon, bg: T.navyBg, color: T.navy, onPress: () => setView("settings") },
     { key: "logout", label: "Logout", icon: LogOut, bg: T.coralBg, color: T.coral, onPress: confirmLogout },
@@ -110,8 +107,6 @@ export default function AccountMenu({ visible, onClose }: { visible: boolean; on
           <ProfileDetails onBack={() => setView("menu")} />
         ) : view === "notifications" ? (
           <Notifications onBack={() => setView("menu")} />
-        ) : view === "about" ? (
-          <About onBack={() => setView("menu")} />
         ) : view === "privacy" ? (
           <PrivacyPolicy onBack={() => setView("menu")} />
         ) : view === "settings" ? (
