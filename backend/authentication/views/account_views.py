@@ -33,12 +33,21 @@ def _serialize_profile(user):
 
 
 @extend_schema(request=None, responses=None)
-@api_view(['POST'])
+@api_view(['POST', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def registerPushToken(request):
-	"""Called by the mobile app right after expo-notifications registration
-	(on login/app-start). One token per user, overwritten each time —
-	simplest v1, revisit multi-device support only if it's ever needed."""
+	"""POST is called by the mobile app right after expo-notifications
+	registration (on login/app-start) — one token per user, overwritten
+	each time, simplest v1, revisit multi-device support only if it's ever
+	needed. DELETE is called when the user turns notifications off in
+	Settings — clears the token so send_expo_push_for_notification
+	(attendance/push.py) has nothing to send to, rather than relying on
+	the app to just not show what still arrives."""
+	if request.method == 'DELETE':
+		request.user.expo_push_token = None
+		request.user.save(update_fields=['expo_push_token'])
+		return Response({'detail': 'Push token cleared.'}, status=status.HTTP_200_OK)
+
 	token = request.data.get('expo_push_token')
 	if not token:
 		return Response({'detail': 'expo_push_token is required'}, status=status.HTTP_400_BAD_REQUEST)
