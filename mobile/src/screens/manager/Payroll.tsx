@@ -389,7 +389,7 @@ export default function Payroll() {
             style={[styles.runPayrollButton, { opacity: running || Number(summary.total_payable) <= 0 ? 0.6 : 1 }]}
           >
             <Wallet size={15} color={T.onAccent} />
-            <Text style={styles.runPayrollButtonText}>{running ? "Processing…" : "Run Payroll"}</Text>
+            <Text style={styles.runPayrollButtonText}>{running ? "Processing…" : "Pay Now"}</Text>
           </Pressable>
         ) : (
           <Text style={styles.bodyMuted}>Only the store Manager can run payroll.</Text>
