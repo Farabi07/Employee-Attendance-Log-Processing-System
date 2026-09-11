@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, Pressable, Modal, FlatList, StyleSheet } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { View, Text, Pressable, Modal, FlatList, StyleSheet, Animated } from "react-native";
 import { Bell, BellOff } from "lucide-react-native";
 import { fonts } from "../theme";
 import { useTheme } from "../lib/ThemeContext";
@@ -80,6 +80,19 @@ export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const badgeScale = useRef(new Animated.Value(1)).current;
+  const prevUnreadRef = useRef(0);
+
+  // Pop the badge whenever the unread count goes UP (a new notification
+  // actually arrived) — not on mount, and not when it drops from marking
+  // things read, which should feel calm rather than call attention back.
+  useEffect(() => {
+    if (unreadCount > prevUnreadRef.current) {
+      badgeScale.setValue(0.6);
+      Animated.spring(badgeScale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 14 }).start();
+    }
+    prevUnreadRef.current = unreadCount;
+  }, [unreadCount, badgeScale]);
 
   const load = useCallback(async () => {
     try {
@@ -122,9 +135,9 @@ export default function NotificationBell() {
       <Pressable onPress={() => setOpen(true)} style={styles.bellButton} hitSlop={8}>
         <Bell size={20} color={T.amber} fill={T.amber} strokeWidth={1.5} />
         {unreadCount > 0 && (
-          <View style={styles.badge}>
+          <Animated.View style={[styles.badge, { transform: [{ scale: badgeScale }] }]}>
             <Text style={styles.badgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
-          </View>
+          </Animated.View>
         )}
       </Pressable>
 

@@ -24,6 +24,7 @@ import Skeleton from "../../components/Skeleton";
 import EmptyState from "../../components/EmptyState";
 import IconChip from "../../components/IconChip";
 import StatusPill from "../../components/StatusPill";
+import AnimatedAmount from "../../components/AnimatedAmount";
 import { PrimaryButton } from "../../components/Button";
 import { useToast } from "../../components/Toast";
 
@@ -414,7 +415,7 @@ export default function Wallet() {
             <WalletIcon size={16} color={T.onAccent} strokeWidth={1.8} />
             <Text style={styles.balanceLabel}>Current balance</Text>
           </View>
-          <Text style={styles.balanceValue}>{money(wallet.current_balance)}</Text>
+          <AnimatedAmount value={wallet.current_balance} currency={wallet.currency} style={styles.balanceValue} />
           {!!wallet.hourly_rate && (
             <Text style={styles.balanceSub}>
               {currencySymbol(wallet.currency)}

@@ -18,6 +18,7 @@ import DateField from "../../components/DateField";
 import InlinePicker from "../../components/InlinePicker";
 import Skeleton from "../../components/Skeleton";
 import EmptyState from "../../components/EmptyState";
+import AnimatedAmount from "../../components/AnimatedAmount";
 import { useToast } from "../../components/Toast";
 
 // Ported from frontend/src/pages/manager/Payroll.jsx. The web version's
@@ -372,7 +373,7 @@ export default function Payroll() {
         <View style={styles.metricsRow}>
           <Card style={styles.metricCard}>
             <Text style={styles.metricLabel}>Total payable now</Text>
-            <Text style={styles.metricValue}>{money(summary.total_payable)}</Text>
+            <AnimatedAmount value={summary.total_payable} currency={summary?.currency} style={styles.metricValue} />
             {hasMixedCurrencies && <Text style={styles.mixedCurrencyNote}>Mixed currencies — total doesn't convert.</Text>}
           </Card>
           <Card style={styles.metricCard}>
