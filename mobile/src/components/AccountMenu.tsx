@@ -77,6 +77,7 @@ export default function AccountMenu({ visible, onClose }: { visible: boolean; on
           paddingHorizontal: 8,
         },
         menuRow: {
+          width: "100%",
           flexDirection: "row",
           alignItems: "center",
           gap: 12,
@@ -127,6 +128,7 @@ export default function AccountMenu({ visible, onClose }: { visible: boolean; on
         tapLight();
         item.onPress();
       }}
+      style={{ width: "100%" }}
       pressableStyle={styles.menuRow}
       scaleTo={0.98}
     >
