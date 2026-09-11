@@ -1,43 +1,27 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { View, Text, Pressable, Switch, StyleSheet } from "react-native";
-import { ChevronLeft, Sun, Moon } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, Moon, Bell } from "lucide-react-native";
 import { fonts } from "../../theme";
-import { useTheme, useThemeSetting, ThemePreference } from "../../lib/ThemeContext";
+import { useTheme, useThemeSetting } from "../../lib/ThemeContext";
 import { useAuth } from "../../lib/auth";
-import { getNotificationsEnabled, setNotificationsEnabled } from "../../lib/push";
+import IconChip from "../../components/IconChip";
+import NotificationSettings from "./NotificationSettings";
 
 const APP_VERSION = "1.0.0";
 
-const APPEARANCE_OPTIONS: { value: ThemePreference; label: string; icon: any }[] = [
-  { value: "light", label: "Light", icon: Sun },
-  { value: "dark", label: "Night", icon: Moon },
-];
+type SettingsView = "root" | "notifications";
 
 // Rendered as a swapped-in view inside AccountMenu's existing Modal, same
-// pattern as AccountDeletion.tsx — a dedicated screen rather than piling
-// more sections onto one view, so appearance/notification/privacy-style
-// settings have a natural home to grow into later without that view
-// turning into an endless scroll of unrelated sections.
+// pattern as AccountDeletion.tsx. Laid out as a grouped list (a "General"
+// section, each row either an inline toggle or a chevron into its own
+// sub-screen) rather than the old segmented-button/inline-toggle mix —
+// closer to how most native Settings screens group things, so more rows
+// (data & storage, language, ...) have an obvious place to land later.
 export default function Settings({ onBack }: { onBack: () => void }) {
   const T = useTheme();
   const { billing } = useAuth();
   const { preference, setPreference } = useThemeSetting();
-  const [notifEnabled, setNotifEnabled] = useState(true);
-  const [notifBusy, setNotifBusy] = useState(false);
-
-  useEffect(() => {
-    getNotificationsEnabled().then(setNotifEnabled);
-  }, []);
-
-  const toggleNotifications = async (value: boolean) => {
-    setNotifEnabled(value);
-    setNotifBusy(true);
-    try {
-      await setNotificationsEnabled(value);
-    } finally {
-      setNotifBusy(false);
-    }
-  };
+  const [view, setView] = useState<SettingsView>("root");
 
   const styles = useMemo(
     () =>
@@ -55,33 +39,26 @@ export default function Settings({ onBack }: { onBack: () => void }) {
         backButton: { padding: 2 },
         headerTitle: { fontFamily: fonts.display.semibold, fontSize: 17, color: T.ink },
         content: { padding: 24 },
-        section: { marginBottom: 4 },
-        sectionTitle: { fontFamily: fonts.display.semibold, fontSize: 13.5, color: T.ink, marginBottom: 4 },
-        sectionHint: { fontFamily: fonts.body.regular, fontSize: 12, color: T.muted, marginBottom: 12 },
-        appearanceRow: { flexDirection: "row", gap: 8 },
-        appearanceOption: {
-          flex: 1,
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 6,
-          paddingVertical: 10,
-          borderRadius: 9,
-          borderWidth: 1,
-          borderColor: T.line,
-          backgroundColor: T.card,
+        sectionLabel: {
+          fontFamily: fonts.body.semibold,
+          fontSize: 11,
+          color: T.faint,
+          textTransform: "uppercase",
+          letterSpacing: 0.6,
+          marginBottom: 6,
         },
-        appearanceOptionActive: { borderColor: T.teal, backgroundColor: T.tealBg },
-        appearanceLabel: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.muted },
-        appearanceLabelActive: { color: T.tealDeep },
-        toggleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-        toggleLabel: { fontFamily: fonts.body.medium, fontSize: 13.5, color: T.ink },
+        row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12 },
+        rowLabel: { flex: 1, fontFamily: fonts.body.medium, fontSize: 13.5, color: T.ink },
         footer: { alignItems: "center", marginTop: 28 },
         footerApp: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.muted },
         footerOrg: { fontFamily: fonts.body.regular, fontSize: 11.5, color: T.faint, marginTop: 2 },
       }),
     [T]
   );
+
+  if (view === "notifications") {
+    return <NotificationSettings onBack={() => setView("root")} />;
+  }
 
   return (
     <View>
@@ -93,40 +70,28 @@ export default function Settings({ onBack }: { onBack: () => void }) {
       </View>
 
       <View style={styles.content}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Appearance</Text>
-          <Text style={styles.sectionHint}>Switch between light and night mode.</Text>
-          <View style={styles.appearanceRow}>
-            {APPEARANCE_OPTIONS.map((opt) => {
-              const active = preference === opt.value;
-              return (
-                <Pressable
-                  key={opt.value}
-                  onPress={() => setPreference(opt.value)}
-                  style={[styles.appearanceOption, active && styles.appearanceOptionActive]}
-                >
-                  <opt.icon size={14} color={active ? T.tealDeep : T.muted} strokeWidth={2} />
-                  <Text style={[styles.appearanceLabel, active && styles.appearanceLabelActive]}>{opt.label}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
+        <Text style={styles.sectionLabel}>General</Text>
+
+        <View style={styles.row}>
+          <IconChip bg={T.navyBg} size={30}>
+            <Moon size={15} color={T.navy} />
+          </IconChip>
+          <Text style={styles.rowLabel}>Night mode</Text>
+          <Switch
+            value={preference === "dark"}
+            onValueChange={(v) => setPreference(v ? "dark" : "light")}
+            trackColor={{ false: T.line, true: T.tealBg }}
+            thumbColor={preference === "dark" ? T.teal : undefined}
+          />
         </View>
 
-        <View style={[styles.section, { marginTop: 20 }]}>
-          <Text style={styles.sectionTitle}>Notifications</Text>
-          <Text style={styles.sectionHint}>Get push alerts for shift, approval, and payroll updates.</Text>
-          <View style={styles.toggleRow}>
-            <Text style={styles.toggleLabel}>Push notifications</Text>
-            <Switch
-              value={notifEnabled}
-              onValueChange={toggleNotifications}
-              disabled={notifBusy}
-              trackColor={{ false: T.line, true: T.tealBg }}
-              thumbColor={notifEnabled ? T.teal : undefined}
-            />
-          </View>
-        </View>
+        <Pressable onPress={() => setView("notifications")} style={styles.row}>
+          <IconChip bg={T.amberBg} size={30}>
+            <Bell size={15} color={T.amber} />
+          </IconChip>
+          <Text style={styles.rowLabel}>Notifications</Text>
+          <ChevronRight size={16} color={T.faint} />
+        </Pressable>
 
         <View style={styles.footer}>
           <Text style={styles.footerApp}>TimeTap · v{APP_VERSION}</Text>

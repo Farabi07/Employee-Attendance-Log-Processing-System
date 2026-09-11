@@ -4,7 +4,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import {
   X,
   User,
-  Bell,
   ShieldCheck,
   Settings as SettingsIcon,
   LogOut,
@@ -19,15 +18,14 @@ import Avatar from "./Avatar";
 import IconChip from "./IconChip";
 import ProfileDetails from "../screens/settings/ProfileDetails";
 import Settings from "../screens/settings/Settings";
-import Notifications from "../screens/settings/Notifications";
 import PrivacyPolicy from "../screens/settings/PrivacyPolicy";
 import HelpCenter from "../screens/settings/HelpCenter";
 
-type MenuView = "menu" | "profile" | "notifications" | "privacy" | "settings" | "help";
+type MenuView = "menu" | "profile" | "privacy" | "settings" | "help";
 
 // Opened from AppHeader by tapping the avatar — a full-page menu (Profile,
-// Notification, Privacy policy, Settings, Logout, Help center) rather
-// than jumping straight into the profile editor the way the old
+// Privacy policy, Settings, Logout, Help center) rather than jumping
+// straight into the profile editor the way the old
 // ProfileModal (since split into screens/settings/ProfileDetails.tsx) did.
 // Each row swaps in its own content-only screen inside the same Modal
 // (same pattern screens/settings/Settings.tsx and AccountDeletion.tsx
@@ -61,6 +59,16 @@ export default function AccountMenu({ visible, onClose }: { visible: boolean; on
         email: { fontFamily: fonts.body.regular, fontSize: 12, color: T.muted },
         role: { fontFamily: fonts.body.regular, fontSize: 11.5, color: T.faint, marginTop: 2 },
         menuList: { paddingHorizontal: 12 },
+        sectionLabel: {
+          fontFamily: fonts.body.semibold,
+          fontSize: 11,
+          color: T.faint,
+          textTransform: "uppercase",
+          letterSpacing: 0.6,
+          marginTop: 18,
+          marginBottom: 4,
+          paddingHorizontal: 8,
+        },
         menuRow: {
           flexDirection: "row",
           alignItems: "center",
@@ -91,22 +99,35 @@ export default function AccountMenu({ visible, onClose }: { visible: boolean; on
     ]);
   };
 
-  const MENU_ITEMS: { key: MenuView | "logout"; label: string; icon: any; bg: string; color: string; onPress: () => void }[] = [
-    { key: "profile", label: "Profile", icon: User, bg: T.navyBg, color: T.navy, onPress: () => setView("profile") },
-    { key: "notifications", label: "Notification", icon: Bell, bg: T.amberBg, color: T.amber, onPress: () => setView("notifications") },
-    { key: "privacy", label: "Privacy policy", icon: ShieldCheck, bg: T.tealBg, color: T.tealDeep, onPress: () => setView("privacy") },
+  type MenuRow = { key: string; label: string; icon: any; bg: string; color: string; onPress: () => void };
+
+  // Grouped like a typical Settings list (General app-wide options, then
+  // account-specific destinations) instead of one flat list — easier to
+  // scan as more rows land here later.
+  const GENERAL_ITEMS: MenuRow[] = [
     { key: "settings", label: "Settings", icon: SettingsIcon, bg: T.navyBg, color: T.navy, onPress: () => setView("settings") },
-    { key: "logout", label: "Logout", icon: LogOut, bg: T.coralBg, color: T.coral, onPress: confirmLogout },
+  ];
+  const ACCOUNT_ITEMS: MenuRow[] = [
+    { key: "profile", label: "Profile", icon: User, bg: T.navyBg, color: T.navy, onPress: () => setView("profile") },
+    { key: "privacy", label: "Privacy policy", icon: ShieldCheck, bg: T.tealBg, color: T.tealDeep, onPress: () => setView("privacy") },
     { key: "help", label: "Help center", icon: HelpCircle, bg: T.amberBg, color: T.amber, onPress: () => setView("help") },
   ];
+
+  const renderRow = (item: MenuRow, danger?: boolean) => (
+    <Pressable key={item.key} onPress={item.onPress} style={styles.menuRow}>
+      <IconChip bg={item.bg} size={30}>
+        <item.icon size={15} color={item.color} />
+      </IconChip>
+      <Text style={[styles.menuRowText, danger && styles.menuRowTextDanger]}>{item.label}</Text>
+      {!danger && <ChevronRight size={16} color={T.faint} />}
+    </Pressable>
+  );
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={() => (view === "menu" ? close() : setView("menu"))}>
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         {view === "profile" ? (
           <ProfileDetails onBack={() => setView("menu")} />
-        ) : view === "notifications" ? (
-          <Notifications onBack={() => setView("menu")} />
         ) : view === "privacy" ? (
           <PrivacyPolicy onBack={() => setView("menu")} />
         ) : view === "settings" ? (
@@ -134,18 +155,14 @@ export default function AccountMenu({ visible, onClose }: { visible: boolean; on
             </View>
 
             <View style={styles.menuList}>
-              {MENU_ITEMS.map((item) => (
-                <React.Fragment key={item.key}>
-                  {item.key === "logout" && <View style={styles.divider} />}
-                  <Pressable onPress={item.onPress} style={styles.menuRow}>
-                    <IconChip bg={item.bg} size={30}>
-                      <item.icon size={15} color={item.color} />
-                    </IconChip>
-                    <Text style={[styles.menuRowText, item.key === "logout" && styles.menuRowTextDanger]}>{item.label}</Text>
-                    {item.key !== "logout" && <ChevronRight size={16} color={T.faint} />}
-                  </Pressable>
-                </React.Fragment>
-              ))}
+              <Text style={styles.sectionLabel}>General</Text>
+              {GENERAL_ITEMS.map((item) => renderRow(item))}
+
+              <Text style={styles.sectionLabel}>Account</Text>
+              {ACCOUNT_ITEMS.map((item) => renderRow(item))}
+
+              <View style={styles.divider} />
+              {renderRow({ key: "logout", label: "Logout", icon: LogOut, bg: T.coralBg, color: T.coral, onPress: confirmLogout }, true)}
             </View>
           </>
         )}
