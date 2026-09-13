@@ -132,7 +132,13 @@ export default function NotificationBell() {
 
   return (
     <>
-      <Pressable onPress={() => setOpen(true)} style={styles.bellButton} hitSlop={8}>
+      <Pressable
+        onPress={() => setOpen(true)}
+        style={styles.bellButton}
+        hitSlop={8}
+        accessibilityLabel={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
+        accessibilityRole="button"
+      >
         <Bell size={20} color={T.amber} fill={T.amber} strokeWidth={1.5} />
         {unreadCount > 0 && (
           <Animated.View style={[styles.badge, { transform: [{ scale: badgeScale }] }]}>

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, TextInput, ScrollView, Pressable, Linking, StyleSheet, RefreshControl } from "react-native";
+import { View, Text, TextInput, ScrollView, Pressable, Linking, StyleSheet, RefreshControl, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Check, X, Clock3, Paperclip, Repeat, CalendarCheck, CheckCircle2 } from "lucide-react-native";
 import { fonts } from "../../theme";
@@ -259,6 +259,7 @@ export default function Approvals() {
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={T.teal} colors={[T.teal]} />}
@@ -419,6 +420,7 @@ export default function Approvals() {
           </View>
         </Card>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

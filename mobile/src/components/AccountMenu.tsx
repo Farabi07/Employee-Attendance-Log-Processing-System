@@ -152,7 +152,7 @@ export default function AccountMenu({ visible, onClose }: { visible: boolean; on
           <>
             <View style={styles.header}>
               <Text style={styles.headerTitle}>Account</Text>
-              <Pressable onPress={close} hitSlop={8} style={styles.closeButton}>
+              <Pressable onPress={close} hitSlop={8} style={styles.closeButton} accessibilityLabel="Close" accessibilityRole="button">
                 <X size={20} color={T.ink} />
               </Pressable>
             </View>

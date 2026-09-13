@@ -63,7 +63,13 @@ export default function AppHeader({ title }: { title: string }) {
         </Text>
         <View style={styles.actions}>
           <NotificationBell />
-          <Pressable onPress={() => setShowAccountMenu(true)} hitSlop={4} style={styles.avatarRing}>
+          <Pressable
+            onPress={() => setShowAccountMenu(true)}
+            hitSlop={4}
+            style={styles.avatarRing}
+            accessibilityLabel="Account menu"
+            accessibilityRole="button"
+          >
             <Avatar initials={initials} size={30} src={mediaUrl(user.image)} />
           </Pressable>
         </View>

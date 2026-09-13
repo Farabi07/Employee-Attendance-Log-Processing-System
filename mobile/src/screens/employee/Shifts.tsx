@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, ScrollView, TextInput, Pressable, Switch, StyleSheet, RefreshControl } from "react-native";
+import { View, Text, ScrollView, TextInput, Pressable, Switch, StyleSheet, RefreshControl, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
 import { Repeat, Check, X, CalendarClock } from "lucide-react-native";
@@ -231,6 +231,7 @@ export default function Shifts() {
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={T.teal} colors={[T.teal]} />}
@@ -433,6 +434,7 @@ export default function Shifts() {
           </Pressable>
         </Card>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

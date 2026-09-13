@@ -79,7 +79,7 @@ export default function HelpCenter({ onBack }: { onBack: () => void }) {
   return (
     <View style={{ flex: 1 }}>
       <View style={styles.header}>
-        <Pressable onPress={onBack} hitSlop={8} style={styles.backButton}>
+        <Pressable onPress={onBack} hitSlop={8} style={styles.backButton} accessibilityLabel="Go back" accessibilityRole="button">
           <ChevronLeft size={20} color={T.ink} />
         </Pressable>
         <Text style={styles.headerTitle}>Help center</Text>

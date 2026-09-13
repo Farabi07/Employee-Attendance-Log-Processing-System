@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
+import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { ChevronLeft, Camera, Eye, EyeOff } from "lucide-react-native";
@@ -204,14 +204,16 @@ export default function ProfileDetails({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <View>
+    <View style={{ flex: 1 }}>
       <View style={styles.header}>
-        <Pressable onPress={onBack} hitSlop={8} style={styles.backButton}>
+        <Pressable onPress={onBack} hitSlop={8} style={styles.backButton} accessibilityLabel="Go back" accessibilityRole="button">
           <ChevronLeft size={20} color={T.ink} />
         </Pressable>
         <Text style={styles.headerTitle}>Profile</Text>
       </View>
 
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <ScrollView>
       <View style={styles.content}>
         <View style={styles.identityRow}>
           <View>
@@ -300,6 +302,8 @@ export default function ProfileDetails({ onBack }: { onBack: () => void }) {
           <TextButton title="Delete account" onPress={() => setShowDeleteAccount(true)} color={T.coral} />
         </View>
       </View>
+      </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }

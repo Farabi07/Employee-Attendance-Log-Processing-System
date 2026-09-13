@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, TextInput, ScrollView, Pressable, Alert, StyleSheet, RefreshControl } from "react-native";
+import { View, Text, TextInput, ScrollView, Pressable, Alert, StyleSheet, RefreshControl, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Plus, QrCode, Trash2, Pencil, MapPin, Building2, Tag, Maximize2, CalendarDays } from "lucide-react-native";
 import Skeleton from "../../components/Skeleton";
@@ -376,6 +376,7 @@ export default function Roster() {
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={T.teal} colors={[T.teal]} />}
@@ -654,6 +655,7 @@ export default function Roster() {
           </Card>
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {showLiveQr && qrBranchId && <LiveQrDisplay branchId={qrBranchId} onClose={() => setShowLiveQr(false)} />}
     </SafeAreaView>

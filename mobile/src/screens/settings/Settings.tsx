@@ -67,7 +67,7 @@ export default function Settings({ onBack }: { onBack: () => void }) {
   return (
     <View>
       <View style={styles.header}>
-        <Pressable onPress={onBack} hitSlop={8} style={styles.backButton}>
+        <Pressable onPress={onBack} hitSlop={8} style={styles.backButton} accessibilityLabel="Go back" accessibilityRole="button">
           <ChevronLeft size={20} color={T.ink} />
         </Pressable>
         <Text style={styles.headerTitle}>Settings</Text>
