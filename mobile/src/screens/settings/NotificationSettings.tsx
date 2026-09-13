@@ -1,9 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, Pressable, Switch, StyleSheet } from "react-native";
-import { ChevronLeft, ChevronRight, Bell, List } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, Bell, Clock3, List } from "lucide-react-native";
 import { fonts } from "../../theme";
 import { useTheme } from "../../lib/ThemeContext";
-import { getNotificationsEnabled, setNotificationsEnabled } from "../../lib/push";
+import {
+  getNotificationsEnabled,
+  setNotificationsEnabled,
+  getShiftRemindersEnabled,
+  setShiftRemindersEnabled,
+} from "../../lib/push";
 import IconChip from "../../components/IconChip";
 import Notifications from "./Notifications";
 import { tapSelection, tapLight } from "../../lib/haptics";
@@ -17,6 +22,8 @@ export default function NotificationSettings({ onBack }: { onBack: () => void })
   const T = useTheme();
   const [enabled, setEnabled] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [remindersEnabled, setRemindersEnabled] = useState(true);
+  const [remindersBusy, setRemindersBusy] = useState(false);
   const [showHistory, setShowHistoryState] = useState(false);
   const setShowHistory = (v: boolean) => {
     animateLayout();
@@ -25,6 +32,7 @@ export default function NotificationSettings({ onBack }: { onBack: () => void })
 
   useEffect(() => {
     getNotificationsEnabled().then(setEnabled);
+    getShiftRemindersEnabled().then(setRemindersEnabled);
   }, []);
 
   const toggle = async (value: boolean) => {
@@ -35,6 +43,17 @@ export default function NotificationSettings({ onBack }: { onBack: () => void })
       await setNotificationsEnabled(value);
     } finally {
       setBusy(false);
+    }
+  };
+
+  const toggleReminders = async (value: boolean) => {
+    tapSelection();
+    setRemindersEnabled(value);
+    setRemindersBusy(true);
+    try {
+      await setShiftRemindersEnabled(value);
+    } finally {
+      setRemindersBusy(false);
     }
   };
 
@@ -74,6 +93,7 @@ export default function NotificationSettings({ onBack }: { onBack: () => void })
           elevation: 2,
           marginBottom: 22,
         },
+        rowDivider: { height: 1, backgroundColor: T.line2, marginLeft: 60 },
         row: { flexDirection: "row", alignItems: "center", gap: 13, paddingVertical: 13, paddingHorizontal: 14 },
         rowText: { flex: 1 },
         rowLabel: { fontFamily: fonts.body.medium, fontSize: 14.5, color: T.ink },
@@ -112,6 +132,25 @@ export default function NotificationSettings({ onBack }: { onBack: () => void })
               disabled={busy}
               trackColor={{ false: T.line, true: T.tealBg }}
               thumbColor={enabled ? T.teal : undefined}
+            />
+          </View>
+
+          <View style={styles.rowDivider} />
+
+          <View style={styles.row}>
+            <IconChip bg={T.tealBg} size={32}>
+              <Clock3 size={16} color={T.tealDeep} />
+            </IconChip>
+            <View style={styles.rowText}>
+              <Text style={styles.rowLabel}>Shift reminders</Text>
+              <Text style={styles.rowHint}>A nudge ~30 minutes before your shift, if you haven't checked in.</Text>
+            </View>
+            <Switch
+              value={remindersEnabled}
+              onValueChange={toggleReminders}
+              disabled={remindersBusy || !enabled}
+              trackColor={{ false: T.line, true: T.tealBg }}
+              thumbColor={remindersEnabled && enabled ? T.teal : undefined}
             />
           </View>
         </View>
