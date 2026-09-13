@@ -8,6 +8,7 @@ import {
   Settings as SettingsIcon,
   LogOut,
   HelpCircle,
+  BookOpen,
   ChevronRight,
 } from "lucide-react-native";
 import { fonts } from "../theme";
@@ -22,8 +23,9 @@ import ProfileDetails from "../screens/settings/ProfileDetails";
 import Settings from "../screens/settings/Settings";
 import PrivacyPolicy from "../screens/settings/PrivacyPolicy";
 import HelpCenter from "../screens/settings/HelpCenter";
+import UserGuide from "../screens/settings/UserGuide";
 
-type MenuView = "menu" | "profile" | "privacy" | "settings" | "help";
+type MenuView = "menu" | "profile" | "privacy" | "settings" | "help" | "guide";
 
 // Opened from AppHeader by tapping the avatar — a full-page menu (Profile,
 // Privacy policy, Settings, Logout, Help center) rather than jumping
@@ -116,6 +118,7 @@ export default function AccountMenu({ visible, onClose }: { visible: boolean; on
   ];
   const ACCOUNT_ITEMS: MenuRow[] = [
     { key: "profile", label: "Profile", icon: User, bg: T.navyBg, color: T.navy, onPress: () => setView("profile") },
+    { key: "guide", label: "User guide", icon: BookOpen, bg: T.tealBg, color: T.tealDeep, onPress: () => setView("guide") },
     { key: "privacy", label: "Privacy policy", icon: ShieldCheck, bg: T.tealBg, color: T.tealDeep, onPress: () => setView("privacy") },
     { key: "help", label: "Help center", icon: HelpCircle, bg: T.amberBg, color: T.amber, onPress: () => setView("help") },
   ];
@@ -142,6 +145,8 @@ export default function AccountMenu({ visible, onClose }: { visible: boolean; on
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         {view === "profile" ? (
           <ProfileDetails onBack={() => setView("menu")} />
+        ) : view === "guide" ? (
+          <UserGuide onBack={() => setView("menu")} />
         ) : view === "privacy" ? (
           <PrivacyPolicy onBack={() => setView("menu")} />
         ) : view === "settings" ? (
