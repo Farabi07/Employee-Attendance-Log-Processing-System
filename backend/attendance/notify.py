@@ -120,3 +120,29 @@ def notify_swap_reviewed(swap):
             title="Shift swap approved",
             message=f"You're now scheduled for {swap.roster.date}, taken over from {swap.requested_by.first_name}.",
         )
+
+
+def notify_notice(sender, title, message):
+    """A manager/moderator broadcast to everyone else in their org — every
+    role, not just employees, so e.g. a moderator's notice still reaches
+    the manager. Recipients see it in a separate "Notices" list, not mixed
+    into their regular Notifications feed (see NotificationType.NOTICE
+    being excluded by default in notification_views.getMyNotifications)."""
+    from authentication.models import User
+
+    recipients = User.objects.filter(organization=sender.organization).exclude(pk=sender.pk)
+
+    created = Notification.objects.bulk_create(
+        [
+            Notification(
+                recipient=recipient,
+                notification_type=Notification.NotificationType.NOTICE,
+                title=title,
+                message=message,
+            )
+            for recipient in recipients
+        ]
+    )
+    for notification in created:
+        send_expo_push_for_notification(notification)
+    return len(created)

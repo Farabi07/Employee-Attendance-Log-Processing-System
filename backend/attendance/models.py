@@ -336,6 +336,7 @@ class Notification(models.Model):
         SWAP_CLAIMED = 'swap_claimed', 'Shift swap claimed'
         SWAP_REVIEWED = 'swap_reviewed', 'Shift swap reviewed'
         SHIFT_REMINDER = 'shift_reminder', 'Upcoming shift reminder'
+        NOTICE = 'notice', 'Notice from management'
         GENERAL = 'general', 'General'
 
     recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications')
