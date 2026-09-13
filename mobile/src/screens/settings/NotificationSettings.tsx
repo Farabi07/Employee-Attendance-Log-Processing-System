@@ -1,10 +1,17 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, TextInput, Pressable, Switch, StyleSheet } from "react-native";
-import { ChevronLeft, ChevronRight, Bell, Clock3, List } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, Bell, Clock3, List, VolumeX } from "lucide-react-native";
 import { fonts } from "../../theme";
 import { useTheme } from "../../lib/ThemeContext";
-import { getNotificationsEnabled, setNotificationsEnabled } from "../../lib/push";
-import { getShiftReminderPreference, setShiftReminderPreference, DEFAULT_REMINDER_MINUTES } from "../../lib/shiftReminder";
+import { useAuth } from "../../lib/auth";
+import { getNotificationsEnabled, setNotificationsEnabled, getSilentModeEnabled, setSilentModeEnabled } from "../../lib/push";
+import {
+  getShiftReminderPreference,
+  setShiftReminderPreference,
+  refreshAllShiftReminders,
+  cancelAllShiftReminders,
+  DEFAULT_REMINDER_MINUTES,
+} from "../../lib/shiftReminder";
 import IconChip from "../../components/IconChip";
 import Notifications from "./Notifications";
 import { tapSelection, tapLight } from "../../lib/haptics";
@@ -16,6 +23,7 @@ import { animateLayout } from "../../lib/animateLayout";
 // apps lay out Settings > Notifications.
 export default function NotificationSettings({ onBack }: { onBack: () => void }) {
   const T = useTheme();
+  const { user } = useAuth();
   const [enabled, setEnabled] = useState(true);
   const [busy, setBusy] = useState(false);
   // Shift reminders are scheduled entirely on-device (see lib/shiftReminder.js)
@@ -23,6 +31,7 @@ export default function NotificationSettings({ onBack }: { onBack: () => void })
   // to read/write this preference, just SecureStore like theme/language.
   const [remindersEnabled, setRemindersEnabled] = useState(true);
   const [reminderMinutes, setReminderMinutes] = useState(String(DEFAULT_REMINDER_MINUTES));
+  const [silentMode, setSilentMode] = useState(false);
   const [showHistory, setShowHistoryState] = useState(false);
   const setShowHistory = (v: boolean) => {
     animateLayout();
@@ -31,6 +40,7 @@ export default function NotificationSettings({ onBack }: { onBack: () => void })
 
   useEffect(() => {
     getNotificationsEnabled().then(setEnabled);
+    getSilentModeEnabled().then(setSilentMode);
     getShiftReminderPreference().then(({ enabled: e, minutesBefore }) => {
       setRemindersEnabled(e);
       setReminderMinutes(String(minutesBefore));
@@ -52,6 +62,19 @@ export default function NotificationSettings({ onBack }: { onBack: () => void })
     tapSelection();
     setRemindersEnabled(value);
     await setShiftReminderPreference({ enabled: value });
+    // Takes effect right away instead of waiting for the next time Today
+    // or My Shifts happens to load.
+    if (value && user?.id) {
+      refreshAllShiftReminders(user.id);
+    } else {
+      cancelAllShiftReminders();
+    }
+  };
+
+  const toggleSilentMode = async (value: boolean) => {
+    tapSelection();
+    setSilentMode(value);
+    await setSilentModeEnabled(value);
   };
 
   const commitReminderMinutes = async (text: string) => {
@@ -149,6 +172,26 @@ export default function NotificationSettings({ onBack }: { onBack: () => void })
               thumbColor={enabled ? T.teal : undefined}
             />
           </View>
+          {enabled && (
+            <>
+              <View style={styles.rowDivider} />
+              <View style={styles.row}>
+                <IconChip bg={T.navyBg} size={32}>
+                  <VolumeX size={16} color={T.navy} />
+                </IconChip>
+                <View style={styles.rowText}>
+                  <Text style={styles.rowLabel}>Silent mode</Text>
+                  <Text style={styles.rowHint}>Notifications still show, just no sound. Shift reminders always ring.</Text>
+                </View>
+                <Switch
+                  value={silentMode}
+                  onValueChange={toggleSilentMode}
+                  trackColor={{ false: T.line, true: T.tealBg }}
+                  thumbColor={silentMode ? T.teal : undefined}
+                />
+              </View>
+            </>
+          )}
         </View>
 
         <Text style={styles.sectionLabel}>Shift reminders</Text>

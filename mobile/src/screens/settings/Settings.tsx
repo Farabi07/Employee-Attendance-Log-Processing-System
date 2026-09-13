@@ -1,12 +1,12 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, Pressable, Switch, StyleSheet } from "react-native";
-import { ChevronLeft, ChevronRight, Moon, Bell } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, Moon, Bell, Vibrate } from "lucide-react-native";
 import { fonts } from "../../theme";
 import { useTheme, useThemeSetting } from "../../lib/ThemeContext";
 import { useAuth } from "../../lib/auth";
 import IconChip from "../../components/IconChip";
 import NotificationSettings from "./NotificationSettings";
-import { tapSelection, tapLight } from "../../lib/haptics";
+import { tapSelection, tapLight, getHapticsEnabled, setHapticsEnabled } from "../../lib/haptics";
 import { animateLayout } from "../../lib/animateLayout";
 
 type SettingsView = "root" | "notifications";
@@ -22,6 +22,11 @@ export default function Settings({ onBack }: { onBack: () => void }) {
   const { billing } = useAuth();
   const { preference, setPreference } = useThemeSetting();
   const [view, setViewState] = useState<SettingsView>("root");
+  const [hapticsEnabled, setHapticsEnabledState] = useState(true);
+
+  useEffect(() => {
+    getHapticsEnabled().then(setHapticsEnabledState);
+  }, []);
   const setView = (v: SettingsView) => {
     animateLayout();
     setViewState(v);
@@ -101,6 +106,25 @@ export default function Settings({ onBack }: { onBack: () => void }) {
               }}
               trackColor={{ false: T.line, true: T.tealBg }}
               thumbColor={preference === "dark" ? T.teal : undefined}
+            />
+          </View>
+
+          <View style={styles.rowDivider} />
+
+          <View style={styles.row}>
+            <IconChip bg={T.coralBg} size={32}>
+              <Vibrate size={16} color={T.coral} />
+            </IconChip>
+            <Text style={styles.rowLabel}>Vibration feedback</Text>
+            <Switch
+              value={hapticsEnabled}
+              onValueChange={(v) => {
+                tapSelection();
+                setHapticsEnabledState(v);
+                setHapticsEnabled(v);
+              }}
+              trackColor={{ false: T.line, true: T.tealBg }}
+              thumbColor={hapticsEnabled ? T.teal : undefined}
             />
           </View>
 

@@ -12,7 +12,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { api, getToken, setToken, setUnauthorizedHandler } from "./api";
 import { endpoints } from "./endpoints";
-import { registerForPushNotifications } from "./push";
+import { registerForPushNotifications, getSilentModeEnabled } from "./push";
+import { getHapticsEnabled } from "./haptics";
 
 const AuthContext = createContext(null);
 
@@ -53,6 +54,8 @@ export function AuthProvider({ children }) {
       // the auth flow if it fails (no EAS project id yet, permission
       // denied, offline, etc.) — see lib/push.js.
       registerForPushNotifications();
+      getHapticsEnabled();
+      getSilentModeEnabled();
       return me;
     } catch (err) {
       if (err?.status === 0) {

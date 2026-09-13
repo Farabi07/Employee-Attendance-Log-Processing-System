@@ -9,6 +9,9 @@
 import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import * as SecureStore from "expo-secure-store";
+import { api } from "./api";
+import { endpoints } from "./endpoints";
+import { todayISO } from "./dates";
 
 const ENABLED_KEY = "shift_reminder_enabled";
 const MINUTES_KEY = "shift_reminder_minutes";
@@ -64,6 +67,13 @@ async function scheduleOneShiftReminder(roster, minutesBefore) {
         title: "Your shift starts soon",
         body: `${roster.shift.name || "Your shift"} starts at ${roster.shift.start_time.slice(0, 5)} — scan in when you arrive.`,
         data: { rosterId: roster.id, type: "shift_reminder_local" },
+        // Explicit, not left to platform default — this notification must
+        // always play a tone even when the app's Silent mode is on (see
+        // lib/push.js's handler, which exempts type: "shift_reminder_local"
+        // from silentMode for the foreground case; this covers background
+        // /killed-app delivery, which reads the content's own sound field
+        // rather than going through that handler at all).
+        sound: true,
       },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: trigger, channelId: "default" },
     });
@@ -105,6 +115,43 @@ export async function syncUpcomingShiftReminders(rosters, todayISO) {
       continue;
     }
     await scheduleOneShiftReminder(roster, minutesBefore);
+  }
+}
+
+// Called the moment "Remind me before my shift" is switched back on, so it
+// takes effect immediately instead of waiting for the next time Today or
+// My Shifts happens to load. Fetches the same roster + attendance data
+// those screens already fetch and schedules every eligible shift in one
+// pass — today (if not already checked in) and every day after it.
+export async function refreshAllShiftReminders(userId) {
+  try {
+    const [att, rosterRes] = await Promise.all([
+      api.get(endpoints.today()),
+      api.get(endpoints.rosterByEmployee(userId, "?size=100")),
+    ]);
+    const rosters = rosterRes.rosters || [];
+    const today = todayISO();
+    const todayRoster = rosters.find((r) => r.date === today) || null;
+    if (todayRoster) await syncShiftReminder(todayRoster, !!att?.check_in_time);
+    await syncUpcomingShiftReminders(rosters, today);
+  } catch {
+    // Best-effort — worst case reminders pick up next time Today/Shifts loads.
+  }
+}
+
+// Called the moment the toggle switches off — cancels every currently-booked
+// shift reminder in one go by asking the OS for everything this app has
+// scheduled, rather than needing to already know every affected roster id.
+export async function cancelAllShiftReminders() {
+  try {
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    await Promise.all(
+      scheduled
+        .filter((n) => n.content?.data?.type === "shift_reminder_local")
+        .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier))
+    );
+  } catch {
+    // Best-effort.
   }
 }
 

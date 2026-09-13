@@ -71,6 +71,7 @@ export const endpoints = {
   djoserSetPassword: () => `/djoser/auth/users/set_password/`,
 
   registerPushToken: () => `/account/api/v1/push_token/`,
+  notificationPreferences: () => `/account/api/v1/notification_preferences/`,
   deactivateAccount: () => `/account/api/v1/deactivate/`,
   profileMe: () => `/account/api/v1/me/`,
   profileUpdate: () => `/account/api/v1/me/update/`,

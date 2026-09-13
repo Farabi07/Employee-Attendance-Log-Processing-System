@@ -18,22 +18,36 @@ import { api } from "./api";
 import { endpoints } from "./endpoints";
 
 const NOTIFICATIONS_ENABLED_KEY = "notifications_enabled";
+const SILENT_MODE_KEY = "notifications_silent_mode";
 
 // Read by the notification handler below on every incoming push — kept as
-// a plain module variable (not React state) since expo-notifications'
-// handler is a bare callback outside the component tree. Settings.tsx's
-// toggle is the only thing that ever calls setNotificationsEnabled(), which
-// keeps this in sync with the persisted preference.
+// plain module variables (not React state) since expo-notifications'
+// handler is a bare callback outside the component tree. NotificationSettings
+// is the only thing that ever calls the setters below, which keep these in
+// sync with the persisted preference.
 let alertsEnabled = true;
+// Silent mode mutes the *sound* only (alerts/banners still show) for normal
+// notifications — shift reminders are exempt on purpose (see isReminder
+// below) since a reminder that can be silently missed defeats its own
+// point. This only governs how the app plays notifications while it's
+// actually running/foregrounded; a background/killed-app push's sound is
+// decided server-side at send time using this same preference (synced via
+// setSilentModeEnabled), and a scheduled local shift reminder always sets
+// its own sound explicitly (see lib/shiftReminder.js), independent of this
+// flag entirely.
+let silentMode = false;
 
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: alertsEnabled,
-    shouldPlaySound: alertsEnabled,
-    shouldSetBadge: false,
-    shouldShowBanner: alertsEnabled,
-    shouldShowList: alertsEnabled,
-  }),
+  handleNotification: async (notification) => {
+    const isReminder = notification.request?.content?.data?.type === "shift_reminder_local";
+    return {
+      shouldShowAlert: alertsEnabled,
+      shouldPlaySound: alertsEnabled && (isReminder || !silentMode),
+      shouldSetBadge: false,
+      shouldShowBanner: alertsEnabled,
+      shouldShowList: alertsEnabled,
+    };
+  },
 });
 
 // Defaults to enabled — matches the app's original always-on behavior for
@@ -102,5 +116,27 @@ export async function unregisterPushNotifications() {
   } catch {
     // Best-effort — if this fails (offline, etc.) the local mute above
     // still applies for the rest of this session.
+  }
+}
+
+// Defaults to off — most people expect sound on by default.
+export async function getSilentModeEnabled() {
+  const stored = await SecureStore.getItemAsync(SILENT_MODE_KEY);
+  silentMode = stored === "true";
+  return silentMode;
+}
+
+// Persists locally AND pushes to the backend (best-effort), since a
+// background/killed-app push's sound is chosen server-side at send time —
+// only a foregrounded app can have its own JS override that. See the
+// handler above for why shift reminders ignore this either way.
+export async function setSilentModeEnabled(enabled) {
+  silentMode = enabled;
+  await SecureStore.setItemAsync(SILENT_MODE_KEY, enabled ? "true" : "false");
+  try {
+    await api.put(endpoints.notificationPreferences(), { silent_mode: enabled });
+  } catch {
+    // Offline, etc. — foreground behavior still respects the local flag;
+    // worst case a background push plays sound until this syncs.
   }
 }
