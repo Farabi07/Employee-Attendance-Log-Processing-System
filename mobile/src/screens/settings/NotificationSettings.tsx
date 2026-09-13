@@ -1,17 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { View, Text, TextInput, Pressable, Switch, StyleSheet } from "react-native";
-import { ChevronLeft, ChevronRight, Bell, Clock3, List, VolumeX } from "lucide-react-native";
+import { View, Text, Pressable, Switch, StyleSheet } from "react-native";
+import { ChevronLeft, ChevronRight, Bell, List, VolumeX } from "lucide-react-native";
 import { fonts } from "../../theme";
 import { useTheme } from "../../lib/ThemeContext";
-import { useAuth } from "../../lib/auth";
 import { getNotificationsEnabled, setNotificationsEnabled, getSilentModeEnabled, setSilentModeEnabled } from "../../lib/push";
-import {
-  getShiftReminderPreference,
-  setShiftReminderPreference,
-  refreshAllShiftReminders,
-  cancelAllShiftReminders,
-  DEFAULT_REMINDER_MINUTES,
-} from "../../lib/shiftReminder";
 import IconChip from "../../components/IconChip";
 import Notifications from "./Notifications";
 import { tapSelection, tapLight } from "../../lib/haptics";
@@ -20,17 +12,13 @@ import { animateLayout } from "../../lib/animateLayout";
 // Reached via Settings > Notifications (see Settings.tsx) rather than
 // living inline there or as its own top-level AccountMenu row — grouped
 // list + drill-in-for-detail structure borrowed from how most native
-// apps lay out Settings > Notifications.
+// apps lay out Settings > Notifications. Shift reminders live in their
+// own Settings > Reminders destination (ShiftReminderSettings.tsx)
+// instead of nested here, so they're easier to find at a glance.
 export default function NotificationSettings({ onBack }: { onBack: () => void }) {
   const T = useTheme();
-  const { user } = useAuth();
   const [enabled, setEnabled] = useState(true);
   const [busy, setBusy] = useState(false);
-  // Shift reminders are scheduled entirely on-device (see lib/shiftReminder.js)
-  // rather than through the server's push pipeline — no server round trip
-  // to read/write this preference, just SecureStore like theme/language.
-  const [remindersEnabled, setRemindersEnabled] = useState(true);
-  const [reminderMinutes, setReminderMinutes] = useState(String(DEFAULT_REMINDER_MINUTES));
   const [silentMode, setSilentMode] = useState(false);
   const [showHistory, setShowHistoryState] = useState(false);
   const setShowHistory = (v: boolean) => {
@@ -41,10 +29,6 @@ export default function NotificationSettings({ onBack }: { onBack: () => void })
   useEffect(() => {
     getNotificationsEnabled().then(setEnabled);
     getSilentModeEnabled().then(setSilentMode);
-    getShiftReminderPreference().then(({ enabled: e, minutesBefore }) => {
-      setRemindersEnabled(e);
-      setReminderMinutes(String(minutesBefore));
-    });
   }, []);
 
   const toggle = async (value: boolean) => {
@@ -58,30 +42,10 @@ export default function NotificationSettings({ onBack }: { onBack: () => void })
     }
   };
 
-  const toggleReminders = async (value: boolean) => {
-    tapSelection();
-    setRemindersEnabled(value);
-    await setShiftReminderPreference({ enabled: value });
-    // Takes effect right away instead of waiting for the next time Today
-    // or My Shifts happens to load.
-    if (value && user?.id) {
-      refreshAllShiftReminders(user.id);
-    } else {
-      cancelAllShiftReminders();
-    }
-  };
-
   const toggleSilentMode = async (value: boolean) => {
     tapSelection();
     setSilentMode(value);
     await setSilentModeEnabled(value);
-  };
-
-  const commitReminderMinutes = async (text: string) => {
-    const digitsOnly = text.replace(/[^0-9]/g, "");
-    setReminderMinutes(digitsOnly);
-    const minutes = Math.max(5, Math.min(Number(digitsOnly) || DEFAULT_REMINDER_MINUTES, 120));
-    await setShiftReminderPreference({ minutesBefore: minutes });
   };
 
   const styles = useMemo(
@@ -125,17 +89,6 @@ export default function NotificationSettings({ onBack }: { onBack: () => void })
         rowText: { flex: 1 },
         rowLabel: { fontFamily: fonts.body.medium, fontSize: 14.5, color: T.ink },
         rowHint: { fontFamily: fonts.body.regular, fontSize: 12, color: T.muted, marginTop: 2 },
-        minutesInput: {
-          width: 56,
-          textAlign: "center",
-          borderWidth: 1,
-          borderColor: T.line,
-          borderRadius: 8,
-          paddingVertical: 7,
-          fontFamily: fonts.body.medium,
-          fontSize: 13.5,
-          color: T.ink,
-        },
       }),
     [T]
   );
@@ -188,41 +141,6 @@ export default function NotificationSettings({ onBack }: { onBack: () => void })
                   onValueChange={toggleSilentMode}
                   trackColor={{ false: T.line, true: T.tealBg }}
                   thumbColor={silentMode ? T.teal : undefined}
-                />
-              </View>
-            </>
-          )}
-        </View>
-
-        <Text style={styles.sectionLabel}>Shift reminders</Text>
-        <View style={styles.rowGroup}>
-          <View style={styles.row}>
-            <IconChip bg={T.tealBg} size={32}>
-              <Clock3 size={16} color={T.tealDeep} />
-            </IconChip>
-            <View style={styles.rowText}>
-              <Text style={styles.rowLabel}>Remind me before my shift</Text>
-              <Text style={styles.rowHint}>Scheduled on your phone — works even if you're offline.</Text>
-            </View>
-            <Switch
-              value={remindersEnabled}
-              onValueChange={toggleReminders}
-              trackColor={{ false: T.line, true: T.tealBg }}
-              thumbColor={remindersEnabled ? T.teal : undefined}
-            />
-          </View>
-          {remindersEnabled && (
-            <>
-              <View style={styles.rowDivider} />
-              <View style={styles.row}>
-                <View style={styles.rowText}>
-                  <Text style={styles.rowLabel}>Minutes before shift</Text>
-                </View>
-                <TextInput
-                  value={reminderMinutes}
-                  onChangeText={commitReminderMinutes}
-                  keyboardType="number-pad"
-                  style={styles.minutesInput}
                 />
               </View>
             </>

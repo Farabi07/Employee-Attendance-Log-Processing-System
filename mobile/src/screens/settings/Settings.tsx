@@ -1,15 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, Pressable, Switch, StyleSheet } from "react-native";
-import { ChevronLeft, ChevronRight, Moon, Bell, Vibrate } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, Moon, Bell, Vibrate, Clock3 } from "lucide-react-native";
 import { fonts } from "../../theme";
 import { useTheme, useThemeSetting } from "../../lib/ThemeContext";
 import { useAuth } from "../../lib/auth";
 import IconChip from "../../components/IconChip";
 import NotificationSettings from "./NotificationSettings";
+import ShiftReminderSettings from "./ShiftReminderSettings";
 import { tapSelection, tapLight, getHapticsEnabled, setHapticsEnabled } from "../../lib/haptics";
 import { animateLayout } from "../../lib/animateLayout";
 
-type SettingsView = "root" | "notifications";
+type SettingsView = "root" | "notifications" | "reminders";
 
 // Rendered as a swapped-in view inside AccountMenu's existing Modal, same
 // pattern as AccountDeletion.tsx. Laid out as a grouped list (a "General"
@@ -80,6 +81,9 @@ export default function Settings({ onBack }: { onBack: () => void }) {
   if (view === "notifications") {
     return <NotificationSettings onBack={() => setView("root")} />;
   }
+  if (view === "reminders") {
+    return <ShiftReminderSettings onBack={() => setView("root")} />;
+  }
 
   return (
     <View>
@@ -141,6 +145,22 @@ export default function Settings({ onBack }: { onBack: () => void }) {
               <Bell size={16} color={T.amber} />
             </IconChip>
             <Text style={styles.rowLabel}>Notifications</Text>
+            <ChevronRight size={16} color={T.faint} />
+          </Pressable>
+
+          <View style={styles.rowDivider} />
+
+          <Pressable
+            onPress={() => {
+              tapLight();
+              setView("reminders");
+            }}
+            style={styles.row}
+          >
+            <IconChip bg={T.tealBg} size={32}>
+              <Clock3 size={16} color={T.tealDeep} />
+            </IconChip>
+            <Text style={styles.rowLabel}>Reminders</Text>
             <ChevronRight size={16} color={T.faint} />
           </Pressable>
         </View>
