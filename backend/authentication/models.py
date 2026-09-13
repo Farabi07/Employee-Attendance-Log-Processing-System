@@ -412,6 +412,13 @@ class User(AbstractBaseUser):
     # push notifications instead of the web app's 20s polling.
     expo_push_token = models.CharField(max_length=255, null=True, blank=True)
 
+    # A separate on/off from the master "notifications enabled" toggle
+    # (expo_push_token being set/cleared) — this one only governs the
+    # "your shift starts soon" reminder specifically, so someone can want
+    # approvals/roster/payroll pushes but not this one. Checked in
+    # attendance/push.py's send_expo_push_for_notification.
+    shift_reminders_enabled = models.BooleanField(default=True)
+
     user_type = models.CharField(max_length=255, null=True, blank=True)
 
     date_of_birth = models.DateField(null=True, blank=True)

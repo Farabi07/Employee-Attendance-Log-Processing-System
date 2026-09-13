@@ -57,6 +57,23 @@ def registerPushToken(request):
 
 
 @extend_schema(request=None, responses=None)
+@api_view(['GET', 'PUT'])
+@permission_classes([IsAuthenticated])
+def notificationPreferences(request):
+	"""Per-notification-type push preferences, separate from the master
+	on/off in registerPushToken (which clears expo_push_token entirely).
+	Currently just shift_reminders_enabled — add more booleans here as
+	more granular toggles are needed, rather than one per endpoint."""
+	if request.method == 'GET':
+		return Response({'shift_reminders_enabled': request.user.shift_reminders_enabled}, status=status.HTTP_200_OK)
+
+	if 'shift_reminders_enabled' in request.data:
+		request.user.shift_reminders_enabled = bool(request.data.get('shift_reminders_enabled'))
+		request.user.save(update_fields=['shift_reminders_enabled'])
+	return Response({'shift_reminders_enabled': request.user.shift_reminders_enabled}, status=status.HTTP_200_OK)
+
+
+@extend_schema(request=None, responses=None)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def deactivateMyAccount(request):

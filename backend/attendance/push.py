@@ -14,6 +14,8 @@ def send_expo_push_for_notification(notification):
 	token = getattr(notification.recipient, 'expo_push_token', None)
 	if not token:
 		return
+	if notification.notification_type == 'shift_reminder' and not getattr(notification.recipient, 'shift_reminders_enabled', True):
+		return
 	try:
 		requests.post(
 			EXPO_PUSH_URL,
