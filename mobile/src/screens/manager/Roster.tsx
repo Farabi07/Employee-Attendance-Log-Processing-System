@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, TextInput, ScrollView, Pressable, Alert, StyleSheet, RefreshControl, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, TextInput, ScrollView, Pressable, Switch, Alert, StyleSheet, RefreshControl, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Plus, QrCode, Trash2, Pencil, MapPin, Building2, Tag, Maximize2, CalendarDays } from "lucide-react-native";
 import Skeleton from "../../components/Skeleton";
@@ -20,7 +20,7 @@ import InlinePicker from "../../components/InlinePicker";
 import { PrimaryButton } from "../../components/Button";
 import LiveQrDisplay from "../../components/LiveQrDisplay";
 import { useToast } from "../../components/Toast";
-import { tapLight } from "../../lib/haptics";
+import { tapLight, tapSelection } from "../../lib/haptics";
 
 function dayOfWeekFromDate(isoDate: string) {
   const jsDay = new Date(`${isoDate}T00:00:00`).getDay(); // 0=Sun..6=Sat
@@ -51,6 +51,28 @@ export default function Roster() {
         availabilityHint: { fontFamily: fonts.body.regular, fontSize: 11.5, marginTop: 6 },
         rowHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
         linkText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.teal },
+        repeatRow: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 12,
+          paddingVertical: 12,
+          borderTopWidth: 1,
+          borderTopColor: T.line2,
+          marginBottom: 4,
+        },
+        repeatWeeksRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
+        repeatWeeksInput: {
+          width: 64,
+          textAlign: "center",
+          borderWidth: 1,
+          borderColor: T.line,
+          borderRadius: 8,
+          paddingVertical: 8,
+          fontFamily: fonts.body.medium,
+          fontSize: 13.5,
+          color: T.ink,
+          backgroundColor: T.card,
+        },
         shiftRow: { flexDirection: "row", alignItems: "center", paddingVertical: 8, borderTopWidth: 1, borderTopColor: T.line2, gap: 4 },
         shiftText: { fontFamily: fonts.body.regular, fontSize: 13, color: T.ink, flex: 1 },
         shiftTime: { fontFamily: fonts.mono.regular, color: T.muted, fontSize: 12 },
@@ -124,6 +146,8 @@ export default function Roster() {
   const [date, setDate] = useState(todayISO());
   const [shiftId, setShiftId] = useState("");
   const [assigning, setAssigning] = useState(false);
+  const [repeatWeekly, setRepeatWeekly] = useState(false);
+  const [repeatWeeks, setRepeatWeeks] = useState("4");
 
   const [showShiftForm, setShowShiftForm] = useState(false);
   const [shiftName, setShiftName] = useState("Morning");
@@ -204,10 +228,26 @@ export default function Roster() {
       toast.show("Pick an employee, date and shift.", "error");
       return;
     }
+    const weeks = repeatWeekly ? Math.max(1, Math.min(Number(repeatWeeks) || 1, 12)) : 1;
     setAssigning(true);
     try {
-      await api.post(endpoints.rosterCreate(), { employee: Number(employeeId), shift: Number(shiftId), date });
-      toast.show("Shift assigned.");
+      const res = await api.post(endpoints.rosterCreate(), {
+        employee: Number(employeeId),
+        shift: Number(shiftId),
+        date,
+        repeat_weeks: weeks,
+      });
+      if (weeks > 1) {
+        const createdCount = res?.created?.length ?? 1;
+        const skippedCount = res?.skipped_dates?.length ?? 0;
+        toast.show(
+          skippedCount > 0
+            ? `Assigned ${createdCount} of ${weeks} weeks — ${skippedCount} already had a shift that day.`
+            : `Assigned for ${createdCount} weeks.`
+        );
+      } else {
+        toast.show("Shift assigned.");
+      }
       await load();
     } catch (err: any) {
       toast.show(err.message, "error");
@@ -420,7 +460,39 @@ export default function Roster() {
             )}
           </View>
 
-          <PrimaryButton title={assigning ? "Assigning…" : "Assign shift"} onPress={assign} loading={assigning} disabled={shifts.length === 0} />
+          <View style={styles.repeatRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>Repeat weekly</Text>
+              <Text style={styles.bodyMuted}>Assigns the same weekday/shift for several weeks in one go.</Text>
+            </View>
+            <Switch
+              value={repeatWeekly}
+              onValueChange={(v) => {
+                tapSelection();
+                setRepeatWeekly(v);
+              }}
+              trackColor={{ false: T.line, true: T.tealBg }}
+              thumbColor={repeatWeekly ? T.teal : undefined}
+            />
+          </View>
+          {repeatWeekly && (
+            <View style={styles.repeatWeeksRow}>
+              <Text style={styles.label}>For how many weeks</Text>
+              <TextInput
+                value={repeatWeeks}
+                onChangeText={(t) => setRepeatWeeks(t.replace(/[^0-9]/g, ""))}
+                keyboardType="number-pad"
+                style={styles.repeatWeeksInput}
+              />
+            </View>
+          )}
+
+          <PrimaryButton
+            title={assigning ? "Assigning…" : repeatWeekly ? `Assign for ${repeatWeeks || "…"} weeks` : "Assign shift"}
+            onPress={assign}
+            loading={assigning}
+            disabled={shifts.length === 0}
+          />
         </Card>
 
         <Card style={styles.card}>

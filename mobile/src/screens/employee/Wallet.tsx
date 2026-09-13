@@ -12,6 +12,7 @@ import {
   Landmark,
   CheckCircle2,
   Paperclip,
+  Download,
 } from "lucide-react-native";
 import { fonts } from "../../theme";
 import { useTheme, Colors } from "../../lib/ThemeContext";
@@ -19,12 +20,15 @@ import { api, BASE_URL, getToken } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import { useAuth } from "../../lib/auth";
 import { formatMoney, currencySymbol } from "../../lib/currency";
+import { toISODate, todayISO } from "../../lib/dates";
+import { downloadAndShare } from "../../lib/download";
 import Card from "../../components/Card";
 import Skeleton from "../../components/Skeleton";
 import EmptyState from "../../components/EmptyState";
 import IconChip from "../../components/IconChip";
 import StatusPill from "../../components/StatusPill";
 import AnimatedAmount from "../../components/AnimatedAmount";
+import DateField from "../../components/DateField";
 import { PrimaryButton } from "../../components/Button";
 import { useToast } from "../../components/Toast";
 import { tapLight } from "../../lib/haptics";
@@ -68,6 +72,9 @@ function makeStyles(T: Colors) {
     outlineButtonText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.ink },
     navyButton: { width: "100%", paddingVertical: 10, borderRadius: 9, backgroundColor: T.navy, alignItems: "center" },
     navyButtonText: { fontFamily: fonts.body.semibold, fontSize: 13.5, color: T.onAccent },
+    exportDateRow: { flexDirection: "row", gap: 10, marginBottom: 12 },
+    exportButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, borderRadius: 9, backgroundColor: T.navyBg },
+    exportButtonText: { fontFamily: fonts.body.semibold, fontSize: 13, color: T.navyDeep },
     amountInput: {
       width: "100%",
       paddingVertical: 10,
@@ -307,6 +314,12 @@ export default function Wallet() {
   const [eligibleAdjustments, setEligibleAdjustments] = useState<any[]>([]);
   const [myAdjustments, setMyAdjustments] = useState<any[]>([]);
   const [confirmingCashId, setConfirmingCashId] = useState<number | null>(null);
+  const [payslipFrom, setPayslipFrom] = useState(() => {
+    const d = new Date();
+    return toISODate(new Date(d.getFullYear(), d.getMonth(), 1));
+  });
+  const [payslipTo, setPayslipTo] = useState(todayISO());
+  const [downloadingPayslip, setDownloadingPayslip] = useState(false);
 
   const load = useCallback(async () => {
     const [res, historyRes] = await Promise.all([api.get(endpoints.walletMe()), api.get(endpoints.rateHistory(user!.id))]);
@@ -340,6 +353,22 @@ export default function Wallet() {
       await refreshAdjustments();
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const downloadPayslip = async () => {
+    if (!payslipFrom || !payslipTo) {
+      toast.show("Pick a start and end date.", "error");
+      return;
+    }
+    setDownloadingPayslip(true);
+    try {
+      const params = `?date_from=${payslipFrom}&date_to=${payslipTo}`;
+      await downloadAndShare(endpoints.myPayslipPdf(params), `payslip_${payslipFrom}_to_${payslipTo}.pdf`);
+    } catch (err: any) {
+      toast.show(err.message, "error");
+    } finally {
+      setDownloadingPayslip(false);
     }
   };
 
@@ -506,6 +535,24 @@ export default function Wallet() {
               />
             </>
           )}
+        </Card>
+
+        <Card style={styles.card}>
+          <View style={styles.iconTitleRow}>
+            <IconChip bg={T.tealBg}>
+              <Download size={14} color={T.tealDeep} />
+            </IconChip>
+            <Text style={styles.cardTitle}>Download payslip</Text>
+          </View>
+          <Text style={styles.bodyMuted}>A PDF of your earnings and payouts for a date range — handy as proof of income.</Text>
+          <View style={styles.exportDateRow}>
+            <DateField label="From" value={payslipFrom} onChange={setPayslipFrom} />
+            <DateField label="To" value={payslipTo} onChange={setPayslipTo} />
+          </View>
+          <Pressable onPress={downloadPayslip} disabled={downloadingPayslip} style={[styles.exportButton, { opacity: downloadingPayslip ? 0.6 : 1 }]}>
+            <Download size={14} color={T.navyDeep} />
+            <Text style={styles.exportButtonText}>{downloadingPayslip ? "Preparing…" : "Download PDF"}</Text>
+          </Pressable>
         </Card>
 
         <Card style={styles.card}>

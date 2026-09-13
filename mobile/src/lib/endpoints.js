@@ -90,6 +90,7 @@ export const endpoints = {
   payoutCardConfirm: () => `/billing/api/v1/payout_card/confirm/`,
 
   walletMe: () => `/wallet/api/v1/me/`,
+  myPayslipPdf: (params = "") => `/wallet/api/v1/me/payslip/${params}`,
   walletPayoutRequest: () => `/wallet/api/v1/payout/request/`,
   connectOnboard: () => `/wallet/api/v1/connect/onboard/`,
   connectStatus: () => `/wallet/api/v1/connect/status/`,
