@@ -45,3 +45,60 @@ def build_payroll_report_rows(date_from, date_to, organization):
             }
         )
     return rows
+
+
+def build_employee_payslip(date_from, date_to, employee):
+    """Line-item earnings/payouts for one employee over [date_from, date_to]
+    inclusive — the employee-facing counterpart to build_payroll_report_rows
+    above (which is a per-org summary for managers). Every transaction in
+    the range is listed (not just completed ones) so a pending or failed
+    payout is visible on the slip rather than silently missing, but only
+    completed rows count toward the summary totals."""
+    transactions = WalletTransaction.objects.filter(
+        employee=employee,
+        created_at__date__gte=date_from,
+        created_at__date__lte=date_to,
+    ).select_related('related_attendance').order_by('created_at')
+
+    lines = []
+    total_earned = Decimal('0')
+    total_paid_out = Decimal('0')
+    total_hours = 0.0
+
+    for txn in transactions:
+        hours = None
+        if txn.related_attendance and txn.related_attendance.worked_hours:
+            hours = float(txn.related_attendance.worked_hours)
+
+        if txn.type == WalletTransaction.Type.EARNING:
+            description = f"Worked {hours:.2f}h" if hours else "Earning"
+        else:
+            description = txn.note or f"Payout ({txn.get_payout_method_display()})" if txn.payout_method else (txn.note or "Payout")
+
+        lines.append(
+            {
+                'date': txn.created_at.date(),
+                'type': txn.get_type_display(),
+                'description': description,
+                'hours': round(hours, 2) if hours else None,
+                'amount': txn.amount,
+                'status': txn.get_status_display(),
+            }
+        )
+
+        if txn.status == WalletTransaction.Status.COMPLETED:
+            if txn.type == WalletTransaction.Type.EARNING:
+                total_earned += txn.amount
+                if hours:
+                    total_hours += hours
+            else:
+                total_paid_out += txn.amount
+
+    return {
+        'employee': employee,
+        'lines': lines,
+        'total_earned': total_earned,
+        'total_paid_out': total_paid_out,
+        'balance': total_earned - total_paid_out,
+        'total_hours': round(total_hours, 2),
+    }

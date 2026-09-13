@@ -27,8 +27,8 @@ from wallet.notify import (
 	notify_pay_adjustment_submitted, notify_pay_adjustment_reviewed,
 	notify_cash_payout_pending, notify_cash_payout_confirmed,
 )
-from wallet.reports import build_payroll_report_rows
-from wallet.exporters import render_csv, render_pdf, render_excel
+from wallet.reports import build_payroll_report_rows, build_employee_payslip
+from wallet.exporters import render_csv, render_pdf, render_excel, render_payslip_pdf
 
 from commons.pagination import Pagination
 
@@ -429,6 +429,33 @@ def exportPayrollPdf(request):
 
 	response = HttpResponse(pdf_bytes, content_type='application/pdf')
 	response['Content-Disposition'] = f'attachment; filename="payroll-report_{date_from}_to_{date_to}.pdf"'
+	return response
+
+
+
+
+@extend_schema(request=None, responses=None)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, HasActiveSubscription])
+def exportMyPayslipPdf(request):
+	"""The employee-facing counterpart to exportPayrollPdf above — any
+	signed-in employee can pull their own payslip for a date range (proof
+	of income for a loan/lease application, personal records, ...), scoped
+	to just their own wallet activity rather than the whole org's."""
+	date_from, date_to, error = _parse_report_range(request)
+	if error:
+		return error
+
+	# request.user resolves to the base User model — currency, hourly_rate
+	# etc. live on the Employee subclass (multi-table inheritance), so it
+	# has to be re-fetched through Employee to have them.
+	employee = Employee.objects.get(pk=request.user.pk)
+	payslip = build_employee_payslip(date_from, date_to, employee)
+	org_name = request.user.organization.name if request.user.organization else ''
+	pdf_bytes = render_payslip_pdf(payslip, date_from, date_to, org_name)
+
+	response = HttpResponse(pdf_bytes, content_type='application/pdf')
+	response['Content-Disposition'] = f'attachment; filename="payslip_{date_from}_to_{date_to}.pdf"'
 	return response
 
 

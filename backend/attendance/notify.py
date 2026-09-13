@@ -13,6 +13,19 @@ def notify_roster_assigned(roster, updated=False):
     )
 
 
+def notify_shift_reminder(roster):
+    """Fired by the send_shift_reminders management command shortly before
+    a shift starts, for whoever hasn't checked in yet."""
+    shift = roster.shift
+    when = shift.start_time.strftime('%I:%M %p').lstrip('0') if shift else 'soon'
+    Notification.objects.create(
+        recipient=roster.employee,
+        notification_type=Notification.NotificationType.SHIFT_REMINDER,
+        title="Your shift starts soon",
+        message=f"{shift.name if shift else 'Your shift'} starts at {when} — scan in when you arrive.",
+    )
+
+
 def notify_leave_submitted(leave_request):
     from authentication.models import User
 

@@ -45,6 +45,12 @@ class Roster(models.Model):
     date = models.DateField(db_index=True)
     note = models.CharField(max_length=255, null=True, blank=True)
 
+    # Set by the send_shift_reminders management command once it's pushed
+    # a "your shift starts soon" notification for this row, so a job that
+    # runs every few minutes doesn't remind the same person twice for the
+    # same shift.
+    reminder_sent_at = models.DateTimeField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -329,6 +335,7 @@ class Notification(models.Model):
         SWAP_REQUESTED = 'swap_requested', 'Shift swap requested'
         SWAP_CLAIMED = 'swap_claimed', 'Shift swap claimed'
         SWAP_REVIEWED = 'swap_reviewed', 'Shift swap reviewed'
+        SHIFT_REMINDER = 'shift_reminder', 'Upcoming shift reminder'
         GENERAL = 'general', 'General'
 
     recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications')

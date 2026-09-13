@@ -5,6 +5,7 @@ from wallet.views import wallet_views as views
 
 urlpatterns = [
 	path('api/v1/me/', views.getMyWallet),
+	path('api/v1/me/payslip/', views.exportMyPayslipPdf),
 	path('api/v1/payout/request/', views.requestPayout),
 	path('api/v1/connect/onboard/', views.connectOnboard),
 	path('api/v1/connect/status/', views.connectStatus),
