@@ -1,14 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { View, Text, Pressable, Switch, StyleSheet } from "react-native";
+import { View, Text, TextInput, Pressable, Switch, StyleSheet } from "react-native";
 import { ChevronLeft, ChevronRight, Bell, Clock3, List } from "lucide-react-native";
 import { fonts } from "../../theme";
 import { useTheme } from "../../lib/ThemeContext";
-import {
-  getNotificationsEnabled,
-  setNotificationsEnabled,
-  getShiftRemindersEnabled,
-  setShiftRemindersEnabled,
-} from "../../lib/push";
+import { getNotificationsEnabled, setNotificationsEnabled } from "../../lib/push";
+import { getShiftReminderPreference, setShiftReminderPreference, DEFAULT_REMINDER_MINUTES } from "../../lib/shiftReminder";
 import IconChip from "../../components/IconChip";
 import Notifications from "./Notifications";
 import { tapSelection, tapLight } from "../../lib/haptics";
@@ -22,8 +18,11 @@ export default function NotificationSettings({ onBack }: { onBack: () => void })
   const T = useTheme();
   const [enabled, setEnabled] = useState(true);
   const [busy, setBusy] = useState(false);
+  // Shift reminders are scheduled entirely on-device (see lib/shiftReminder.js)
+  // rather than through the server's push pipeline — no server round trip
+  // to read/write this preference, just SecureStore like theme/language.
   const [remindersEnabled, setRemindersEnabled] = useState(true);
-  const [remindersBusy, setRemindersBusy] = useState(false);
+  const [reminderMinutes, setReminderMinutes] = useState(String(DEFAULT_REMINDER_MINUTES));
   const [showHistory, setShowHistoryState] = useState(false);
   const setShowHistory = (v: boolean) => {
     animateLayout();
@@ -32,7 +31,10 @@ export default function NotificationSettings({ onBack }: { onBack: () => void })
 
   useEffect(() => {
     getNotificationsEnabled().then(setEnabled);
-    getShiftRemindersEnabled().then(setRemindersEnabled);
+    getShiftReminderPreference().then(({ enabled: e, minutesBefore }) => {
+      setRemindersEnabled(e);
+      setReminderMinutes(String(minutesBefore));
+    });
   }, []);
 
   const toggle = async (value: boolean) => {
@@ -49,12 +51,14 @@ export default function NotificationSettings({ onBack }: { onBack: () => void })
   const toggleReminders = async (value: boolean) => {
     tapSelection();
     setRemindersEnabled(value);
-    setRemindersBusy(true);
-    try {
-      await setShiftRemindersEnabled(value);
-    } finally {
-      setRemindersBusy(false);
-    }
+    await setShiftReminderPreference({ enabled: value });
+  };
+
+  const commitReminderMinutes = async (text: string) => {
+    const digitsOnly = text.replace(/[^0-9]/g, "");
+    setReminderMinutes(digitsOnly);
+    const minutes = Math.max(5, Math.min(Number(digitsOnly) || DEFAULT_REMINDER_MINUTES, 120));
+    await setShiftReminderPreference({ minutesBefore: minutes });
   };
 
   const styles = useMemo(
@@ -98,6 +102,17 @@ export default function NotificationSettings({ onBack }: { onBack: () => void })
         rowText: { flex: 1 },
         rowLabel: { fontFamily: fonts.body.medium, fontSize: 14.5, color: T.ink },
         rowHint: { fontFamily: fonts.body.regular, fontSize: 12, color: T.muted, marginTop: 2 },
+        minutesInput: {
+          width: 56,
+          textAlign: "center",
+          borderWidth: 1,
+          borderColor: T.line,
+          borderRadius: 8,
+          paddingVertical: 7,
+          fontFamily: fonts.body.medium,
+          fontSize: 13.5,
+          color: T.ink,
+        },
       }),
     [T]
   );
@@ -134,25 +149,41 @@ export default function NotificationSettings({ onBack }: { onBack: () => void })
               thumbColor={enabled ? T.teal : undefined}
             />
           </View>
+        </View>
 
-          <View style={styles.rowDivider} />
-
+        <Text style={styles.sectionLabel}>Shift reminders</Text>
+        <View style={styles.rowGroup}>
           <View style={styles.row}>
             <IconChip bg={T.tealBg} size={32}>
               <Clock3 size={16} color={T.tealDeep} />
             </IconChip>
             <View style={styles.rowText}>
-              <Text style={styles.rowLabel}>Shift reminders</Text>
-              <Text style={styles.rowHint}>A nudge ~30 minutes before your shift, if you haven't checked in.</Text>
+              <Text style={styles.rowLabel}>Remind me before my shift</Text>
+              <Text style={styles.rowHint}>Scheduled on your phone — works even if you're offline.</Text>
             </View>
             <Switch
               value={remindersEnabled}
               onValueChange={toggleReminders}
-              disabled={remindersBusy || !enabled}
               trackColor={{ false: T.line, true: T.tealBg }}
-              thumbColor={remindersEnabled && enabled ? T.teal : undefined}
+              thumbColor={remindersEnabled ? T.teal : undefined}
             />
           </View>
+          {remindersEnabled && (
+            <>
+              <View style={styles.rowDivider} />
+              <View style={styles.row}>
+                <View style={styles.rowText}>
+                  <Text style={styles.rowLabel}>Minutes before shift</Text>
+                </View>
+                <TextInput
+                  value={reminderMinutes}
+                  onChangeText={commitReminderMinutes}
+                  keyboardType="number-pad"
+                  style={styles.minutesInput}
+                />
+              </View>
+            </>
+          )}
         </View>
 
         <Text style={styles.sectionLabel}>History</Text>

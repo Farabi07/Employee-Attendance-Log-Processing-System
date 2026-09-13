@@ -104,28 +104,3 @@ export async function unregisterPushNotifications() {
     // still applies for the rest of this session.
   }
 }
-
-const SHIFT_REMINDERS_KEY = "shift_reminders_enabled";
-
-// A separate on/off from the master toggle above — the server decides
-// whether to send a shift-reminder push per user (User.shift_reminders_enabled,
-// checked in attendance/push.py), independent of whether other push types
-// are enabled. Server is the source of truth (that's what actually
-// controls sending), with the local copy just for a fast/offline-safe
-// initial render of the switch.
-export async function getShiftRemindersEnabled() {
-  try {
-    const res = await api.get(endpoints.notificationPreferences());
-    const enabled = res?.shift_reminders_enabled !== false;
-    await SecureStore.setItemAsync(SHIFT_REMINDERS_KEY, enabled ? "true" : "false");
-    return enabled;
-  } catch {
-    const stored = await SecureStore.getItemAsync(SHIFT_REMINDERS_KEY);
-    return stored !== "false";
-  }
-}
-
-export async function setShiftRemindersEnabled(enabled) {
-  await SecureStore.setItemAsync(SHIFT_REMINDERS_KEY, enabled ? "true" : "false");
-  await api.put(endpoints.notificationPreferences(), { shift_reminders_enabled: enabled });
-}

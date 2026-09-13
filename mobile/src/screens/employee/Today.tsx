@@ -17,6 +17,7 @@ import Skeleton from "../../components/Skeleton";
 import EmptyState from "../../components/EmptyState";
 import { useToast } from "../../components/Toast";
 import { tapLight } from "../../lib/haptics";
+import { syncShiftReminder } from "../../lib/shiftReminder";
 
 // Ported from frontend/src/pages/employee/Today.jsx. The web version's
 // isMobile grid-vs-sidebar layout switch doesn't apply here — a phone
@@ -115,7 +116,11 @@ export default function Today() {
 
     const today = todayISO();
     const rosters = rosterRes.rosters || [];
-    setRosterToday(rosters.find((r: any) => r.date === today) || null);
+    const todayRoster = rosters.find((r: any) => r.date === today) || null;
+    setRosterToday(todayRoster);
+    if (todayRoster) {
+      syncShiftReminder(todayRoster, !!att?.check_in_time);
+    }
     setUpcoming(
       rosters
         .filter((r: any) => r.date >= today)
