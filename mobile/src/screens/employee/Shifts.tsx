@@ -16,6 +16,7 @@ import { weekDates, formatDayLabel, todayISO } from "../../lib/dates";
 import Card from "../../components/Card";
 import StatusPill from "../../components/StatusPill";
 import TimeField from "../../components/TimeField";
+import { PrimaryButton } from "../../components/Button";
 
 // Ported from frontend/src/pages/employee/Shifts.jsx. The web version's
 // 7-column CSS grid becomes a horizontal ScrollView — a phone screen never
@@ -54,7 +55,12 @@ function makeStyles(T: Colors) {
       padding: 12,
       alignItems: "center",
     },
+    dayCardToday: {
+      borderWidth: 1.5,
+      borderColor: T.navy,
+    },
     dayLabel: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.muted, marginBottom: 10 },
+    dayLabelToday: { color: T.navy },
     shiftName: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.ink, marginTop: 8, marginBottom: 2, textAlign: "center" },
     shiftTime: { fontFamily: fonts.mono.regular, fontSize: 10.5, color: T.muted, marginBottom: 8 },
     offLabel: { fontFamily: fonts.body.regular, fontSize: 12, color: T.faint, marginTop: 14 },
@@ -82,9 +88,8 @@ function makeStyles(T: Colors) {
     cancelChipText: { fontFamily: fonts.body.semibold, fontSize: 11.5, color: T.muted },
     availRow: { paddingVertical: 12, gap: 10 },
     availRowBorder: { borderTopWidth: 1, borderTopColor: T.line2 },
+    availHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
     availDay: { fontFamily: fonts.body.medium, fontSize: 13.5, color: T.ink },
-    availSwitchRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-    availSwitchLabel: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted },
     availTimeRow: { flexDirection: "row", gap: 10 },
   });
 }
@@ -259,11 +264,15 @@ export default function Shifts() {
                   const roster = byDate[date];
                   const shift = roster?.shift;
                   const canSwap = roster && date >= today;
+                  const isToday = date === today;
                   const hasActiveSwap =
                     roster && swaps.outgoing.some((s) => s.roster?.id === roster.id && !["rejected", "cancelled"].includes(s.status));
                   return (
-                    <View key={date} style={[styles.dayCard, { backgroundColor: shift ? T.tealBg : T.paper }]}>
-                      <Text style={styles.dayLabel}>{formatDayLabel(date).split(" ")[0]}</Text>
+                    <View
+                      key={date}
+                      style={[styles.dayCard, { backgroundColor: shift ? T.tealBg : T.paper }, isToday && styles.dayCardToday]}
+                    >
+                      <Text style={[styles.dayLabel, isToday && styles.dayLabelToday]}>{formatDayLabel(date).split(" ")[0]}</Text>
                       {shift ? (
                         <>
                           <Text style={styles.shiftName}>{shift.name}</Text>
@@ -308,9 +317,9 @@ export default function Shifts() {
                     <Pressable
                       onPress={() => requestSwap(byDate[openSwapDate])}
                       disabled={busyId === byDate[openSwapDate].id}
-                      style={styles.sendButton}
+                      style={[styles.sendButton, busyId === byDate[openSwapDate].id && { opacity: 0.6 }]}
                     >
-                      <Text style={styles.sendButtonText}>Send request</Text>
+                      <Text style={styles.sendButtonText}>{busyId === byDate[openSwapDate].id ? "Sending…" : "Send request"}</Text>
                     </Pressable>
                     <Pressable onPress={() => setOpenSwapDate(null)} style={styles.cancelButton}>
                       <Text style={styles.cancelButtonText}>Cancel</Text>
@@ -343,11 +352,19 @@ export default function Shifts() {
                     swap={s}
                     right={
                       <View style={{ flexDirection: "row", gap: 6 }}>
-                        <Pressable onPress={() => respond(s.id, "accept")} disabled={busyId === s.id} style={styles.acceptBtn}>
+                        <Pressable
+                          onPress={() => respond(s.id, "accept")}
+                          disabled={busyId === s.id}
+                          style={[styles.acceptBtn, busyId === s.id && { opacity: 0.6 }]}
+                        >
                           <Check size={12} color={T.tealDeep} />
                           <Text style={styles.acceptBtnText}>Accept</Text>
                         </Pressable>
-                        <Pressable onPress={() => respond(s.id, "decline")} disabled={busyId === s.id} style={styles.declineBtn}>
+                        <Pressable
+                          onPress={() => respond(s.id, "decline")}
+                          disabled={busyId === s.id}
+                          style={[styles.declineBtn, busyId === s.id && { opacity: 0.6 }]}
+                        >
                           <X size={12} color={T.coral} />
                           <Text style={styles.declineBtnText}>Decline</Text>
                         </Pressable>
@@ -366,7 +383,11 @@ export default function Shifts() {
                     key={s.id}
                     swap={s}
                     right={
-                      <Pressable onPress={() => respond(s.id, "accept")} disabled={busyId === s.id} style={styles.acceptBtn}>
+                      <Pressable
+                        onPress={() => respond(s.id, "accept")}
+                        disabled={busyId === s.id}
+                        style={[styles.acceptBtn, busyId === s.id && { opacity: 0.6 }]}
+                      >
                         <Check size={12} color={T.tealDeep} />
                         <Text style={styles.acceptBtnText}>Claim</Text>
                       </Pressable>
@@ -385,7 +406,11 @@ export default function Shifts() {
                     swap={s}
                     right={
                       s.status === "pending_peer" ? (
-                        <Pressable onPress={() => cancelSwap(s.id)} disabled={busyId === s.id} style={styles.cancelChip}>
+                        <Pressable
+                          onPress={() => cancelSwap(s.id)}
+                          disabled={busyId === s.id}
+                          style={[styles.cancelChip, busyId === s.id && { opacity: 0.6 }]}
+                        >
                           <Text style={styles.cancelChipText}>Cancel</Text>
                         </Pressable>
                       ) : (
@@ -411,8 +436,8 @@ export default function Shifts() {
           </Text>
           {availability.map((d) => (
             <View key={d.day_of_week} style={[styles.availRow, d.day_of_week > 0 && styles.availRowBorder]}>
-              <Text style={styles.availDay}>{DAY_LABELS[d.day_of_week]}</Text>
-              <View style={styles.availSwitchRow}>
+              <View style={styles.availHeaderRow}>
+                <Text style={styles.availDay}>{DAY_LABELS[d.day_of_week]}</Text>
                 <Switch
                   value={d.is_available}
                   onValueChange={(v) => {
@@ -422,17 +447,22 @@ export default function Shifts() {
                   trackColor={{ false: T.line, true: T.tealBg }}
                   thumbColor={d.is_available ? T.teal : undefined}
                 />
-                <Text style={styles.availSwitchLabel}>Available</Text>
               </View>
-              <View style={styles.availTimeRow}>
-                <TimeField value={d.start_time || ""} onChange={(v) => updateAvailabilityDay(d.day_of_week, { start_time: v })} disabled={!d.is_available} />
-                <TimeField value={d.end_time || ""} onChange={(v) => updateAvailabilityDay(d.day_of_week, { end_time: v })} disabled={!d.is_available} />
-              </View>
+              {d.is_available && (
+                <View style={styles.availTimeRow}>
+                  <TimeField value={d.start_time || ""} onChange={(v) => updateAvailabilityDay(d.day_of_week, { start_time: v })} />
+                  <TimeField value={d.end_time || ""} onChange={(v) => updateAvailabilityDay(d.day_of_week, { end_time: v })} />
+                </View>
+              )}
             </View>
           ))}
-          <Pressable onPress={saveAvailability} disabled={savingAvailability} style={styles.sendButton}>
-            <Text style={styles.sendButtonText}>{savingAvailability ? "Saving…" : "Save availability"}</Text>
-          </Pressable>
+          <View style={{ marginTop: 6 }}>
+            <PrimaryButton
+              title={savingAvailability ? "Saving…" : "Save availability"}
+              onPress={saveAvailability}
+              loading={savingAvailability}
+            />
+          </View>
         </Card>
       </ScrollView>
       </KeyboardAvoidingView>
