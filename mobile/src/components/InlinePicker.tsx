@@ -10,11 +10,13 @@ export default function InlinePicker({
   onValueChange,
   items,
   style,
+  enabled = true,
 }: {
   selectedValue: string;
   onValueChange: (v: string) => void;
   items: { value: string; label: string }[];
   style?: object;
+  enabled?: boolean;
 }) {
   const T = useTheme();
   const styles = useMemo(
@@ -28,7 +30,7 @@ export default function InlinePicker({
 
   return (
     <View style={[styles.box, style]}>
-      <Picker selectedValue={selectedValue} onValueChange={onValueChange} style={styles.picker}>
+      <Picker selectedValue={selectedValue} onValueChange={onValueChange} enabled={enabled} style={styles.picker}>
         {items.map((it) => (
           <Picker.Item key={it.value} label={it.label} value={it.value} />
         ))}

@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, ScrollView, TextInput, Pressable, StyleSheet, Linking, RefreshControl, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Picker } from "@react-native-picker/picker";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { PieChart, Paperclip, CalendarX2 } from "lucide-react-native";
@@ -16,6 +15,7 @@ import { useAuth } from "../../lib/auth";
 import { api, BASE_URL, getToken, mediaUrl } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import Card from "../../components/Card";
+import InlinePicker from "../../components/InlinePicker";
 import StatusPill from "../../components/StatusPill";
 import DateField from "../../components/DateField";
 import { PrimaryButton } from "../../components/Button";
@@ -36,7 +36,7 @@ export default function Leave() {
         card: { padding: 20 },
         title: { fontFamily: fonts.display.semibold, fontSize: 15.5, color: T.ink, marginBottom: 16 },
         label: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 6 },
-        pickerBox: { borderWidth: 1, borderColor: T.line, borderRadius: 8, marginBottom: 14, overflow: "hidden" },
+        pickerBox: { marginBottom: 14 },
         dateRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
         textarea: {
           borderWidth: 1,
@@ -176,16 +176,21 @@ export default function Leave() {
           <Text style={styles.title}>Request leave</Text>
 
           <Text style={styles.label}>Leave type</Text>
-          <View style={styles.pickerBox}>
-            <Picker selectedValue={leaveTypeId} onValueChange={setLeaveTypeId} enabled={leaveTypes.length > 0}>
-              {leaveTypes.length === 0 && <Picker.Item label="No leave types yet" value="" />}
-              {leaveTypes.map((lt) => {
-                const b = balanceByTypeId[lt.id];
-                const suffix = b && b.days_per_year > 0 ? ` (${b.remaining} of ${b.days_per_year} left)` : "";
-                return <Picker.Item key={lt.id} label={`${lt.name}${suffix}`} value={String(lt.id)} />;
-              })}
-            </Picker>
-          </View>
+          <InlinePicker
+            style={styles.pickerBox}
+            selectedValue={leaveTypeId}
+            onValueChange={setLeaveTypeId}
+            enabled={leaveTypes.length > 0}
+            items={
+              leaveTypes.length === 0
+                ? [{ value: "", label: "No leave types yet" }]
+                : leaveTypes.map((lt) => {
+                    const b = balanceByTypeId[lt.id];
+                    const suffix = b && b.days_per_year > 0 ? ` (${b.remaining} of ${b.days_per_year} left)` : "";
+                    return { value: String(lt.id), label: `${lt.name}${suffix}` };
+                  })
+            }
+          />
 
           <View style={styles.dateRow}>
             <DateField label="From" value={from} onChange={setFrom} />

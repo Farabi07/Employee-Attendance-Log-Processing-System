@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, ScrollView, TextInput, Pressable, Switch, StyleSheet, RefreshControl, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Picker } from "@react-native-picker/picker";
 import { Repeat, Check, X, CalendarClock } from "lucide-react-native";
 import IconChip from "../../components/IconChip";
+import InlinePicker from "../../components/InlinePicker";
 import Skeleton from "../../components/Skeleton";
 import { tapSelection, tapLight } from "../../lib/haptics";
 import { useToast } from "../../components/Toast";
@@ -300,14 +300,15 @@ export default function Shifts() {
               {openSwapDate && byDate[openSwapDate] && (
                 <View style={styles.swapForm}>
                   <Text style={styles.swapFormTitle}>Request a swap for {formatDayLabel(openSwapDate)}</Text>
-                  <View style={styles.pickerBox}>
-                    <Picker selectedValue={proposedTo} onValueChange={setProposedTo}>
-                      <Picker.Item label="Open to anyone in the store" value="" />
-                      {teammates.map((t) => (
-                        <Picker.Item key={t.id} label={`${t.first_name} ${t.last_name}`} value={String(t.id)} />
-                      ))}
-                    </Picker>
-                  </View>
+                  <InlinePicker
+                    style={styles.pickerBox}
+                    selectedValue={proposedTo}
+                    onValueChange={setProposedTo}
+                    items={[
+                      { value: "", label: "Open to anyone in the store" },
+                      ...teammates.map((t: any) => ({ value: String(t.id), label: `${t.first_name} ${t.last_name}` })),
+                    ]}
+                  />
                   <TextInput
                     placeholder="Reason (optional)"
                     placeholderTextColor={T.faint}
