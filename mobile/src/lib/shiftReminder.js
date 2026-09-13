@@ -15,9 +15,28 @@ import { todayISO } from "./dates";
 
 const ENABLED_KEY = "shift_reminder_enabled";
 const MINUTES_KEY = "shift_reminder_minutes";
-const SCHEDULED_ID_PREFIX = "shift_reminder_scheduled_";
+// SecureStore has no "list all keys" API, so every currently-booked
+// reminder's display info lives in one JSON array under this single key
+// instead of one key per roster — that's what makes it possible to show
+// "your upcoming reminders" in NotificationBell/Notifications.tsx without
+// already knowing which roster ids to look for.
+const INDEX_KEY = "shift_reminder_index";
 
 export const DEFAULT_REMINDER_MINUTES = 30;
+
+async function readIndex() {
+  const raw = await SecureStore.getItemAsync(INDEX_KEY);
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+async function writeIndex(list) {
+  await SecureStore.setItemAsync(INDEX_KEY, JSON.stringify(list));
+}
 
 export async function getShiftReminderPreference() {
   const [enabledRaw, minutesRaw] = await Promise.all([
@@ -36,11 +55,26 @@ export async function setShiftReminderPreference({ enabled, minutesBefore }) {
   if (minutesBefore !== undefined) await SecureStore.setItemAsync(MINUTES_KEY, String(minutesBefore));
 }
 
+// Every reminder still in the future — used to show "Reminders" as its own
+// list in NotificationBell.tsx and Notifications.tsx, separate from the
+// backend-driven "Notifications" feed (shift reminders never create a
+// Notification row server-side, so they'd otherwise be invisible there).
+// Also prunes anything that's already fired, so the index doesn't grow
+// forever with stale entries nobody ever explicitly cancelled.
+export async function getUpcomingShiftReminders() {
+  const list = await readIndex();
+  const now = Date.now();
+  const upcoming = list.filter((r) => new Date(r.triggerAt).getTime() > now);
+  if (upcoming.length !== list.length) await writeIndex(upcoming);
+  return upcoming.sort((a, b) => new Date(a.triggerAt).getTime() - new Date(b.triggerAt).getTime());
+}
+
 // Shared by syncShiftReminder and syncUpcomingShiftReminders below — actually
-// books the OS-level alarm for one roster row and remembers its id so it can
-// be cancelled later. Always cancels any previous alarm for this roster
-// first, so calling it again (e.g. the minutes-before setting changed) just
-// reschedules rather than stacking duplicate notifications.
+// books the OS-level alarm for one roster row and remembers its id (and
+// display info, in the index) so it can be cancelled or listed later.
+// Always cancels any previous alarm for this roster first, so calling it
+// again (e.g. the minutes-before setting changed) just reschedules rather
+// than stacking duplicate notifications.
 async function scheduleOneShiftReminder(roster, minutesBefore) {
   await cancelShiftReminder(roster.id);
 
@@ -77,7 +111,18 @@ async function scheduleOneShiftReminder(roster, minutesBefore) {
       },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: trigger, channelId: "default" },
     });
-    await SecureStore.setItemAsync(`${SCHEDULED_ID_PREFIX}${roster.id}`, id);
+    const list = await readIndex();
+    await writeIndex([
+      ...list.filter((r) => r.rosterId !== roster.id),
+      {
+        rosterId: roster.id,
+        notificationId: id,
+        shiftName: roster.shift.name || "Shift",
+        date: roster.date,
+        startTime: roster.shift.start_time,
+        triggerAt: trigger.toISOString(),
+      },
+    ]);
   } catch {
     // Best-effort — a missed local reminder shouldn't break the caller's load.
   }
@@ -140,29 +185,26 @@ export async function refreshAllShiftReminders(userId) {
 }
 
 // Called the moment the toggle switches off — cancels every currently-booked
-// shift reminder in one go by asking the OS for everything this app has
-// scheduled, rather than needing to already know every affected roster id.
+// shift reminder in one go using the index, rather than needing to already
+// know every affected roster id.
 export async function cancelAllShiftReminders() {
   try {
-    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-    await Promise.all(
-      scheduled
-        .filter((n) => n.content?.data?.type === "shift_reminder_local")
-        .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier))
-    );
+    const list = await readIndex();
+    await Promise.all(list.map((r) => Notifications.cancelScheduledNotificationAsync(r.notificationId).catch(() => {})));
+    await writeIndex([]);
   } catch {
     // Best-effort.
   }
 }
 
 export async function cancelShiftReminder(rosterId) {
-  const key = `${SCHEDULED_ID_PREFIX}${rosterId}`;
-  const id = await SecureStore.getItemAsync(key);
-  if (!id) return;
+  const list = await readIndex();
+  const entry = list.find((r) => r.rosterId === rosterId);
+  if (!entry) return;
   try {
-    await Notifications.cancelScheduledNotificationAsync(id);
+    await Notifications.cancelScheduledNotificationAsync(entry.notificationId);
   } catch {
     // Already fired or already cancelled — fine either way.
   }
-  await SecureStore.deleteItemAsync(key);
+  await writeIndex(list.filter((r) => r.rosterId !== rosterId));
 }

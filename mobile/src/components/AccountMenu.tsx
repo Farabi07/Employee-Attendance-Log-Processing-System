@@ -10,6 +10,7 @@ import {
   HelpCircle,
   BookOpen,
   ChevronRight,
+  Sparkles,
 } from "lucide-react-native";
 import { fonts } from "../theme";
 import { useTheme } from "../lib/ThemeContext";
@@ -62,14 +63,48 @@ export default function AccountMenu({ visible, onClose }: { visible: boolean; on
           backgroundColor: T.card,
         },
         headerTitle: { fontFamily: fonts.display.semibold, fontSize: 17, color: T.ink, flex: 1 },
-        closeButton: { padding: 2 },
+        closeButton: {
+          width: 30,
+          height: 30,
+          borderRadius: 15,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: T.line2,
+        },
         scrollContent: { padding: 16, gap: 20 },
-        identityCard: { flexDirection: "row", alignItems: "center", gap: 14, padding: 18 },
-        avatarRing: { borderRadius: 32, borderWidth: 2, borderColor: T.tealBg, padding: 2 },
-        name: { fontFamily: fonts.display.semibold, fontSize: 16.5, color: T.ink, marginBottom: 2 },
-        email: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 7 },
-        rolePill: { alignSelf: "flex-start", paddingVertical: 3, paddingHorizontal: 10, borderRadius: 999, backgroundColor: T.navyBg },
-        rolePillText: { fontFamily: fonts.body.semibold, fontSize: 11, color: T.navyDeep },
+        // No overflow: "hidden" here — that would also clip Card's own
+        // shadow on iOS (a view can't clip its content and cast a shadow
+        // outside its own bounds at the same time). The banner's rounded
+        // top corners are clipped by identityInner below instead, one
+        // level in, where clipping doesn't touch the shadow-casting view.
+        identityCard: { padding: 0, alignItems: "center" },
+        identityInner: { width: "100%", alignItems: "center", overflow: "hidden", borderRadius: 14 },
+        banner: {
+          width: "100%",
+          height: 60,
+          backgroundColor: T.tealBg,
+        },
+        sparkle: { position: "absolute", top: 12, right: 14, opacity: 0.5 },
+        avatarRing: {
+          marginTop: -32,
+          borderRadius: 36,
+          borderWidth: 4,
+          borderColor: T.card,
+          backgroundColor: T.card,
+        },
+        name: { fontFamily: fonts.display.semibold, fontSize: 17, color: T.ink, marginTop: 10 },
+        email: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginTop: 2, marginBottom: 10 },
+        rolePill: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 5,
+          paddingVertical: 4,
+          paddingHorizontal: 12,
+          borderRadius: 999,
+          backgroundColor: T.navyBg,
+          marginBottom: 18,
+        },
+        rolePillText: { fontFamily: fonts.body.semibold, fontSize: 11.5, color: T.navyDeep },
         sectionLabel: {
           fontFamily: fonts.body.semibold,
           fontSize: 11,
@@ -100,6 +135,9 @@ export default function AccountMenu({ visible, onClose }: { visible: boolean; on
         },
         menuRowText: { flex: 1, fontFamily: fonts.body.medium, fontSize: 14.5, color: T.ink },
         menuRowTextDanger: { color: T.coral, fontFamily: fonts.body.semibold },
+        menuRowPressed: { backgroundColor: T.line2 },
+        footer: { alignItems: "center", marginTop: 4 },
+        footerApp: { fontFamily: fonts.body.semibold, fontSize: 11, color: T.faint, textTransform: "uppercase", letterSpacing: 1 },
       }),
     [T]
   );
@@ -142,7 +180,7 @@ export default function AccountMenu({ visible, onClose }: { visible: boolean; on
         tapLight();
         item.onPress();
       }}
-      style={styles.menuRow}
+      style={({ pressed }) => [styles.menuRow, pressed && styles.menuRowPressed]}
     >
       <IconChip bg={item.bg} size={32}>
         <item.icon size={16} color={item.color} />
@@ -181,21 +219,25 @@ export default function AccountMenu({ visible, onClose }: { visible: boolean; on
             <View style={styles.header}>
               <Text style={styles.headerTitle}>Account</Text>
               <Pressable onPress={close} hitSlop={8} style={styles.closeButton} accessibilityLabel="Close" accessibilityRole="button">
-                <X size={20} color={T.ink} />
+                <X size={17} color={T.ink} />
               </Pressable>
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
               <Card style={styles.identityCard}>
-                <View style={styles.avatarRing}>
-                  <Avatar initials={initials} size={52} src={mediaUrl(user.image)} />
-                </View>
-                <View style={{ flex: 1 }}>
+                <View style={styles.identityInner}>
+                  <View style={styles.banner}>
+                    <Sparkles size={16} color={T.tealDeep} style={styles.sparkle} />
+                  </View>
+                  <View style={styles.avatarRing}>
+                    <Avatar initials={initials} size={64} src={mediaUrl(user.image)} />
+                  </View>
                   <Text style={styles.name}>
                     {user.first_name} {user.last_name}
                   </Text>
                   <Text style={styles.email}>{user.email}</Text>
                   <View style={styles.rolePill}>
+                    <ShieldCheck size={12} color={T.navyDeep} />
                     <Text style={styles.rolePillText}>{roleLabel}</Text>
                   </View>
                 </View>
@@ -215,6 +257,10 @@ export default function AccountMenu({ visible, onClose }: { visible: boolean; on
                 [{ key: "logout", label: "Logout", icon: LogOut, bg: T.coralBg, color: T.coral, onPress: confirmLogout }],
                 true
               )}
+
+              <View style={styles.footer}>
+                <Text style={styles.footerApp}>TimeTap</Text>
+              </View>
             </ScrollView>
           </>
         )}
