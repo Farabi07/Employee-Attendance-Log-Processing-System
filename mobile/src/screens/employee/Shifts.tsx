@@ -5,7 +5,7 @@ import { Picker } from "@react-native-picker/picker";
 import { Repeat, Check, X, CalendarClock } from "lucide-react-native";
 import IconChip from "../../components/IconChip";
 import Skeleton from "../../components/Skeleton";
-import { tapSelection } from "../../lib/haptics";
+import { tapSelection, tapLight } from "../../lib/haptics";
 import { useToast } from "../../components/Toast";
 import { fonts } from "../../theme";
 import { useTheme, Colors } from "../../lib/ThemeContext";
@@ -171,6 +171,7 @@ export default function Shifts() {
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = async () => {
+    tapLight();
     setRefreshing(true);
     try {
       await load();

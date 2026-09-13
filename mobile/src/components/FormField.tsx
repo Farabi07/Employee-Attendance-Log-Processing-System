@@ -58,7 +58,13 @@ export default function FormField({
           {...inputProps}
         />
         {isPassword && (
-          <Pressable onPress={() => setShow((s) => !s)} style={styles.eyeButton} hitSlop={8}>
+          <Pressable
+            onPress={() => setShow((s) => !s)}
+            style={styles.eyeButton}
+            hitSlop={8}
+            accessibilityLabel={show ? "Hide password" : "Show password"}
+            accessibilityRole="button"
+          >
             {show ? <EyeOff size={16} color={T.faint} /> : <Eye size={16} color={T.faint} />}
           </Pressable>
         )}

@@ -9,6 +9,7 @@ import Skeleton from "../../components/Skeleton";
 import EmptyState from "../../components/EmptyState";
 import IconChip from "../../components/IconChip";
 import { useToast } from "../../components/Toast";
+import { tapLight } from "../../lib/haptics";
 import { fonts } from "../../theme";
 import { useTheme } from "../../lib/ThemeContext";
 import { useAuth } from "../../lib/auth";
@@ -106,6 +107,7 @@ export default function Leave() {
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = async () => {
+    tapLight();
     setRefreshing(true);
     try {
       await load();

@@ -16,6 +16,7 @@ import QrScannerModal from "../../components/QrScannerModal";
 import Skeleton from "../../components/Skeleton";
 import EmptyState from "../../components/EmptyState";
 import { useToast } from "../../components/Toast";
+import { tapLight } from "../../lib/haptics";
 
 // Ported from frontend/src/pages/employee/Today.jsx. The web version's
 // isMobile grid-vs-sidebar layout switch doesn't apply here — a phone
@@ -146,6 +147,7 @@ export default function Today() {
   }, [load]);
 
   const onRefresh = async () => {
+    tapLight();
     setRefreshing(true);
     try {
       await load();

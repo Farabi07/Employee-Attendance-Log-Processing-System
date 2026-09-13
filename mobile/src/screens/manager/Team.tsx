@@ -18,7 +18,7 @@ import FormField from "../../components/FormField";
 import { PrimaryButton } from "../../components/Button";
 import InlinePicker from "../../components/InlinePicker";
 import { useToast } from "../../components/Toast";
-import { tapSelection } from "../../lib/haptics";
+import { tapSelection, tapLight } from "../../lib/haptics";
 
 const DAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -182,6 +182,7 @@ export default function Team() {
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = async () => {
+    tapLight();
     setRefreshing(true);
     try {
       await load();

@@ -20,6 +20,7 @@ import Skeleton from "../../components/Skeleton";
 import EmptyState from "../../components/EmptyState";
 import AnimatedAmount from "../../components/AnimatedAmount";
 import { useToast } from "../../components/Toast";
+import { tapLight } from "../../lib/haptics";
 
 // Ported from frontend/src/pages/manager/Payroll.jsx. The web version's
 // <table> becomes a horizontally-scrollable fixed-column row layout (RN
@@ -169,6 +170,7 @@ export default function Payroll() {
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = async () => {
+    tapLight();
     setRefreshing(true);
     try {
       await load();

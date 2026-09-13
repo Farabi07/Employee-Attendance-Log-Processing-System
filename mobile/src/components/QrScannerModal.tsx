@@ -101,7 +101,7 @@ export default function QrScannerModal({
         <Card style={styles.card}>
           <View style={styles.header}>
             <Text style={styles.title}>{title}</Text>
-            <Pressable onPress={onClose} hitSlop={8}>
+            <Pressable onPress={onClose} hitSlop={8} accessibilityLabel="Close" accessibilityRole="button">
               <X size={18} color={T.muted} />
             </Pressable>
           </View>

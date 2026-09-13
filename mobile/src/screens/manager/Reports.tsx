@@ -15,6 +15,7 @@ import IconChip from "../../components/IconChip";
 import DateField from "../../components/DateField";
 import StatusPill from "../../components/StatusPill";
 import { useToast } from "../../components/Toast";
+import { tapLight } from "../../lib/haptics";
 
 // Ported from frontend/src/pages/manager/Reports.jsx. The client-side CSV
 // export (Blob + <a download>) becomes writeAndShareText (see lib/download.js).
@@ -100,6 +101,7 @@ export default function Reports() {
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = async () => {
+    tapLight();
     setRefreshing(true);
     try {
       await Promise.all([load(), loadTimesheet()]);

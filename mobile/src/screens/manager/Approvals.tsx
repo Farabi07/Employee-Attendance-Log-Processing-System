@@ -13,6 +13,7 @@ import IconChip from "../../components/IconChip";
 import Skeleton from "../../components/Skeleton";
 import EmptyState from "../../components/EmptyState";
 import { useToast } from "../../components/Toast";
+import { tapLight } from "../../lib/haptics";
 
 // Ported from frontend/src/pages/manager/Approvals.jsx.
 function initialsOf(emp: any) {
@@ -223,6 +224,7 @@ export default function Approvals() {
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = async () => {
+    tapLight();
     setRefreshing(true);
     try {
       await Promise.all([load(), loadAdjustments(), loadSwaps()]);
@@ -314,10 +316,22 @@ export default function Approvals() {
                     )}
                   </View>
                   <View style={styles.leaveActions}>
-                    <Pressable onPress={() => decide(r.id, "rejected")} disabled={decidingId === r.id} style={styles.rejectButton}>
+                    <Pressable
+                      onPress={() => decide(r.id, "rejected")}
+                      disabled={decidingId === r.id}
+                      style={styles.rejectButton}
+                      accessibilityLabel="Reject request"
+                      accessibilityRole="button"
+                    >
                       <X size={16} color={T.coral} />
                     </Pressable>
-                    <Pressable onPress={() => decide(r.id, "approved")} disabled={decidingId === r.id} style={styles.approveButton}>
+                    <Pressable
+                      onPress={() => decide(r.id, "approved")}
+                      disabled={decidingId === r.id}
+                      style={styles.approveButton}
+                      accessibilityLabel="Approve request"
+                      accessibilityRole="button"
+                    >
                       <Check size={16} color="#fff" />
                     </Pressable>
                   </View>
@@ -407,10 +421,22 @@ export default function Approvals() {
                     {!!s.reason && <Text style={styles.reasonText}>"{s.reason}"</Text>}
                   </View>
                   <View style={styles.leaveActions}>
-                    <Pressable onPress={() => decideSwap(s.id, "reject")} disabled={decidingSwapId === s.id} style={styles.rejectButton}>
+                    <Pressable
+                      onPress={() => decideSwap(s.id, "reject")}
+                      disabled={decidingSwapId === s.id}
+                      style={styles.rejectButton}
+                      accessibilityLabel="Reject shift swap"
+                      accessibilityRole="button"
+                    >
                       <X size={16} color={T.coral} />
                     </Pressable>
-                    <Pressable onPress={() => decideSwap(s.id, "approve")} disabled={decidingSwapId === s.id} style={styles.approveButton}>
+                    <Pressable
+                      onPress={() => decideSwap(s.id, "approve")}
+                      disabled={decidingSwapId === s.id}
+                      style={styles.approveButton}
+                      accessibilityLabel="Approve shift swap"
+                      accessibilityRole="button"
+                    >
                       <Check size={16} color="#fff" />
                     </Pressable>
                   </View>

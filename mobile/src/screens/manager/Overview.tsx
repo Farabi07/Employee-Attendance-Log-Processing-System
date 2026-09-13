@@ -8,6 +8,7 @@ import { fonts } from "../../theme";
 import { useTheme, Colors } from "../../lib/ThemeContext";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
+import { tapLight } from "../../lib/haptics";
 import { formatTime, todayISO } from "../../lib/dates";
 import Card from "../../components/Card";
 import IconChip from "../../components/IconChip";
@@ -125,6 +126,7 @@ function OverviewDashboard() {
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = async () => {
+    tapLight();
     setRefreshing(true);
     try {
       await load();

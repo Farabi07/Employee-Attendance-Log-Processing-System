@@ -77,7 +77,7 @@ export default function LiveQrDisplay({ branchId, onClose }: { branchId: string 
   return (
     <Modal visible animationType="fade" onRequestClose={onClose}>
       <View style={styles.container}>
-        <Pressable onPress={onClose} style={styles.closeButton} hitSlop={8}>
+        <Pressable onPress={onClose} style={styles.closeButton} hitSlop={8} accessibilityLabel="Close" accessibilityRole="button">
           <X size={18} color={T.paper} />
         </Pressable>
 

@@ -27,6 +27,7 @@ import StatusPill from "../../components/StatusPill";
 import AnimatedAmount from "../../components/AnimatedAmount";
 import { PrimaryButton } from "../../components/Button";
 import { useToast } from "../../components/Toast";
+import { tapLight } from "../../lib/haptics";
 
 // Ported from frontend/src/pages/employee/Wallet.jsx. The web version's
 // side-by-side grid becomes one scrollable column. Stripe Connect
@@ -333,6 +334,7 @@ export default function Wallet() {
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = async () => {
+    tapLight();
     setRefreshing(true);
     try {
       await refreshAdjustments();

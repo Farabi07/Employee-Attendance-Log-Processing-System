@@ -218,7 +218,13 @@ export default function ProfileDetails({ onBack }: { onBack: () => void }) {
         <View style={styles.identityRow}>
           <View>
             <Avatar initials={initials} size={48} src={avatarSrc} />
-            <Pressable onPress={pickImage} style={styles.cameraButton} hitSlop={6}>
+            <Pressable
+              onPress={pickImage}
+              style={styles.cameraButton}
+              hitSlop={6}
+              accessibilityLabel="Change profile photo"
+              accessibilityRole="button"
+            >
               <Camera size={11} color="#fff" />
             </Pressable>
           </View>
@@ -270,7 +276,13 @@ export default function ProfileDetails({ onBack }: { onBack: () => void }) {
               onChangeText={setCurrentPassword}
               style={[styles.input, styles.inputWithIcon]}
             />
-            <Pressable onPress={() => setShowCurrentPassword((s) => !s)} style={styles.eyeButton} hitSlop={8}>
+            <Pressable
+              onPress={() => setShowCurrentPassword((s) => !s)}
+              style={styles.eyeButton}
+              hitSlop={8}
+              accessibilityLabel={showCurrentPassword ? "Hide password" : "Show password"}
+              accessibilityRole="button"
+            >
               {showCurrentPassword ? <EyeOff size={16} color={T.faint} /> : <Eye size={16} color={T.faint} />}
             </Pressable>
           </View>
@@ -283,7 +295,13 @@ export default function ProfileDetails({ onBack }: { onBack: () => void }) {
               onChangeText={setNewPassword}
               style={[styles.input, styles.inputWithIcon]}
             />
-            <Pressable onPress={() => setShowNewPassword((s) => !s)} style={styles.eyeButton} hitSlop={8}>
+            <Pressable
+              onPress={() => setShowNewPassword((s) => !s)}
+              style={styles.eyeButton}
+              hitSlop={8}
+              accessibilityLabel={showNewPassword ? "Hide password" : "Show password"}
+              accessibilityRole="button"
+            >
               {showNewPassword ? <EyeOff size={16} color={T.faint} /> : <Eye size={16} color={T.faint} />}
             </Pressable>
           </View>

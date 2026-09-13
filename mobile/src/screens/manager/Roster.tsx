@@ -20,6 +20,7 @@ import InlinePicker from "../../components/InlinePicker";
 import { PrimaryButton } from "../../components/Button";
 import LiveQrDisplay from "../../components/LiveQrDisplay";
 import { useToast } from "../../components/Toast";
+import { tapLight } from "../../lib/haptics";
 
 function dayOfWeekFromDate(isoDate: string) {
   const jsDay = new Date(`${isoDate}T00:00:00`).getDay(); // 0=Sun..6=Sat
@@ -189,6 +190,7 @@ export default function Roster() {
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = async () => {
+    tapLight();
     setRefreshing(true);
     try {
       await load();
@@ -456,10 +458,20 @@ export default function Roster() {
                   <Text style={styles.shiftText}>
                     {s.name} <Text style={styles.shiftTime}>{s.start_time?.slice(0, 5)}–{s.end_time?.slice(0, 5)}</Text>
                   </Text>
-                  <Pressable onPress={() => startEditShift(s)} style={styles.iconBtn}>
+                  <Pressable
+                    onPress={() => startEditShift(s)}
+                    style={styles.iconBtn}
+                    accessibilityLabel={`Edit ${s.name} shift`}
+                    accessibilityRole="button"
+                  >
                     <Pencil size={13} color={T.muted} />
                   </Pressable>
-                  <Pressable onPress={() => deleteShift(s.id)} style={styles.iconBtn}>
+                  <Pressable
+                    onPress={() => deleteShift(s.id)}
+                    style={styles.iconBtn}
+                    accessibilityLabel={`Delete ${s.name} shift`}
+                    accessibilityRole="button"
+                  >
                     <Trash2 size={13} color={T.coral} />
                   </Pressable>
                 </View>
@@ -532,7 +544,12 @@ export default function Roster() {
             <View key={lt.id} style={styles.leaveTypeRow}>
               <Text style={[styles.plainListItem, { flex: 1, marginVertical: 0 }]}>{lt.name}</Text>
               <Text style={styles.leaveTypeDays}>{lt.days_per_year > 0 ? `${lt.days_per_year} days/yr` : "unlimited"}</Text>
-              <Pressable onPress={() => deleteLeaveType(lt.id)} style={styles.iconBtn}>
+              <Pressable
+                onPress={() => deleteLeaveType(lt.id)}
+                style={styles.iconBtn}
+                accessibilityLabel={`Delete ${lt.name} leave type`}
+                accessibilityRole="button"
+              >
                 <Trash2 size={13} color={T.coral} />
               </Pressable>
             </View>
