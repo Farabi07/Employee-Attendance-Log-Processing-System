@@ -419,6 +419,13 @@ class User(AbstractBaseUser):
     # attendance/push.py's send_expo_push_for_notification.
     shift_reminders_enabled = models.BooleanField(default=True)
 
+    # App-level "silent mode" — normal push notifications still arrive but
+    # play no sound; shift reminders are exempt (they're scheduled entirely
+    # on-device, so this field never affects them either way — see
+    # mobile's lib/shiftReminder.js). Checked in attendance/push.py when
+    # building the Expo push payload's `sound` field.
+    silent_mode = models.BooleanField(default=False)
+
     user_type = models.CharField(max_length=255, null=True, blank=True)
 
     date_of_birth = models.DateField(null=True, blank=True)

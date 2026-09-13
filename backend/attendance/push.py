@@ -24,6 +24,12 @@ def send_expo_push_for_notification(notification):
 				'title': notification.title,
 				'body': notification.message or '',
 				'data': {'notification_type': notification.notification_type},
+				# None means Expo sends no sound at all. silent_mode only
+				# mutes server-sent push like this one — shift reminders
+				# never go through this path (they're scheduled entirely
+				# on-device, see mobile's lib/shiftReminder.js), so they
+				# always ring regardless of this preference.
+				'sound': None if getattr(notification.recipient, 'silent_mode', False) else 'default',
 			},
 			headers={'Accept': 'application/json', 'Content-Type': 'application/json'},
 			timeout=5,
