@@ -87,7 +87,18 @@ def getAllRosterWithoutPagination(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, HasActiveSubscription])
 def getAllRosterByEmployeeId(request, employee_id):
-	rosters = Roster.objects.filter(employee__id=employee_id, employee__organization=request.user.organization).select_related('employee', 'shift', 'created_by', 'updated_by')
+	# Every caller (mobile + web, Today/Shifts/Team) only ever uses today-or-later
+	# rows from this response and discards anything older client-side — so this
+	# filters server-side too. Without it, an employee with a long roster history
+	# could have those historical rows fill up the `size` (max 100) page before
+	# any future-dated ones, since Pagination orders by id, not date, and has no
+	# date filter of its own — silently starving "upcoming shifts"/reminders of
+	# the very rows they need.
+	rosters = Roster.objects.filter(
+		employee__id=employee_id,
+		employee__organization=request.user.organization,
+		date__gte=date.today(),
+	).select_related('employee', 'shift', 'created_by', 'updated_by')
 	total_elements = rosters.count()
 
 	page = request.query_params.get('page')
