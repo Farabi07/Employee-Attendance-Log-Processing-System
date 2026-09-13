@@ -33,17 +33,13 @@ export async function setShiftReminderPreference({ enabled, minutesBefore }) {
   if (minutesBefore !== undefined) await SecureStore.setItemAsync(MINUTES_KEY, String(minutesBefore));
 }
 
-// `roster` is a Roster row with a nested `shift` ({ name, start_time: "HH:MM:SS" }),
-// or null/undefined if there's no shift today. `alreadyCheckedIn` lets the
-// caller (Today.tsx) pass its own attendance check rather than this module
-// needing to know anything about Attendance.
-export async function syncShiftReminder(roster, alreadyCheckedIn) {
-  if (!roster) return;
+// Shared by syncShiftReminder and syncUpcomingShiftReminders below — actually
+// books the OS-level alarm for one roster row and remembers its id so it can
+// be cancelled later. Always cancels any previous alarm for this roster
+// first, so calling it again (e.g. the minutes-before setting changed) just
+// reschedules rather than stacking duplicate notifications.
+async function scheduleOneShiftReminder(roster, minutesBefore) {
   await cancelShiftReminder(roster.id);
-  if (alreadyCheckedIn || !roster.shift?.start_time) return;
-
-  const { enabled, minutesBefore } = await getShiftReminderPreference();
-  if (!enabled) return;
 
   const [h, m] = roster.shift.start_time.split(":").map(Number);
   const start = new Date(`${roster.date}T00:00:00`);
@@ -73,7 +69,42 @@ export async function syncShiftReminder(roster, alreadyCheckedIn) {
     });
     await SecureStore.setItemAsync(`${SCHEDULED_ID_PREFIX}${roster.id}`, id);
   } catch {
-    // Best-effort — a missed local reminder shouldn't break Today.tsx's load.
+    // Best-effort — a missed local reminder shouldn't break the caller's load.
+  }
+}
+
+// `roster` is a Roster row with a nested `shift` ({ name, start_time: "HH:MM:SS" }),
+// or null/undefined if there's no shift today. `alreadyCheckedIn` lets the
+// caller (Today.tsx) pass its own attendance check rather than this module
+// needing to know anything about Attendance.
+export async function syncShiftReminder(roster, alreadyCheckedIn) {
+  if (!roster) return;
+  await cancelShiftReminder(roster.id);
+  if (alreadyCheckedIn || !roster.shift?.start_time) return;
+
+  const { enabled, minutesBefore } = await getShiftReminderPreference();
+  if (!enabled) return;
+
+  await scheduleOneShiftReminder(roster, minutesBefore);
+}
+
+// Books reminders for every FUTURE (strictly after `todayISO`) shift in
+// `rosters` in one pass. Called from Shifts.tsx ("My Shifts") so that
+// opening that tab — which already loads the whole week's roster — pre-books
+// alarms for the rest of the week, not just today. Deliberately skips
+// today's own row: Today.tsx already owns that one and knows whether the
+// employee has checked in, which this function has no way to know.
+export async function syncUpcomingShiftReminders(rosters, todayISO) {
+  if (!Array.isArray(rosters)) return;
+  const { enabled, minutesBefore } = await getShiftReminderPreference();
+
+  for (const roster of rosters) {
+    if (!roster?.id || !roster.shift?.start_time || !roster.date || roster.date <= todayISO) continue;
+    if (!enabled) {
+      await cancelShiftReminder(roster.id);
+      continue;
+    }
+    await scheduleOneShiftReminder(roster, minutesBefore);
   }
 }
 

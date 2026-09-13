@@ -13,6 +13,7 @@ import { useAuth } from "../../lib/auth";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import { weekDates, formatDayLabel, todayISO } from "../../lib/dates";
+import { syncUpcomingShiftReminders } from "../../lib/shiftReminder";
 import Card from "../../components/Card";
 import StatusPill from "../../components/StatusPill";
 import TimeField from "../../components/TimeField";
@@ -139,6 +140,7 @@ export default function Shifts() {
       api.get(endpoints.availabilityMine()),
     ]);
     setRosters(rosterRes.rosters || []);
+    syncUpcomingShiftReminders(rosterRes.rosters || [], todayISO());
     setTeammates(teammateRes.employees || []);
     setSwaps({ outgoing: swapRes.outgoing || [], incoming: swapRes.incoming || [], open: swapRes.open || [] });
 
