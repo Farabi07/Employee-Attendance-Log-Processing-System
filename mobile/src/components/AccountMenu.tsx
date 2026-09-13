@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { View, Text, Pressable, Modal, Alert, StyleSheet } from "react-native";
+import { View, Text, Pressable, ScrollView, Modal, Alert, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   X,
@@ -19,6 +19,7 @@ import Avatar from "./Avatar";
 import IconChip from "./IconChip";
 import { tapLight } from "../lib/haptics";
 import { animateLayout } from "../lib/animateLayout";
+import Card from "./Card";
 import ProfileDetails from "../screens/settings/ProfileDetails";
 import Settings from "../screens/settings/Settings";
 import PrivacyPolicy from "../screens/settings/PrivacyPolicy";
@@ -62,32 +63,43 @@ export default function AccountMenu({ visible, onClose }: { visible: boolean; on
         },
         headerTitle: { fontFamily: fonts.display.semibold, fontSize: 17, color: T.ink, flex: 1 },
         closeButton: { padding: 2 },
-        identityRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 20 },
-        name: { fontFamily: fonts.display.semibold, fontSize: 15, color: T.ink },
-        email: { fontFamily: fonts.body.regular, fontSize: 12, color: T.muted },
-        role: { fontFamily: fonts.body.regular, fontSize: 11.5, color: T.faint, marginTop: 2 },
-        menuList: { paddingHorizontal: 12 },
+        scrollContent: { padding: 16, gap: 20 },
+        identityCard: { flexDirection: "row", alignItems: "center", gap: 14, padding: 18 },
+        avatarRing: { borderRadius: 32, borderWidth: 2, borderColor: T.tealBg, padding: 2 },
+        name: { fontFamily: fonts.display.semibold, fontSize: 16.5, color: T.ink, marginBottom: 2 },
+        email: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 7 },
+        rolePill: { alignSelf: "flex-start", paddingVertical: 3, paddingHorizontal: 10, borderRadius: 999, backgroundColor: T.navyBg },
+        rolePillText: { fontFamily: fonts.body.semibold, fontSize: 11, color: T.navyDeep },
         sectionLabel: {
           fontFamily: fonts.body.semibold,
           fontSize: 11,
           color: T.faint,
           textTransform: "uppercase",
           letterSpacing: 0.6,
-          marginTop: 18,
-          marginBottom: 4,
-          paddingHorizontal: 8,
+          marginBottom: 8,
+          paddingHorizontal: 2,
         },
+        rowGroup: {
+          backgroundColor: T.card,
+          borderRadius: 16,
+          overflow: "hidden",
+          shadowColor: T.shadow,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.06,
+          shadowRadius: 10,
+          elevation: 2,
+        },
+        rowDivider: { height: 1, backgroundColor: T.line2, marginLeft: 62 },
         menuRow: {
           width: "100%",
           flexDirection: "row",
           alignItems: "center",
-          gap: 12,
-          paddingVertical: 12,
-          paddingHorizontal: 8,
+          gap: 13,
+          paddingVertical: 13,
+          paddingHorizontal: 14,
         },
-        menuRowText: { flex: 1, fontFamily: fonts.body.medium, fontSize: 14, color: T.ink },
-        menuRowTextDanger: { color: T.coral },
-        divider: { height: 1, backgroundColor: T.line2, marginVertical: 8, marginHorizontal: 8 },
+        menuRowText: { flex: 1, fontFamily: fonts.body.medium, fontSize: 14.5, color: T.ink },
+        menuRowTextDanger: { color: T.coral, fontFamily: fonts.body.semibold },
       }),
     [T]
   );
@@ -132,12 +144,23 @@ export default function AccountMenu({ visible, onClose }: { visible: boolean; on
       }}
       style={styles.menuRow}
     >
-      <IconChip bg={item.bg} size={30}>
-        <item.icon size={15} color={item.color} />
+      <IconChip bg={item.bg} size={32}>
+        <item.icon size={16} color={item.color} />
       </IconChip>
       <Text style={[styles.menuRowText, danger && styles.menuRowTextDanger]}>{item.label}</Text>
       {!danger && <ChevronRight size={16} color={T.faint} />}
     </Pressable>
+  );
+
+  const renderGroup = (items: MenuRow[], danger?: boolean) => (
+    <View style={styles.rowGroup}>
+      {items.map((item, i) => (
+        <React.Fragment key={item.key}>
+          {renderRow(item, danger)}
+          {i < items.length - 1 && <View style={styles.rowDivider} />}
+        </React.Fragment>
+      ))}
+    </View>
   );
 
   return (
@@ -162,27 +185,37 @@ export default function AccountMenu({ visible, onClose }: { visible: boolean; on
               </Pressable>
             </View>
 
-            <View style={styles.identityRow}>
-              <Avatar initials={initials} size={48} src={mediaUrl(user.image)} />
+            <ScrollView contentContainerStyle={styles.scrollContent}>
+              <Card style={styles.identityCard}>
+                <View style={styles.avatarRing}>
+                  <Avatar initials={initials} size={52} src={mediaUrl(user.image)} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.name}>
+                    {user.first_name} {user.last_name}
+                  </Text>
+                  <Text style={styles.email}>{user.email}</Text>
+                  <View style={styles.rolePill}>
+                    <Text style={styles.rolePillText}>{roleLabel}</Text>
+                  </View>
+                </View>
+              </Card>
+
               <View>
-                <Text style={styles.name}>
-                  {user.first_name} {user.last_name}
-                </Text>
-                <Text style={styles.email}>{user.email}</Text>
-                <Text style={styles.role}>{roleLabel}</Text>
+                <Text style={styles.sectionLabel}>General</Text>
+                {renderGroup(GENERAL_ITEMS)}
               </View>
-            </View>
 
-            <View style={styles.menuList}>
-              <Text style={styles.sectionLabel}>General</Text>
-              {GENERAL_ITEMS.map((item) => renderRow(item))}
+              <View>
+                <Text style={styles.sectionLabel}>Account</Text>
+                {renderGroup(ACCOUNT_ITEMS)}
+              </View>
 
-              <Text style={styles.sectionLabel}>Account</Text>
-              {ACCOUNT_ITEMS.map((item) => renderRow(item))}
-
-              <View style={styles.divider} />
-              {renderRow({ key: "logout", label: "Logout", icon: LogOut, bg: T.coralBg, color: T.coral, onPress: confirmLogout }, true)}
-            </View>
+              {renderGroup(
+                [{ key: "logout", label: "Logout", icon: LogOut, bg: T.coralBg, color: T.coral, onPress: confirmLogout }],
+                true
+              )}
+            </ScrollView>
           </>
         )}
       </SafeAreaView>

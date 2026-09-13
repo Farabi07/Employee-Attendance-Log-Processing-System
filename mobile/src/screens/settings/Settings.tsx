@@ -42,17 +42,29 @@ export default function Settings({ onBack }: { onBack: () => void }) {
         },
         backButton: { padding: 2 },
         headerTitle: { fontFamily: fonts.display.semibold, fontSize: 17, color: T.ink },
-        content: { padding: 24 },
+        content: { padding: 20 },
         sectionLabel: {
           fontFamily: fonts.body.semibold,
           fontSize: 11,
           color: T.faint,
           textTransform: "uppercase",
           letterSpacing: 0.6,
-          marginBottom: 6,
+          marginBottom: 8,
+          paddingHorizontal: 2,
         },
-        row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12 },
-        rowLabel: { flex: 1, fontFamily: fonts.body.medium, fontSize: 13.5, color: T.ink },
+        rowGroup: {
+          backgroundColor: T.card,
+          borderRadius: 16,
+          overflow: "hidden",
+          shadowColor: T.shadow,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.06,
+          shadowRadius: 10,
+          elevation: 2,
+        },
+        rowDivider: { height: 1, backgroundColor: T.line2, marginLeft: 60 },
+        row: { flexDirection: "row", alignItems: "center", gap: 13, paddingVertical: 13, paddingHorizontal: 14 },
+        rowLabel: { flex: 1, fontFamily: fonts.body.medium, fontSize: 14.5, color: T.ink },
         footer: { alignItems: "center", marginTop: 32 },
         footerApp: { fontFamily: fonts.body.semibold, fontSize: 11, color: T.faint, textTransform: "uppercase", letterSpacing: 1 },
         footerOrg: { fontFamily: fonts.body.regular, fontSize: 11.5, color: T.faint, marginTop: 3 },
@@ -75,36 +87,39 @@ export default function Settings({ onBack }: { onBack: () => void }) {
 
       <View style={styles.content}>
         <Text style={styles.sectionLabel}>General</Text>
+        <View style={styles.rowGroup}>
+          <View style={styles.row}>
+            <IconChip bg={T.navyBg} size={32}>
+              <Moon size={16} color={T.navy} />
+            </IconChip>
+            <Text style={styles.rowLabel}>Night mode</Text>
+            <Switch
+              value={preference === "dark"}
+              onValueChange={(v) => {
+                tapSelection();
+                setPreference(v ? "dark" : "light");
+              }}
+              trackColor={{ false: T.line, true: T.tealBg }}
+              thumbColor={preference === "dark" ? T.teal : undefined}
+            />
+          </View>
 
-        <View style={styles.row}>
-          <IconChip bg={T.navyBg} size={30}>
-            <Moon size={15} color={T.navy} />
-          </IconChip>
-          <Text style={styles.rowLabel}>Night mode</Text>
-          <Switch
-            value={preference === "dark"}
-            onValueChange={(v) => {
-              tapSelection();
-              setPreference(v ? "dark" : "light");
+          <View style={styles.rowDivider} />
+
+          <Pressable
+            onPress={() => {
+              tapLight();
+              setView("notifications");
             }}
-            trackColor={{ false: T.line, true: T.tealBg }}
-            thumbColor={preference === "dark" ? T.teal : undefined}
-          />
+            style={styles.row}
+          >
+            <IconChip bg={T.amberBg} size={32}>
+              <Bell size={16} color={T.amber} />
+            </IconChip>
+            <Text style={styles.rowLabel}>Notifications</Text>
+            <ChevronRight size={16} color={T.faint} />
+          </Pressable>
         </View>
-
-        <Pressable
-          onPress={() => {
-            tapLight();
-            setView("notifications");
-          }}
-          style={styles.row}
-        >
-          <IconChip bg={T.amberBg} size={30}>
-            <Bell size={15} color={T.amber} />
-          </IconChip>
-          <Text style={styles.rowLabel}>Notifications</Text>
-          <ChevronRight size={16} color={T.faint} />
-        </Pressable>
 
         <View style={styles.footer}>
           <Text style={styles.footerApp}>TimeTap</Text>
