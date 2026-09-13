@@ -6,6 +6,7 @@ import { useAuth } from "../lib/auth";
 import AuthStack from "./AuthStack";
 import AppTabs from "./AppTabs";
 import SubscribeGateScreen from "../screens/SubscribeGateScreen";
+import NoConnectionScreen from "../screens/NoConnectionScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -37,7 +38,7 @@ function PlatformOwnerNotSupported() {
 // timetap://password/reset/confirm/:uid/:token deep link straight to that
 // screen inside AuthStack on its own, no manual pathname parsing needed.
 export default function RootNavigator() {
-  const { loading, isAuthenticated, isPlatformOwner, isManagerOrModerator, billing } = useAuth();
+  const { loading, isAuthenticated, isPlatformOwner, isManagerOrModerator, billing, connectionError } = useAuth();
   const T = useTheme();
 
   if (loading) {
@@ -53,7 +54,9 @@ export default function RootNavigator() {
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {!isAuthenticated ? (
+      {!isAuthenticated && connectionError ? (
+        <Stack.Screen name="NoConnection" component={NoConnectionScreen} />
+      ) : !isAuthenticated ? (
         <Stack.Screen name="Auth" component={AuthStack} />
       ) : isPlatformOwner ? (
         <Stack.Screen name="PlatformOwner" component={PlatformOwnerNotSupported} />

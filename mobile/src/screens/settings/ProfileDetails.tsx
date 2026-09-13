@@ -144,14 +144,22 @@ export default function ProfileDetails({ onBack }: { onBack: () => void }) {
         // uploadAsync drives multipart through native code instead of the
         // JS FormData bridge, so it doesn't hit that bug.
         const token = await getToken();
-        const result = await FileSystem.uploadAsync(`${BASE_URL}${endpoints.profileUpdate()}`, pickedImage.uri, {
-          httpMethod: "POST",
-          uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-          fieldName: "image",
-          mimeType: pickedImage.mimeType || "image/jpeg",
-          parameters: fields,
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
+        let result;
+        try {
+          result = await FileSystem.uploadAsync(`${BASE_URL}${endpoints.profileUpdate()}`, pickedImage.uri, {
+            httpMethod: "POST",
+            uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+            fieldName: "image",
+            mimeType: pickedImage.mimeType || "image/jpeg",
+            parameters: fields,
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          });
+        } catch {
+          // Doesn't go through lib/api.js's request() — this is expo-file-system's
+          // own upload call, so it needs the same friendly network-failure
+          // message applied separately rather than a raw native error string.
+          throw new Error("Can't reach the server. Check your internet connection and try again.");
+        }
         if (result.status < 200 || result.status >= 300) {
           throw new Error(JSON.parse(result.body || "{}")?.detail || "Could not update profile");
         }

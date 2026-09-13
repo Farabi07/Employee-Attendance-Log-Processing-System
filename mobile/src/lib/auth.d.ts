@@ -34,6 +34,7 @@ export interface AuthContextValue {
   user: AuthUser | null;
   billing: BillingStatus | null;
   loading: boolean;
+  connectionError: boolean;
   login: (email: string, password: string) => Promise<AuthUser>;
   signup: (payload: Record<string, unknown>) => Promise<AuthUser>;
   logout: () => Promise<void>;

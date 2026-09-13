@@ -20,6 +20,13 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [billing, setBilling] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Set when loadMe() fails because the request couldn't reach the server
+  // at all (api.js's status 0 — no wifi, DNS failure, timeout), as opposed
+  // to the server actually rejecting the token. RootNavigator shows a
+  // dedicated "no connection" screen for this instead of routing to Auth,
+  // and the token/user are deliberately left alone below — being offline
+  // once on cold start shouldn't sign anyone out.
+  const [connectionError, setConnectionError] = useState(false);
 
   const loadBilling = useCallback(async (me) => {
     const isPlatformOwner = !!me?.is_admin && me?.organization == null;
@@ -38,6 +45,7 @@ export function AuthProvider({ children }) {
   const loadMe = useCallback(async () => {
     try {
       const me = await api.get(endpoints.djoserMe());
+      setConnectionError(false);
       setUser(me);
       await loadBilling(me);
       // Fire-and-forget — covers both a fresh login/signup and an
@@ -46,7 +54,15 @@ export function AuthProvider({ children }) {
       // denied, offline, etc.) — see lib/push.js.
       registerForPushNotifications();
       return me;
-    } catch {
+    } catch (err) {
+      if (err?.status === 0) {
+        // Couldn't reach the server — keep the existing token/session
+        // intact so a real 401 (handled separately below, via
+        // setUnauthorizedHandler) is still the only thing that signs
+        // someone out. They just need their connection back.
+        setConnectionError(true);
+        return null;
+      }
       await setToken(null);
       setUser(null);
       setBilling(null);
@@ -100,6 +116,7 @@ export function AuthProvider({ children }) {
     user,
     billing,
     loading,
+    connectionError,
     login,
     signup,
     logout,

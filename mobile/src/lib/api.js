@@ -55,11 +55,20 @@ async function request(path, { method = "GET", body, auth = true } = {}) {
     if (token) headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method,
-    headers,
-    body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body),
-  });
+  let res;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      method,
+      headers,
+      body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body),
+    });
+  } catch {
+    // fetch() itself rejected — no HTTP response at all (no connection, DNS
+    // failure, request timed out). Status 0 marks that distinction from a
+    // real HTTP error status, so callers like auth.jsx can tell "can't
+    // reach the server right now" apart from "the server said no."
+    throw new ApiError("Can't reach the server. Check your internet connection and try again.", 0, null);
+  }
 
   if (res.status === 401 && auth) {
     unauthorizedHandler?.();
