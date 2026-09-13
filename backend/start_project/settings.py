@@ -349,6 +349,13 @@ STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
 STRIPE_PRICE_MONTHLY = os.environ.get('STRIPE_PRICE_MONTHLY', '')
 STRIPE_PRICE_YEARLY = os.environ.get('STRIPE_PRICE_YEARLY', '')
 
+# Shared secret an external scheduler (cron-job.org, UptimeRobot, ...)
+# passes as ?key=... to hit attendance/api/v1/attendance/cron/send_shift_reminders/
+# every 10-15 minutes over plain HTTP — see runShiftReminders. Empty by
+# default so that endpoint refuses every request (503) until this is set,
+# rather than being callable by anyone with the URL.
+CRON_SECRET_KEY = os.environ.get('CRON_SECRET_KEY', '')
+
 _SAAS_FRONTEND_URL = os.environ.get('SAAS_FRONTEND_URL', 'http://127.0.0.1:5173')
 BILLING_SUCCESS_URL = os.environ.get('BILLING_SUCCESS_URL', f'{_SAAS_FRONTEND_URL}/?billing=success&session_id={{CHECKOUT_SESSION_ID}}')
 BILLING_CANCEL_URL = os.environ.get('BILLING_CANCEL_URL', f'{_SAAS_FRONTEND_URL}/?billing=cancel')

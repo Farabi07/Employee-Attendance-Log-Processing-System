@@ -4,13 +4,15 @@ from io import BytesIO
 
 import qrcode
 
+from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
+from django.core.management import call_command
 from django.http import HttpResponse
 from django.utils import timezone
 
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from drf_spectacular.utils import extend_schema, OpenApiParameter
@@ -614,6 +616,31 @@ def runMarkAbsent(request):
 
 	marked = mark_absent_for_date(target_date, organization=request.user.organization)
 	return Response({'detail': f'Marked {len(marked)} employee(s) absent for {target_date}', 'date': str(target_date), 'count': len(marked)}, status=status.HTTP_200_OK)
+
+
+
+
+@extend_schema(request=None, responses=None, parameters=[OpenApiParameter("key")])
+@api_view(['GET', 'POST'])
+@permission_classes([AllowAny])
+def runShiftReminders(request):
+	"""Lets a free external scheduler (cron-job.org, UptimeRobot, ...) drive
+	send_shift_reminders every 10-15 minutes over plain HTTP, instead of
+	needing a paid host-level cron job — the reminder command has to run
+	that often to be useful (see its own docstring), unlike mark_absent/
+	run_scheduled_payouts which only need once a day. No user is logged in
+	to call this from, so it's protected by a shared secret
+	(CRON_SECRET_KEY in the environment) passed as ?key=... instead of
+	auth — set CRON_SECRET_KEY on the server and point the scheduler at
+	this URL with that same value."""
+	expected_key = settings.CRON_SECRET_KEY
+	if not expected_key:
+		return Response({'detail': 'CRON_SECRET_KEY is not configured on the server.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+	if request.query_params.get('key') != expected_key:
+		return Response({'detail': 'Invalid or missing key.'}, status=status.HTTP_403_FORBIDDEN)
+
+	call_command('send_shift_reminders')
+	return Response({'detail': 'Shift reminders processed.'}, status=status.HTTP_200_OK)
 
 
 

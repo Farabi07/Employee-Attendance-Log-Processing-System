@@ -41,6 +41,8 @@ urlpatterns = [
 
 	path('api/v1/attendance/mark_absent/', views.runMarkAbsent),
 
+	path('api/v1/attendance/cron/send_shift_reminders/', views.runShiftReminders),
+
 	path('api/v1/attendance/<int:pk>', views.getAAttendance),
 
 	path('api/v1/attendance/update/<int:pk>', views.updateAttendance),
