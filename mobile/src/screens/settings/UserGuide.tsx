@@ -1,7 +1,19 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, Pressable, ScrollView, StyleSheet } from "react-native";
 import * as SecureStore from "expo-secure-store";
-import { ChevronLeft, LayoutGrid, CalendarDays, Wallet, TrendingUp, Clock, FileText, Settings as SettingsIcon } from "lucide-react-native";
+import {
+  ChevronLeft,
+  LayoutGrid,
+  CalendarDays,
+  Wallet,
+  TrendingUp,
+  Clock,
+  FileText,
+  Settings as SettingsIcon,
+  MapPin,
+  Users,
+  User,
+} from "lucide-react-native";
 import { fonts } from "../../theme";
 import { useTheme } from "../../lib/ThemeContext";
 import { useAuth } from "../../lib/auth";
@@ -43,6 +55,7 @@ export default function UserGuide({ onBack }: { onBack: () => void }) {
   const role = isManagerOrModerator ? "manager" : "employee";
   const content = GUIDE_CONTENT[role][lang];
   const account = ACCOUNT_SECTION[lang];
+  const RoleIcon = isManagerOrModerator ? Users : User;
 
   const styles = useMemo(
     () =>
@@ -65,16 +78,26 @@ export default function UserGuide({ onBack }: { onBack: () => void }) {
         langOptionText: { fontFamily: fonts.body.semibold, fontSize: 11.5, color: T.muted },
         langOptionTextActive: { color: T.onAccent },
         content: { padding: 20, paddingBottom: 40 },
-        roleNote: { fontFamily: fonts.body.regular, fontSize: 12, color: T.muted, marginBottom: 20 },
-        tabBlock: { marginBottom: 28 },
-        tabHeadRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 3 },
-        tabTitle: { fontFamily: fonts.display.semibold, fontSize: 16, color: T.ink },
+        roleBanner: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 10,
+          backgroundColor: T.navyBg,
+          borderRadius: 12,
+          padding: 12,
+          marginBottom: 24,
+        },
+        roleBannerText: { flex: 1, fontFamily: fonts.body.medium, fontSize: 12.5, color: T.navyDeep, lineHeight: 17 },
+        tabBlock: { marginBottom: 30 },
+        tabHeadRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 4 },
+        tabTitle: { fontFamily: fonts.display.semibold, fontSize: 17, color: T.ink },
+        tabLocationRow: { flexDirection: "row", alignItems: "flex-start", gap: 5, marginLeft: 42, marginBottom: 14, paddingRight: 8 },
         tabLocation: {
-          fontFamily: fonts.mono.regular,
-          fontSize: 10.5,
-          color: T.faint,
-          marginLeft: 42,
-          marginBottom: 12,
+          flex: 1,
+          fontFamily: fonts.body.regular,
+          fontSize: 12,
+          color: T.muted,
+          lineHeight: 16,
         },
         item: {
           backgroundColor: T.card,
@@ -84,20 +107,20 @@ export default function UserGuide({ onBack }: { onBack: () => void }) {
           padding: 14,
           marginBottom: 8,
         },
-        itemTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 5 },
-        itemTitle: { fontFamily: fonts.body.semibold, fontSize: 13.5, color: T.ink },
+        itemTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 6 },
+        itemTitle: { fontFamily: fonts.body.semibold, fontSize: 14, color: T.ink },
         itemChip: {
-          fontFamily: fonts.mono.regular,
+          fontFamily: fonts.body.semibold,
           fontSize: 10.5,
-          color: T.onAccent,
-          backgroundColor: T.teal,
-          paddingVertical: 2,
-          paddingHorizontal: 8,
+          color: T.tealDeep,
+          backgroundColor: T.tealBg,
+          paddingVertical: 3,
+          paddingHorizontal: 9,
           borderRadius: 999,
           overflow: "hidden",
         },
-        itemBody: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, lineHeight: 18 },
-        accountBlock: { borderTopWidth: 1, borderTopColor: T.line2, paddingTop: 20, marginTop: 4 },
+        itemBody: { fontFamily: fonts.body.regular, fontSize: 13, color: T.muted, lineHeight: 19.5 },
+        accountBlock: { borderTopWidth: 1, borderTopColor: T.line2, paddingTop: 24, marginTop: 6 },
       }),
     [T]
   );
@@ -126,15 +149,20 @@ export default function UserGuide({ onBack }: { onBack: () => void }) {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.roleNote}>
-          {lang === "bn"
-            ? isManagerOrModerator
-              ? "এই গাইডটা তোমার জন্য — একজন Manager/Moderator হিসেবে।"
-              : "এই গাইডটা তোমার জন্য — একজন Employee হিসেবে।"
-            : isManagerOrModerator
-            ? "This guide is for you as a Manager/Moderator."
-            : "This guide is for you as an Employee."}
-        </Text>
+        <View style={styles.roleBanner}>
+          <IconChip bg={T.navy} size={28}>
+            <RoleIcon size={14} color={T.onAccent} />
+          </IconChip>
+          <Text style={styles.roleBannerText}>
+            {lang === "bn"
+              ? isManagerOrModerator
+                ? "এই গাইডটা তোমার জন্য — Manager/Moderator হিসেবে তুমি যা যা করতে পারো তার সবকিছু।"
+                : "এই গাইডটা তোমার জন্য — একজন Employee হিসেবে তুমি যা যা করতে পারো তার সবকিছু।"
+              : isManagerOrModerator
+              ? "This guide is written for you as a Manager/Moderator — everything you can do in the app."
+              : "This guide is written for you as an Employee — everything you can do in the app."}
+          </Text>
+        </View>
 
         {content.tabs.map((tab: any) => {
           const Icon = TAB_ICONS[tab.icon] || LayoutGrid;
@@ -146,7 +174,10 @@ export default function UserGuide({ onBack }: { onBack: () => void }) {
                 </IconChip>
                 <Text style={styles.tabTitle}>{tab.title}</Text>
               </View>
-              <Text style={styles.tabLocation}>{tab.location}</Text>
+              <View style={styles.tabLocationRow}>
+                <MapPin size={12} color={T.faint} style={{ marginTop: 2 }} />
+                <Text style={styles.tabLocation}>{tab.location}</Text>
+              </View>
 
               {tab.items.map((item: any) => (
                 <View key={item.title} style={styles.item}>
@@ -168,11 +199,14 @@ export default function UserGuide({ onBack }: { onBack: () => void }) {
             </IconChip>
             <Text style={styles.tabTitle}>{account.title}</Text>
           </View>
-          <Text style={styles.tabLocation}>{account.location}</Text>
+          <View style={styles.tabLocationRow}>
+            <MapPin size={12} color={T.faint} style={{ marginTop: 2 }} />
+            <Text style={styles.tabLocation}>{account.location}</Text>
+          </View>
           {account.items.map((item: any) => (
             <View key={item.title} style={styles.item}>
               <Text style={styles.itemTitle}>{item.title}</Text>
-              <Text style={styles.itemBody}>{item.body}</Text>
+              <Text style={[styles.itemBody, { marginTop: 6 }]}>{item.body}</Text>
             </View>
           ))}
         </View>
