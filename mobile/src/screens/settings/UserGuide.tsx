@@ -70,7 +70,7 @@ export default function UserGuide({ onBack }: { onBack: () => void }) {
           borderBottomColor: T.line,
           backgroundColor: T.card,
         },
-        backButton: { padding: 2 },
+        backButton: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: T.line2 },
         headerTitle: { fontFamily: fonts.display.semibold, fontSize: 17, color: T.ink, flex: 1 },
         langToggle: { flexDirection: "row", backgroundColor: T.line2, borderRadius: 9, padding: 2 },
         langOption: { paddingVertical: 5, paddingHorizontal: 10, borderRadius: 7 },
@@ -132,7 +132,7 @@ export default function UserGuide({ onBack }: { onBack: () => void }) {
     <View style={{ flex: 1 }}>
       <View style={styles.header}>
         <Pressable onPress={onBack} hitSlop={8} style={styles.backButton} accessibilityLabel="Go back" accessibilityRole="button">
-          <ChevronLeft size={20} color={T.ink} />
+          <ChevronLeft size={18} color={T.ink} />
         </Pressable>
         <Text style={styles.headerTitle}>{lang === "bn" ? "গাইড" : "Guide"}</Text>
         <View style={styles.langToggle}>

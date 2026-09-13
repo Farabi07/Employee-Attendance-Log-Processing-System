@@ -61,7 +61,7 @@ export default function NotificationSettings({ onBack }: { onBack: () => void })
           borderBottomColor: T.line,
           backgroundColor: T.card,
         },
-        backButton: { padding: 2 },
+        backButton: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: T.line2 },
         headerTitle: { fontFamily: fonts.display.semibold, fontSize: 17, color: T.ink },
         content: { padding: 20 },
         sectionLabel: {
@@ -101,7 +101,7 @@ export default function NotificationSettings({ onBack }: { onBack: () => void })
     <View>
       <View style={styles.header}>
         <Pressable onPress={onBack} hitSlop={8} style={styles.backButton} accessibilityLabel="Go back" accessibilityRole="button">
-          <ChevronLeft size={20} color={T.ink} />
+          <ChevronLeft size={18} color={T.ink} />
         </Pressable>
         <Text style={styles.headerTitle}>Notifications</Text>
       </View>
