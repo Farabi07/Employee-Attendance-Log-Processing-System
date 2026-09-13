@@ -81,7 +81,7 @@ export default function AccountMenu({ visible, onClose }: { visible: boolean; on
         },
         rowGroup: {
           backgroundColor: T.card,
-          borderRadius: 16,
+          borderRadius: 14,
           overflow: "hidden",
           shadowColor: T.shadow,
           shadowOffset: { width: 0, height: 4 },

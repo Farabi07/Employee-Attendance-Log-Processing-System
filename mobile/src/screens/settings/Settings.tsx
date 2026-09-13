@@ -54,7 +54,7 @@ export default function Settings({ onBack }: { onBack: () => void }) {
         },
         rowGroup: {
           backgroundColor: T.card,
-          borderRadius: 16,
+          borderRadius: 14,
           overflow: "hidden",
           shadowColor: T.shadow,
           shadowOffset: { width: 0, height: 4 },
