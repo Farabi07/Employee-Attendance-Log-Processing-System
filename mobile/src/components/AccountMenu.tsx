@@ -11,6 +11,7 @@ import {
   BookOpen,
   ChevronRight,
   Sparkles,
+  Megaphone,
 } from "lucide-react-native";
 import { fonts } from "../theme";
 import { useTheme } from "../lib/ThemeContext";
@@ -26,8 +27,9 @@ import Settings from "../screens/settings/Settings";
 import PrivacyPolicy from "../screens/settings/PrivacyPolicy";
 import HelpCenter from "../screens/settings/HelpCenter";
 import UserGuide from "../screens/settings/UserGuide";
+import SendNotice from "../screens/settings/SendNotice";
 
-type MenuView = "menu" | "profile" | "privacy" | "settings" | "help" | "guide";
+type MenuView = "menu" | "profile" | "privacy" | "settings" | "help" | "guide" | "notice";
 
 // Opened from AppHeader by tapping the avatar — a full-page menu (Profile,
 // Privacy policy, Settings, Logout, Help center) rather than jumping
@@ -171,6 +173,9 @@ export default function AccountMenu({ visible, onClose }: { visible: boolean; on
     { key: "guide", label: "User guide", icon: BookOpen, bg: T.tealBg, color: T.tealDeep, onPress: () => setView("guide") },
     { key: "privacy", label: "Privacy policy", icon: ShieldCheck, bg: T.tealBg, color: T.tealDeep, onPress: () => setView("privacy") },
     { key: "help", label: "Help center", icon: HelpCircle, bg: T.amberBg, color: T.amber, onPress: () => setView("help") },
+    ...(isManagerOrModerator
+      ? [{ key: "notice", label: "Send a notice", icon: Megaphone, bg: T.amberBg, color: T.amber, onPress: () => setView("notice") } as MenuRow]
+      : []),
   ];
 
   const renderRow = (item: MenuRow, danger?: boolean) => (
@@ -214,6 +219,8 @@ export default function AccountMenu({ visible, onClose }: { visible: boolean; on
           <Settings onBack={() => setView("menu")} />
         ) : view === "help" ? (
           <HelpCenter onBack={() => setView("menu")} />
+        ) : view === "notice" ? (
+          <SendNotice onBack={() => setView("menu")} />
         ) : (
           <>
             <View style={styles.header}>

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, Pressable, Modal, FlatList, StyleSheet, Animated } from "react-native";
-import { Bell, BellOff, Clock3, CalendarClock } from "lucide-react-native";
+import { Bell, BellOff, Clock3, CalendarClock, Megaphone } from "lucide-react-native";
 import { fonts } from "../theme";
 import { useTheme } from "../lib/ThemeContext";
 import { api } from "../lib/api";
@@ -37,6 +37,8 @@ function timeUntil(iso: string) {
   if (hours < 24) return `in ${hours}h ${minutes % 60}m`;
   return `in ${Math.floor(hours / 24)}d`;
 }
+
+type Tab = "notifications" | "reminders" | "notices";
 
 export default function NotificationBell() {
   const T = useTheme();
@@ -100,10 +102,12 @@ export default function NotificationBell() {
     [T]
   );
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<"notifications" | "reminders">("notifications");
+  const [tab, setTab] = useState<Tab>("notifications");
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [reminders, setReminders] = useState<any[]>([]);
+  const [notices, setNotices] = useState<any[]>([]);
+  const [noticesUnread, setNoticesUnread] = useState(0);
   const badgeScale = useRef(new Animated.Value(1)).current;
   const prevUnreadRef = useRef(0);
 
@@ -111,12 +115,14 @@ export default function NotificationBell() {
   // actually arrived) — not on mount, and not when it drops from marking
   // things read, which should feel calm rather than call attention back.
   useEffect(() => {
-    if (unreadCount > prevUnreadRef.current) {
+    const total = unreadCount + noticesUnread;
+    const prevTotal = prevUnreadRef.current;
+    if (total > prevTotal) {
       badgeScale.setValue(0.6);
       Animated.spring(badgeScale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 14 }).start();
     }
-    prevUnreadRef.current = unreadCount;
-  }, [unreadCount, badgeScale]);
+    prevUnreadRef.current = total;
+  }, [unreadCount, noticesUnread, badgeScale]);
 
   const load = useCallback(async () => {
     try {
@@ -125,6 +131,13 @@ export default function NotificationBell() {
       setUnreadCount(res.unread_count || 0);
     } catch {
       // silent — polling, don't disrupt the UI on a transient failure
+    }
+    try {
+      const res = await api.get(endpoints.noticesMine("?size=15"));
+      setNotices(res.notifications || []);
+      setNoticesUnread(res.unread_count || 0);
+    } catch {
+      // silent — same as above
     }
   }, []);
 
@@ -160,19 +173,41 @@ export default function NotificationBell() {
     }
   };
 
+  const markNoticeRead = async (id: number) => {
+    setNotices((list) => list.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
+    setNoticesUnread((c) => Math.max(0, c - 1));
+    try {
+      await api.post(endpoints.notificationMarkRead(id));
+    } catch {
+      load();
+    }
+  };
+
+  const markAllNoticesRead = async () => {
+    setNotices((list) => list.map((n) => ({ ...n, is_read: true })));
+    setNoticesUnread(0);
+    try {
+      await api.post(endpoints.noticeMarkAllRead());
+    } catch {
+      load();
+    }
+  };
+
+  const totalUnread = unreadCount + noticesUnread;
+
   return (
     <>
       <Pressable
         onPress={() => setOpen(true)}
         style={styles.bellButton}
         hitSlop={8}
-        accessibilityLabel={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
+        accessibilityLabel={totalUnread > 0 ? `Notifications, ${totalUnread} unread` : "Notifications"}
         accessibilityRole="button"
       >
         <Bell size={20} color={T.amber} fill={T.amber} strokeWidth={1.5} />
-        {unreadCount > 0 && (
+        {totalUnread > 0 && (
           <Animated.View style={[styles.badge, { transform: [{ scale: badgeScale }] }]}>
-            <Text style={styles.badgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
+            <Text style={styles.badgeText}>{totalUnread > 9 ? "9+" : totalUnread}</Text>
           </Animated.View>
         )}
       </Pressable>
@@ -184,6 +219,11 @@ export default function NotificationBell() {
               <Text style={styles.panelTitle}>Notifications</Text>
               {tab === "notifications" && unreadCount > 0 && (
                 <Pressable onPress={markAllRead}>
+                  <Text style={styles.markAllText}>Mark all read</Text>
+                </Pressable>
+              )}
+              {tab === "notices" && noticesUnread > 0 && (
+                <Pressable onPress={markAllNoticesRead}>
                   <Text style={styles.markAllText}>Mark all read</Text>
                 </Pressable>
               )}
@@ -200,6 +240,12 @@ export default function NotificationBell() {
                 <Clock3 size={13} color={tab === "reminders" ? T.tealDeep : T.muted} />
                 <Text style={[styles.tabText, tab === "reminders" && styles.tabTextActive]}>
                   Reminders{reminders.length > 0 ? ` (${reminders.length})` : ""}
+                </Text>
+              </Pressable>
+              <Pressable onPress={() => setTab("notices")} style={[styles.tabBtn, tab === "notices" && styles.tabBtnActive]}>
+                <Megaphone size={13} color={tab === "notices" ? T.tealDeep : T.muted} />
+                <Text style={[styles.tabText, tab === "notices" && styles.tabTextActive]}>
+                  Notices{noticesUnread > 0 ? ` (${noticesUnread})` : ""}
                 </Text>
               </Pressable>
             </View>
@@ -230,28 +276,53 @@ export default function NotificationBell() {
                     )}
                   />
                 )
-              ) : reminders.length === 0 ? (
+              ) : tab === "reminders" ? (
+                reminders.length === 0 ? (
+                  <View style={styles.emptyWrap}>
+                    <EmptyState icon={CalendarClock} title="No upcoming reminders" subtitle="Turn these on in Settings, or open My Shifts." />
+                  </View>
+                ) : (
+                  <FlatList
+                    data={reminders}
+                    keyExtractor={(r) => String(r.rosterId)}
+                    style={{ maxHeight: 400 }}
+                    renderItem={({ item: r }) => (
+                      <View style={styles.reminderRow}>
+                        <IconChip bg={T.tealBg} size={30}>
+                          <Clock3 size={14} color={T.tealDeep} />
+                        </IconChip>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.notifTitle}>{r.shiftName}</Text>
+                          <Text style={styles.notifMessage}>
+                            {formatDayLabel(r.date)} · {r.startTime.slice(0, 5)}
+                          </Text>
+                          <Text style={styles.notifTime}>{timeUntil(r.triggerAt)}</Text>
+                        </View>
+                      </View>
+                    )}
+                  />
+                )
+              ) : notices.length === 0 ? (
                 <View style={styles.emptyWrap}>
-                  <EmptyState icon={CalendarClock} title="No upcoming reminders" subtitle="Turn these on in Settings, or open My Shifts." />
+                  <EmptyState icon={Megaphone} title="No notices" subtitle="Store-wide announcements from your manager show up here." />
                 </View>
               ) : (
                 <FlatList
-                  data={reminders}
-                  keyExtractor={(r) => String(r.rosterId)}
+                  data={notices}
+                  keyExtractor={(n) => String(n.id)}
                   style={{ maxHeight: 400 }}
-                  renderItem={({ item: r }) => (
-                    <View style={styles.reminderRow}>
-                      <IconChip bg={T.tealBg} size={30}>
-                        <Clock3 size={14} color={T.tealDeep} />
-                      </IconChip>
+                  renderItem={({ item: n }) => (
+                    <Pressable
+                      onPress={() => !n.is_read && markNoticeRead(n.id)}
+                      style={[styles.notifRow, !n.is_read && styles.notifRowUnread]}
+                    >
+                      {!n.is_read && <View style={styles.unreadDot} />}
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.notifTitle}>{r.shiftName}</Text>
-                        <Text style={styles.notifMessage}>
-                          {formatDayLabel(r.date)} · {r.startTime.slice(0, 5)}
-                        </Text>
-                        <Text style={styles.notifTime}>{timeUntil(r.triggerAt)}</Text>
+                        <Text style={styles.notifTitle}>{n.title}</Text>
+                        {!!n.message && <Text style={styles.notifMessage}>{n.message}</Text>}
+                        <Text style={styles.notifTime}>{timeAgo(n.created_at)}</Text>
                       </View>
-                    </View>
+                    </Pressable>
                   )}
                 />
               )}

@@ -12,8 +12,9 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { api, getToken, setToken, setUnauthorizedHandler } from "./api";
 import { endpoints } from "./endpoints";
-import { registerForPushNotifications, getSilentModeEnabled } from "./push";
+import { registerForPushNotifications, unregisterPushNotifications, getSilentModeEnabled } from "./push";
 import { getHapticsEnabled } from "./haptics";
+import { cancelAllShiftReminders } from "./shiftReminder";
 
 const AuthContext = createContext(null);
 
@@ -106,6 +107,15 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
+    // Both are device-local state that would otherwise silently belong to
+    // whoever logs in next on this same phone (a shared/handed-off work
+    // device) — a shift reminder scheduled for this account would still
+    // fire with THIS account's shift info after someone else signs in, and
+    // the expo push token would keep delivering THIS account's pushes to
+    // the device until overwritten. Both calls need the still-valid token,
+    // so they run before setToken(null) clears it.
+    await unregisterPushNotifications();
+    await cancelAllShiftReminders();
     await setToken(null);
     setUser(null);
     setBilling(null);

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, Pressable, FlatList, StyleSheet } from "react-native";
-import { ChevronLeft, BellOff, Clock3 } from "lucide-react-native";
+import { ChevronLeft, BellOff, Clock3, Megaphone } from "lucide-react-native";
 import { fonts } from "../../theme";
 import { useTheme } from "../../lib/ThemeContext";
 import { api } from "../../lib/api";
@@ -16,7 +16,10 @@ import EmptyState from "../../components/EmptyState";
 // quick-glance dropdown. Shift reminders (lib/shiftReminder.js) are
 // scheduled entirely on-device and never create a backend Notification
 // row, so they're rendered as their own "Reminders" section — sourced
-// locally — above the server-backed "History" list rather than mixed in.
+// locally. Notices (manager/moderator broadcasts) DO come from the
+// backend but are a distinct NotificationType excluded from
+// notification/mine/ server-side — their own "Notices" section here
+// mirrors that split rather than mixing them into "History" below.
 function timeAgo(iso: string) {
   const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
   if (seconds < 60) return "just now";
@@ -56,17 +59,15 @@ export default function Notifications({ onBack }: { onBack: () => void }) {
         headerTitle: { fontFamily: fonts.display.semibold, fontSize: 17, color: T.ink, flex: 1 },
         markAllText: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.teal },
         emptyWrap: { paddingTop: 40, paddingHorizontal: 24 },
+        sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 18, marginBottom: 8, paddingHorizontal: 16 },
         sectionLabel: {
           fontFamily: fonts.body.semibold,
           fontSize: 11,
           color: T.faint,
           textTransform: "uppercase",
           letterSpacing: 0.6,
-          marginTop: 18,
-          marginBottom: 8,
-          paddingHorizontal: 16,
         },
-        remindersGroup: {
+        cardGroup: {
           marginHorizontal: 16,
           backgroundColor: T.card,
           borderRadius: 14,
@@ -92,6 +93,8 @@ export default function Notifications({ onBack }: { onBack: () => void }) {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [reminders, setReminders] = useState<any[]>([]);
+  const [notices, setNotices] = useState<any[]>([]);
+  const [noticesUnread, setNoticesUnread] = useState(0);
 
   const load = useCallback(async () => {
     try {
@@ -100,6 +103,13 @@ export default function Notifications({ onBack }: { onBack: () => void }) {
       setUnreadCount(res.unread_count || 0);
     } catch {
       // silent — same as the bell dropdown, don't disrupt the UI on a transient failure
+    }
+    try {
+      const res = await api.get(endpoints.noticesMine("?size=50"));
+      setNotices(res.notifications || []);
+      setNoticesUnread(res.unread_count || 0);
+    } catch {
+      // silent — same as above
     }
     getUpcomingShiftReminders().then(setReminders);
   }, []);
@@ -128,10 +138,32 @@ export default function Notifications({ onBack }: { onBack: () => void }) {
     }
   };
 
+  const markNoticeRead = async (id: number) => {
+    setNotices((list) => list.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
+    setNoticesUnread((c) => Math.max(0, c - 1));
+    try {
+      await api.post(endpoints.notificationMarkRead(id));
+    } catch {
+      load();
+    }
+  };
+
+  const markAllNoticesRead = async () => {
+    setNotices((list) => list.map((n) => ({ ...n, is_read: true })));
+    setNoticesUnread(0);
+    try {
+      await api.post(endpoints.noticeMarkAllRead());
+    } catch {
+      load();
+    }
+  };
+
   const remindersSection = reminders.length === 0 ? null : (
     <>
-      <Text style={styles.sectionLabel}>Reminders</Text>
-      <View style={styles.remindersGroup}>
+      <View style={styles.sectionRow}>
+        <Text style={styles.sectionLabel}>Reminders</Text>
+      </View>
+      <View style={styles.cardGroup}>
         {reminders.map((r, i) => (
           <React.Fragment key={r.rosterId}>
             <View style={styles.reminderRow}>
@@ -147,6 +179,37 @@ export default function Notifications({ onBack }: { onBack: () => void }) {
               </View>
             </View>
             {i < reminders.length - 1 && <View style={styles.reminderDivider} />}
+          </React.Fragment>
+        ))}
+      </View>
+    </>
+  );
+
+  const noticesSection = notices.length === 0 ? null : (
+    <>
+      <View style={styles.sectionRow}>
+        <Text style={styles.sectionLabel}>Notices</Text>
+        {noticesUnread > 0 && (
+          <Pressable onPress={markAllNoticesRead}>
+            <Text style={styles.markAllText}>Mark all read</Text>
+          </Pressable>
+        )}
+      </View>
+      <View style={styles.cardGroup}>
+        {notices.map((n, i) => (
+          <React.Fragment key={n.id}>
+            <Pressable onPress={() => !n.is_read && markNoticeRead(n.id)} style={[styles.reminderRow, n.is_read ? null : styles.notifRowUnread]}>
+              <IconChip bg={T.amberBg} size={32}>
+                <Megaphone size={16} color={T.amber} />
+              </IconChip>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.notifTitle}>{n.title}</Text>
+                {!!n.message && <Text style={styles.notifMessage}>{n.message}</Text>}
+                <Text style={styles.notifTime}>{timeAgo(n.created_at)}</Text>
+              </View>
+              {!n.is_read && <View style={styles.unreadDot} />}
+            </Pressable>
+            {i < notices.length - 1 && <View style={styles.reminderDivider} />}
           </React.Fragment>
         ))}
       </View>
@@ -172,8 +235,11 @@ export default function Notifications({ onBack }: { onBack: () => void }) {
         keyExtractor={(n) => String(n.id)}
         ListHeaderComponent={
           <>
+            {noticesSection}
             {remindersSection}
-            <Text style={styles.sectionLabel}>History</Text>
+            <View style={styles.sectionRow}>
+              <Text style={styles.sectionLabel}>History</Text>
+            </View>
           </>
         }
         ListEmptyComponent={

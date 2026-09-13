@@ -65,6 +65,10 @@ export const endpoints = {
   notificationMarkRead: (pk) => `/notification/api/v1/notification/mark_read/${pk}`,
   notificationMarkAllRead: () => `/notification/api/v1/notification/mark_all_read/`,
 
+  noticesMine: (params = "") => `/notification/api/v1/notice/mine/${params}`,
+  noticeMarkAllRead: () => `/notification/api/v1/notice/mark_all_read/`,
+  noticeCreate: () => `/notification/api/v1/notice/create/`,
+
   djoserMe: () => `/djoser/auth/users/me/`,
   djoserResetPassword: () => `/djoser/auth/users/reset_password/`,
   djoserResetPasswordConfirm: () => `/djoser/auth/users/reset_password_confirm/`,
