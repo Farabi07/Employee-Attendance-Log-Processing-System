@@ -7,4 +7,8 @@ async def bare_ws_app(scope, receive, send):
 	event = await receive()
 	assert event['type'] == 'websocket.connect'
 	await send({'type': 'websocket.accept'})
+	# Send an ordinary text frame BEFORE closing — isolates whether it's
+	# specifically the close frame that never reaches the client, or every
+	# frame after accept().
+	await send({'type': 'websocket.send', 'text': 'hello-from-bare-app'})
 	await send({'type': 'websocket.close', 'code': 4001})
