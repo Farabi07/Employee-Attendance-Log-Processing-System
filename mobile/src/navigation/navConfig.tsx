@@ -1,5 +1,5 @@
 import React from "react";
-import { Clock, CalendarDays, FileText, LayoutGrid, TrendingUp, Users, Wallet } from "lucide-react-native";
+import { Clock, CalendarDays, FileText, LayoutGrid, MessageCircle, TrendingUp, Users, Wallet } from "lucide-react-native";
 
 import Today from "../screens/employee/Today";
 import Shifts from "../screens/employee/Shifts";
@@ -9,6 +9,7 @@ import Overview from "../screens/manager/Overview";
 import Roster from "../screens/manager/Roster";
 import Payroll from "../screens/manager/Payroll";
 import Reports from "../screens/manager/Reports";
+import ChatListScreen from "../screens/chat/ChatListScreen";
 
 // Ported from frontend/src/components/Sidebar.jsx's EMP_NAV/MGR_NAV — same
 // keys/labels/icons, now also carrying the screen component directly
@@ -21,6 +22,7 @@ export const EMP_NAV = [
   { key: "Shifts", label: "My shifts", icon: CalendarDays, component: Shifts },
   { key: "Leave", label: "Leave", icon: FileText, component: Leave },
   { key: "Wallet", label: "Wallet", icon: Wallet, component: EmployeeWallet },
+  { key: "Chat", label: "Chat", icon: MessageCircle, component: ChatListScreen },
 ];
 
 // Team and Approvals dropped as their own tabs — they now live inside
@@ -30,4 +32,5 @@ export const MGR_NAV = [
   { key: "Roster", label: "Roster", icon: CalendarDays, component: Roster },
   { key: "Payroll", label: "Payroll & Wallets", icon: Wallet, component: Payroll },
   { key: "Reports", label: "Reports", icon: TrendingUp, component: Reports },
+  { key: "Chat", label: "Chat", icon: MessageCircle, component: ChatListScreen },
 ];

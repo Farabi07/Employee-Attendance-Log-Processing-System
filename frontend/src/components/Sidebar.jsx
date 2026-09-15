@@ -1,5 +1,5 @@
 import React from "react";
-import { Clock, CalendarDays, FileText, LayoutGrid, TrendingUp, Users, Wallet } from "lucide-react";
+import { Clock, CalendarDays, FileText, LayoutGrid, MessageCircle, TrendingUp, Users, Wallet } from "lucide-react";
 import { T, fontDisplay, fontBody } from "../theme";
 import { useIsMobile } from "../lib/useMediaQuery";
 
@@ -8,6 +8,7 @@ export const EMP_NAV = [
   { key: "shifts", label: "My shifts", icon: CalendarDays },
   { key: "leave", label: "Leave", icon: FileText },
   { key: "wallet", label: "Wallet", icon: Wallet },
+  { key: "chat", label: "Chat", icon: MessageCircle },
 ];
 
 export const MGR_NAV = [
@@ -17,6 +18,7 @@ export const MGR_NAV = [
   { key: "approvals", label: "Approvals", icon: FileText },
   { key: "payroll", label: "Payroll & Wallets", icon: Wallet },
   { key: "reports", label: "Reports", icon: TrendingUp },
+  { key: "chat", label: "Chat", icon: MessageCircle },
 ];
 
 export default function Sidebar({ role, active, setActive }) {

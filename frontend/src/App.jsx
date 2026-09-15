@@ -27,6 +27,8 @@ import ManagerApprovals from "./pages/manager/Approvals";
 import ManagerPayroll from "./pages/manager/Payroll";
 import ManagerReports from "./pages/manager/Reports";
 
+import Chat from "./pages/Chat";
+
 function parseResetPath() {
   const match = window.location.pathname.match(/^\/password\/reset\/confirm\/([^/]+)\/([^/]+)\/?$/);
   if (!match) return null;
@@ -107,6 +109,8 @@ function Shell() {
             {role === "manager" && active === "approvals" && <ManagerApprovals />}
             {role === "manager" && active === "payroll" && <ManagerPayroll />}
             {role === "manager" && active === "reports" && <ManagerReports />}
+
+            {active === "chat" && <Chat />}
           </div>
         </div>
 

@@ -26,6 +26,13 @@ export function setUnauthorizedHandler(fn) {
   unauthorizedHandler = fn;
 }
 
+// Lets lib/chatSocket.js reuse the exact same "sign the user out" flow a
+// 401 triggers here, when the chat WebSocket closes with code 4001 (bad or
+// expired token) — one definition of "the token is no good" instead of two.
+export function triggerUnauthorized() {
+  unauthorizedHandler?.();
+}
+
 class ApiError extends Error {
   constructor(message, status, data) {
     super(message);

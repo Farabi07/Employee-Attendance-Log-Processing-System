@@ -65,6 +65,22 @@ export const endpoints = {
   notificationMarkRead: (pk) => `/notification/api/v1/notification/mark_read/${pk}`,
   notificationMarkAllRead: () => `/notification/api/v1/notification/mark_all_read/`,
 
+  channelCreate: () => `/chat/api/v1/channel/create/`,
+  channelsMine: (params = "") => `/chat/api/v1/channel/mine/${params}`,
+  channelDetail: (pk) => `/chat/api/v1/channel/${pk}/`,
+  channelAddMembers: (pk) => `/chat/api/v1/channel/${pk}/members/add/`,
+  channelRemoveMember: (pk) => `/chat/api/v1/channel/${pk}/members/remove/`,
+  channelMarkRead: (pk) => `/chat/api/v1/channel/${pk}/mark_read/`,
+
+  conversationStart: () => `/chat/api/v1/conversation/start/`,
+  conversationsMine: (params = "") => `/chat/api/v1/conversation/mine/${params}`,
+  conversationMarkRead: (pk) => `/chat/api/v1/conversation/${pk}/mark_read/`,
+
+  channelMessages: (channelId, params = "") => `/chat/api/v1/message/channel/${channelId}/${params}`,
+  channelMessageSend: (channelId) => `/chat/api/v1/message/channel/${channelId}/send/`,
+  conversationMessages: (conversationId, params = "") => `/chat/api/v1/message/conversation/${conversationId}/${params}`,
+  conversationMessageSend: (conversationId) => `/chat/api/v1/message/conversation/${conversationId}/send/`,
+
   djoserMe: () => `/djoser/auth/users/me/`,
   djoserResetPassword: () => `/djoser/auth/users/reset_password/`,
   djoserResetPasswordConfirm: () => `/djoser/auth/users/reset_password_confirm/`,
