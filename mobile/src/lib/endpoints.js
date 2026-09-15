@@ -89,6 +89,9 @@ export const endpoints = {
   channelMessageSend: (channelId) => `/chat/api/v1/message/channel/${channelId}/send/`,
   conversationMessages: (conversationId, params = "") => `/chat/api/v1/message/conversation/${conversationId}/${params}`,
   conversationMessageSend: (conversationId) => `/chat/api/v1/message/conversation/${conversationId}/send/`,
+  messageEdit: (pk) => `/chat/api/v1/message/${pk}/edit/`,
+  messageDelete: (pk) => `/chat/api/v1/message/${pk}/delete/`,
+  messageReact: (pk) => `/chat/api/v1/message/${pk}/react/`,
 
   registerPushToken: () => `/account/api/v1/push_token/`,
   notificationPreferences: () => `/account/api/v1/notification_preferences/`,

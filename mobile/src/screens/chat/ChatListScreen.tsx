@@ -31,6 +31,7 @@ function timeAgo(iso?: string) {
 
 function previewOf(message: any) {
   if (!message) return "No messages yet";
+  if (message.is_deleted) return "Message deleted";
   if (message.body) return message.body;
   return message.attachment ? "Sent an attachment" : "";
 }
@@ -114,6 +115,8 @@ export default function ChatListScreen() {
     connectChatSocket();
     const unsubs = [
       onChatEvent("message.new", load),
+      onChatEvent("message.edited", load),
+      onChatEvent("message.deleted", load),
       onChatEvent("channel.created", load),
       onChatEvent("channel.member_added", load),
       onChatEvent("channel.member_removed", load),
