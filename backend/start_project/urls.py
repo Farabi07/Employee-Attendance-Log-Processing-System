@@ -8,6 +8,9 @@ from drf_spectacular.views import (SpectacularAPIView, SpectacularRedocView, Spe
 
 from . import views
 
+# TEMPORARY — diagnosing a production Redis connectivity hang, remove after
+from chat.views._debug_redis import debugRedisCheck
+
 urlpatterns = [
     path('admin/', admin.site.urls),
 
@@ -78,6 +81,9 @@ urlpatterns = [
 	path('chat/', include('chat.urls.channel_urls')),
 	path('chat/', include('chat.urls.conversation_urls')),
 	path('chat/', include('chat.urls.message_urls')),
+
+	# TEMPORARY — diagnosing a production Redis connectivity hang, remove after
+	path('chat/debug/redis/', debugRedisCheck),
 
 	# Multi-tenant SaaS: signup + platform owner
 	path('saas/', include('authentication.urls.signup_urls')),
