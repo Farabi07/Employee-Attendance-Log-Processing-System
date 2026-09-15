@@ -237,7 +237,7 @@ export default function ManagerApprovals() {
                   style={{ width: 34, height: 34, borderRadius: 9, border: "none", background: T.teal, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                   aria-label="Approve"
                 >
-                  <Check size={16} color="#fff" />
+                  <Check size={16} color={T.onAccent} />
                 </button>
               </div>
             </div>
@@ -300,7 +300,7 @@ export default function ManagerApprovals() {
                   style={{ width: 34, height: 34, borderRadius: 9, border: "none", background: T.teal, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                   aria-label="Approve"
                 >
-                  <Check size={16} color="#fff" />
+                  <Check size={16} color={T.onAccent} />
                 </button>
               </div>
             </div>

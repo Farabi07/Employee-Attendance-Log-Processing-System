@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
-import { LogOut, Building2, DollarSign } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { LogOut, Clock, Search, DollarSign } from "lucide-react";
 import { T, fontDisplay, fontBody, fontMono } from "../../theme";
 import { useAuth } from "../../lib/auth";
+import { useIsMobile } from "../../lib/useMediaQuery";
 import { api } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import { CURRENCIES } from "../../lib/currency";
@@ -23,6 +24,7 @@ function fmt(iso) {
 
 export default function PlatformOwnerDashboard() {
   const { user, logout } = useAuth();
+  const isMobile = useIsMobile();
   const [orgs, setOrgs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pricing, setPricing] = useState(null);
@@ -30,6 +32,7 @@ export default function PlatformOwnerDashboard() {
   const [pricingMsg, setPricingMsg] = useState(null);
   const [commissionDrafts, setCommissionDrafts] = useState({});
   const [savingCommissionId, setSavingCommissionId] = useState(null);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     api
@@ -86,14 +89,36 @@ export default function PlatformOwnerDashboard() {
     lapsed: orgs.filter((o) => ["past_due", "canceled"].includes(o.subscription_status)).length,
   };
 
+  const filteredOrgs = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return orgs;
+    return orgs.filter((o) => `${o.name} ${o.owner_email || ""}`.toLowerCase().includes(q));
+  }, [orgs, query]);
+
   return (
     <div style={{ fontFamily: fontBody, background: T.paper, minHeight: "100vh" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 28px", borderBottom: `1px solid ${T.line}` }}>
-        <h1 style={{ fontFamily: fontDisplay, fontSize: 19, fontWeight: 600, color: T.ink, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-          <Building2 size={19} /> Platform · All stores
-        </h1>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted }}>{user.email}</span>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: isMobile ? "14px 16px" : "18px 28px",
+          borderBottom: `1px solid ${T.line}`,
+          gap: 10,
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 26, height: 26, borderRadius: 7, background: T.navy, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Clock size={15} color={T.paper} strokeWidth={2} />
+          </div>
+          <div>
+            <h1 style={{ fontFamily: fontDisplay, fontSize: isMobile ? 15 : 16, fontWeight: 600, color: T.ink, margin: 0, lineHeight: 1.2 }}>TimeTap</h1>
+            <p style={{ fontFamily: fontBody, fontSize: 11, color: T.muted, margin: 0 }}>Platform · all stores</p>
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 12 }}>
+          {!isMobile && <span style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted }}>{user.email}</span>}
           <button
             onClick={logout}
             aria-label="Log out"
@@ -104,7 +129,7 @@ export default function PlatformOwnerDashboard() {
         </div>
       </div>
 
-      <div style={{ padding: "24px 28px" }}>
+      <div style={{ padding: isMobile ? "16px" : "24px 28px" }}>
         <Card style={{ padding: "20px 22px", marginBottom: 20 }}>
           <h3 style={{ fontFamily: fontDisplay, fontSize: 15, fontWeight: 600, color: T.ink, margin: "0 0 14px", display: "flex", alignItems: "center", gap: 7 }}>
             <DollarSign size={16} /> Subscription pricing
@@ -185,8 +210,27 @@ export default function PlatformOwnerDashboard() {
         </div>
 
         <Card style={{ padding: "20px 22px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
+            <h3 style={{ fontFamily: fontDisplay, fontSize: 15, fontWeight: 600, color: T.ink, margin: 0 }}>
+              Stores ({filteredOrgs.length}{filteredOrgs.length !== orgs.length ? ` of ${orgs.length}` : ""})
+            </h3>
+            <div style={{ position: "relative" }}>
+              <Search size={14} color={T.faint} style={{ position: "absolute", left: 10, top: 9 }} />
+              <input
+                type="text"
+                placeholder="Search store or owner email"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                style={{ ...inputStyle, paddingLeft: 30, width: isMobile ? "100%" : 240 }}
+              />
+            </div>
+          </div>
           {loading ? (
             <p style={{ fontFamily: fontBody, color: T.muted }}>Loading…</p>
+          ) : filteredOrgs.length === 0 ? (
+            <p style={{ fontFamily: fontBody, fontSize: 13, color: T.muted, padding: "12px 4px" }}>
+              {orgs.length === 0 ? "No stores have signed up yet." : `No stores match "${query}".`}
+            </p>
           ) : (
             <div style={{ overflowX: "auto" }}>
               <div style={{ minWidth: 880 }}>
@@ -197,7 +241,7 @@ export default function PlatformOwnerDashboard() {
                     </span>
                   ))}
                 </div>
-                {orgs.map((o) => (
+                {filteredOrgs.map((o) => (
                   <div key={o.id} style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr 1fr 1.4fr", alignItems: "center", padding: "12px 4px", borderBottom: `1px solid ${T.line2}` }}>
                     <span style={{ fontFamily: fontBody, fontSize: 13.5, color: T.ink }}>{o.name}</span>
                     <span style={{ fontFamily: fontMono, fontSize: 12, color: T.muted }}>{o.owner_email || "—"}</span>
@@ -223,7 +267,6 @@ export default function PlatformOwnerDashboard() {
                     </div>
                   </div>
                 ))}
-                {orgs.length === 0 && <p style={{ fontFamily: fontBody, fontSize: 13, color: T.muted, padding: "12px 4px" }}>No stores have signed up yet.</p>}
               </div>
             </div>
           )}

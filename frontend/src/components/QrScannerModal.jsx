@@ -51,7 +51,7 @@ export default function QrScannerModal({ title, onClose, onToken }) {
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(22,35,58,0.55)",
+        background: T.overlay,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",

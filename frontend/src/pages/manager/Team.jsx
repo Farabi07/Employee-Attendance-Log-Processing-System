@@ -518,7 +518,7 @@ export default function ManagerTeam() {
                       <button
                         onClick={() => savePay(emp.id)}
                         disabled={savingPay}
-                        style={{ padding: "7px 12px", borderRadius: 7, border: "none", background: T.teal, color: "#fff", fontFamily: fontBody, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                        style={{ padding: "7px 12px", borderRadius: 7, border: "none", background: T.teal, color: T.onAccent, fontFamily: fontBody, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                       >
                         {savingPay ? "Saving…" : "Save"}
                       </button>
