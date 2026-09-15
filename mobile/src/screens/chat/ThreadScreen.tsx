@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, TextInput, Pressable, Modal, FlatList, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Linking, Alert } from "react-native";
+import { View, Text, TextInput, Pressable, Modal, FlatList, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Image, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
-import { ChevronLeft, Users, Paperclip, Send, Pencil, Trash2, SmilePlus, X, Check } from "lucide-react-native";
+import { ChevronLeft, Users, Paperclip, Send, Pencil, Trash2, SmilePlus, X, Check, Download } from "lucide-react-native";
 import { fonts } from "../../theme";
 import { useTheme } from "../../lib/ThemeContext";
 import { useAuth } from "../../lib/auth";
 import { api, BASE_URL, getToken, mediaUrl } from "../../lib/api";
+import { downloadUrlAndShare } from "../../lib/download";
 import { endpoints } from "../../lib/endpoints";
 import { on as onChatEvent } from "../../lib/chatSocket";
 import { useToast } from "../../components/Toast";
@@ -22,6 +23,18 @@ function timeOf(iso: string) {
 
 function initialsOf(person: any) {
   return `${(person?.first_name || "?")[0]}${(person?.last_name || "?")[0]}`.toUpperCase();
+}
+
+function filenameOf(url: string) {
+  try {
+    return decodeURIComponent(url.split("?")[0].split("/").pop() || "attachment");
+  } catch {
+    return "attachment";
+  }
+}
+
+function isImageUrl(url: string) {
+  return /\.(png|jpe?g|gif|webp|heic|heif|bmp)$/i.test(url.split("?")[0]);
 }
 
 // A message.reaction WS event carries only the ONE emoji that just
@@ -88,8 +101,22 @@ export default function ThreadScreen({ type, id, title, onBack }: ThreadProps) {
         bubbleTextOther: { color: T.ink },
         bubbleTextDeleted: { fontFamily: fonts.body.regular, fontStyle: "italic", fontSize: 13, color: T.faint },
         editedTag: { fontFamily: fonts.body.regular, fontSize: 10, fontStyle: "italic" },
+        bubbleImageOnly: { padding: 4 },
         attachmentRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },
-        attachmentText: { fontFamily: fonts.body.medium, fontSize: 12.5, textDecorationLine: "underline" },
+        attachmentText: { fontFamily: fonts.body.medium, fontSize: 12.5, textDecorationLine: "underline", flexShrink: 1 },
+        imageAttachment: { width: 200, height: 150, borderRadius: 10, overflow: "hidden" },
+        imageAttachmentImg: { width: "100%", height: "100%" },
+        imageDownloadBadge: {
+          position: "absolute",
+          bottom: 6,
+          right: 6,
+          width: 24,
+          height: 24,
+          borderRadius: 12,
+          backgroundColor: "rgba(0,0,0,0.45)",
+          alignItems: "center",
+          justifyContent: "center",
+        },
         bubbleTime: { fontFamily: fonts.body.regular, fontSize: 10, color: T.faint, marginTop: 3, marginHorizontal: 4 },
         reactionsRow: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 4, marginHorizontal: 4 },
         reactionPill: {
@@ -168,6 +195,7 @@ export default function ThreadScreen({ type, id, title, onBack }: ThreadProps) {
   const [editingMessage, setEditingMessage] = useState<any>(null);
   const [sheetMessage, setSheetMessage] = useState<any>(null);
   const [sheetMode, setSheetMode] = useState<"actions" | "react">("actions");
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
   const messagesPath = useCallback(
     (params: string) => (type === "channel" ? endpoints.channelMessages(id, params) : endpoints.conversationMessages(id, params)),
@@ -342,6 +370,19 @@ export default function ThreadScreen({ type, id, title, onBack }: ThreadProps) {
     }
   };
 
+  const downloadAttachment = async (message: any) => {
+    const url = mediaUrl(message.attachment);
+    if (!url || downloadingId) return;
+    setDownloadingId(message.id);
+    try {
+      await downloadUrlAndShare(url, filenameOf(url));
+    } catch (err: any) {
+      toast.show(err.message || "Could not download the file", "error");
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   const openSheet = (message: any) => {
     setSheetMessage(message);
     setSheetMode("actions");
@@ -410,17 +451,47 @@ export default function ThreadScreen({ type, id, title, onBack }: ThreadProps) {
                       <Pressable
                         onLongPress={() => !deleted && openSheet(item)}
                         delayLongPress={280}
-                        style={[styles.bubble, isSelf ? styles.bubbleSelf : styles.bubbleOther, deleted && styles.bubbleDeleted]}
+                        style={[
+                          styles.bubble,
+                          isSelf ? styles.bubbleSelf : styles.bubbleOther,
+                          deleted && styles.bubbleDeleted,
+                          !deleted && !!item.attachment && !item.body && isImageUrl(item.attachment) && styles.bubbleImageOnly,
+                        ]}
                       >
                         {deleted ? (
                           <Text style={styles.bubbleTextDeleted}>This message was deleted</Text>
                         ) : (
                           <>
                             {!!item.body && <Text style={[styles.bubbleText, isSelf ? styles.bubbleTextSelf : styles.bubbleTextOther]}>{item.body}</Text>}
-                            {!!item.attachment && (
-                              <Pressable style={styles.attachmentRow} onPress={() => Linking.openURL(mediaUrl(item.attachment)!)}>
-                                <Paperclip size={13} color={isSelf ? T.onAccent : T.navyDeep} />
-                                <Text style={[styles.attachmentText, { color: isSelf ? T.onAccent : T.navyDeep }]}>Attachment</Text>
+                            {!!item.attachment && isImageUrl(item.attachment) && (
+                              <Pressable
+                                onPress={() => downloadAttachment(item)}
+                                style={[styles.imageAttachment, !!item.body && { marginTop: 6 }]}
+                              >
+                                <Image source={{ uri: mediaUrl(item.attachment) }} style={styles.imageAttachmentImg} resizeMode="cover" />
+                                <View style={styles.imageDownloadBadge}>
+                                  {downloadingId === item.id ? (
+                                    <ActivityIndicator size="small" color="#fff" />
+                                  ) : (
+                                    <Download size={13} color="#fff" />
+                                  )}
+                                </View>
+                              </Pressable>
+                            )}
+                            {!!item.attachment && !isImageUrl(item.attachment) && (
+                              <Pressable
+                                style={styles.attachmentRow}
+                                onPress={() => downloadAttachment(item)}
+                                disabled={downloadingId === item.id}
+                              >
+                                {downloadingId === item.id ? (
+                                  <ActivityIndicator size="small" color={isSelf ? T.onAccent : T.navyDeep} />
+                                ) : (
+                                  <Download size={13} color={isSelf ? T.onAccent : T.navyDeep} />
+                                )}
+                                <Text style={[styles.attachmentText, { color: isSelf ? T.onAccent : T.navyDeep }]} numberOfLines={1}>
+                                  {filenameOf(item.attachment)}
+                                </Text>
                               </Pressable>
                             )}
                           </>

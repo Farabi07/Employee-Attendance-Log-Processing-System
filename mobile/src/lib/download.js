@@ -34,3 +34,24 @@ export async function downloadAndShare(path, filename) {
   }
   return result.uri;
 }
+
+// Same as downloadAndShare, but for an already-absolute URL rather than a
+// BASE_URL-relative path — chat attachments (chat/serializers.py's
+// get_attachment) come back as full URLs that may point straight at
+// Cloudinary in production, not this API, so the auth header is only useful
+// (and only sent) when the URL is actually on our own origin.
+export async function downloadUrlAndShare(fileUrl, filename) {
+  const sameOrigin = fileUrl.startsWith(BASE_URL);
+  const token = sameOrigin ? await getToken() : null;
+  const fileUri = `${FileSystem.cacheDirectory}${filename}`;
+  const result = await FileSystem.downloadAsync(fileUrl, fileUri, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (result.status !== 200) {
+    throw new Error(`Download failed (status ${result.status})`);
+  }
+  if (await Sharing.isAvailableAsync()) {
+    await Sharing.shareAsync(result.uri);
+  }
+  return result.uri;
+}
