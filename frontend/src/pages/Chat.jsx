@@ -206,7 +206,7 @@ export default function Chat() {
               <button
                 onClick={() => (tab === "channels" ? setShowCreateChannel(true) : setShowNewDM(true))}
                 aria-label={tab === "channels" ? "New channel" : "New direct message"}
-                style={{ width: 34, height: 34, borderRadius: 8, border: "none", background: T.teal, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                style={{ width: 34, height: 34, borderRadius: 8, border: "none", background: T.teal, color: T.onAccent, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
               >
                 <Plus size={16} />
               </button>
@@ -256,7 +256,7 @@ export default function Chat() {
                             {previewOf(item.last_message)}
                           </span>
                           {unread && (
-                            <span style={{ minWidth: 16, height: 16, padding: "0 4px", borderRadius: 8, background: T.coral, color: "#fff", fontFamily: fontBody, fontSize: 10, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <span style={{ minWidth: 16, height: 16, padding: "0 4px", borderRadius: 8, background: T.coral, color: T.onAccent, fontFamily: fontBody, fontSize: 10, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                               {item.unread_count > 9 ? "9+" : item.unread_count}
                             </span>
                           )}
@@ -327,7 +327,7 @@ export default function Chat() {
                               borderRadius: 14,
                               padding: "9px 12px",
                               background: isSelf ? T.teal : T.line2,
-                              color: isSelf ? "#fff" : T.ink,
+                              color: isSelf ? T.onAccent : T.ink,
                               fontFamily: fontBody,
                               fontSize: 13.5,
                               wordBreak: "break-word",
@@ -335,7 +335,7 @@ export default function Chat() {
                           >
                             {!!m.body && <span>{m.body}</span>}
                             {!!m.attachment && (
-                              <a href={mediaUrl(m.attachment)} target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", gap: 5, marginTop: m.body ? 4 : 0, color: isSelf ? "#fff" : T.navyDeep }}>
+                              <a href={mediaUrl(m.attachment)} target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", gap: 5, marginTop: m.body ? 4 : 0, color: isSelf ? T.onAccent : T.navyDeep }}>
                                 <Paperclip size={12} /> Attachment
                               </a>
                             )}
@@ -385,7 +385,7 @@ export default function Chat() {
                   disabled={sending || (!text.trim() && !attachment)}
                   aria-label="Send"
                   style={{
-                    width: 34, height: 34, borderRadius: "50%", border: "none", background: T.teal, color: "#fff", cursor: "pointer",
+                    width: 34, height: 34, borderRadius: "50%", border: "none", background: T.teal, color: T.onAccent, cursor: "pointer",
                     display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, opacity: sending || (!text.trim() && !attachment) ? 0.5 : 1,
                   }}
                 >

@@ -36,7 +36,7 @@ export default function SendNoticeModal({ onClose, onSent }) {
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(22,35,58,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16 }}>
+    <div style={{ position: "fixed", inset: 0, background: T.overlay, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16 }}>
       <Card style={{ width: "min(420px, 92vw)", padding: "22px 22px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

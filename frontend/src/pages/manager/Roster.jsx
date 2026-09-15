@@ -360,7 +360,7 @@ export default function ManagerRoster() {
                       />
                     </div>
                     <div style={{ display: "flex", gap: 6 }}>
-                      <button onClick={() => saveEditShift(s.id)} style={{ ...smallBtn, background: T.teal, color: "#fff", borderRadius: 6, padding: "5px 10px", fontSize: 12 }}>
+                      <button onClick={() => saveEditShift(s.id)} style={{ ...smallBtn, background: T.teal, color: T.onAccent, borderRadius: 6, padding: "5px 10px", fontSize: 12 }}>
                         Save
                       </button>
                       <button onClick={() => setEditingShiftId(null)} style={{ ...smallBtn, border: `1px solid ${T.line}`, borderRadius: 6, padding: "5px 10px", fontSize: 12 }}>
@@ -408,7 +408,7 @@ export default function ManagerRoster() {
               <button
                 type="submit"
                 disabled={creatingShift}
-                style={{ width: "100%", padding: "10px 0", borderRadius: 9, border: "none", background: T.teal, color: "#fff", fontFamily: fontBody, fontWeight: 600, fontSize: 13, cursor: "pointer" }}
+                style={{ width: "100%", padding: "10px 0", borderRadius: 9, border: "none", background: T.teal, color: T.onAccent, fontFamily: fontBody, fontWeight: 600, fontSize: 13, cursor: "pointer" }}
               >
                 {creatingShift ? "Creating…" : "Create shift"}
               </button>
@@ -438,7 +438,7 @@ export default function ManagerRoster() {
           ) : (
             <form onSubmit={createBranch} style={{ marginTop: 14, display: "flex", gap: 8 }}>
               <input value={branchName} onChange={(e) => setBranchName(e.target.value)} placeholder="Branch name" required style={{ ...inputStyle, marginBottom: 0, flex: 1 }} />
-              <button type="submit" disabled={creatingBranch} style={{ padding: "9px 14px", borderRadius: 8, border: "none", background: T.teal, color: "#fff", fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
+              <button type="submit" disabled={creatingBranch} style={{ padding: "9px 14px", borderRadius: 8, border: "none", background: T.teal, color: T.onAccent, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
                 {creatingBranch ? "…" : "Add"}
               </button>
             </form>
@@ -469,7 +469,7 @@ export default function ManagerRoster() {
               placeholder="Days/yr"
               style={{ ...inputStyle, marginBottom: 0, width: 90 }}
             />
-            <button type="submit" disabled={creatingLeaveType} style={{ padding: "9px 14px", borderRadius: 8, border: "none", background: T.teal, color: "#fff", fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
+            <button type="submit" disabled={creatingLeaveType} style={{ padding: "9px 14px", borderRadius: 8, border: "none", background: T.teal, color: T.onAccent, fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
               {creatingLeaveType ? "…" : "Add"}
             </button>
           </form>

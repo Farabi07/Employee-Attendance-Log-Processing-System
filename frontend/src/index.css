@@ -6,9 +6,12 @@ html, body, #root {
   height: 100%;
 }
 
+/* Mirrors theme.js's T.paper/T.navy/T.line2 — CSS can't import JS values,
+   so these 3 literals have to be kept in sync by hand whenever the
+   palette changes. */
 body {
   margin: 0;
-  background: #F5F9FB;
+  background: #F6F8FA;
   font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -40,7 +43,7 @@ input, select, textarea {
 }
 
 input:focus, select:focus, textarea:focus, button:focus-visible {
-  outline: 2px solid #2369A5;
+  outline: 2px solid #1B4A73;
   outline-offset: 1px;
 }
 
@@ -49,7 +52,7 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
 }
 
 .row-hover:hover {
-  background-color: #EBF2F6;
+  background-color: #EAF0F4;
 }
 
 .nav-item {
@@ -57,7 +60,7 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
 }
 
 .nav-item:not(.nav-item--active):hover {
-  background-color: #EBF2F6;
+  background-color: #EAF0F4;
 }
 
 @media (prefers-reduced-motion: reduce) {

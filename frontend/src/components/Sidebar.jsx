@@ -14,7 +14,7 @@ function ChatBadge({ count, style }) {
         padding: "0 4px",
         borderRadius: 8,
         background: T.coral,
-        color: "#fff",
+        color: T.onAccent,
         fontFamily: fontBody,
         fontSize: 10,
         fontWeight: 600,

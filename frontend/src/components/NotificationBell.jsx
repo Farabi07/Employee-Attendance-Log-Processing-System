@@ -131,7 +131,7 @@ export default function NotificationBell() {
               padding: "0 3px",
               borderRadius: 8,
               background: T.coral,
-              color: "#fff",
+              color: T.onAccent,
               fontFamily: fontBody,
               fontSize: 10,
               fontWeight: 700,
@@ -157,7 +157,7 @@ export default function NotificationBell() {
             background: T.card,
             border: `1px solid ${T.line}`,
             borderRadius: 12,
-            boxShadow: "0 8px 24px rgba(22,35,58,0.12)",
+            boxShadow: `0 8px 24px rgba(${T.shadow}, 0.16)`,
             zIndex: 50,
           }}
         >

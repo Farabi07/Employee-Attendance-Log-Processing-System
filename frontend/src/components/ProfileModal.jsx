@@ -99,7 +99,7 @@ export default function ProfileModal({ onClose }) {
 
   return (
     <div
-      style={{ position: "fixed", inset: 0, background: "rgba(22,35,58,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16 }}
+      style={{ position: "fixed", inset: 0, background: T.overlay, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16 }}
     >
       <Card style={{ width: "min(380px, 92vw)", padding: "24px 22px", maxHeight: "90vh", overflowY: "auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
@@ -111,7 +111,7 @@ export default function ProfileModal({ onClose }) {
                 aria-label="Change photo"
                 style={{ position: "absolute", bottom: -2, right: -2, width: 22, height: 22, borderRadius: "50%", border: `2px solid ${T.card}`, background: T.teal, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
               >
-                <Camera size={11} color="#fff" />
+                <Camera size={11} color={T.onAccent} />
               </button>
               <input ref={fileInputRef} type="file" accept="image/*" onChange={pickImage} style={{ display: "none" }} />
             </div>

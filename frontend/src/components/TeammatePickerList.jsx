@@ -73,7 +73,7 @@ export default function TeammatePickerList({ employees, selectedIds, onToggle, m
                     flexShrink: 0,
                   }}
                 >
-                  {selected && <Check size={12} color="#fff" strokeWidth={3} />}
+                  {selected && <Check size={12} color={T.onAccent} strokeWidth={3} />}
                 </div>
               )}
             </button>
