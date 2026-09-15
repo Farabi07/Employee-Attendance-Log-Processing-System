@@ -39,11 +39,6 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
-    # Must come before django.contrib.staticfiles per Channels' docs — it
-    # patches `runserver` to serve ASGI (HTTP + WebSocket) instead of
-    # Django's plain WSGI dev server.
-    'daphne',
-
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
