@@ -1,9 +1,10 @@
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Q
 
 from rest_framework import status
 from rest_framework.response import Response
 
-from chat.models import Channel, ChannelMembership, Conversation, ConversationParticipant
+from chat.models import Channel, ChannelMembership, Conversation, ConversationParticipant, Message
 from chat.realtime import broadcast_to_group
 
 
@@ -49,7 +50,7 @@ def require_channel_membership(request, pk):
 		# import cycle at module load time.
 		from chat.serializers import ChannelDetailSerializer
 
-		broadcast_to_group(f'chat_user_{request.user.id}', 'channel.created', {'channel': ChannelDetailSerializer(channel).data})
+		broadcast_to_group(f'chat_user_{request.user.id}', 'channel.created', {'channel': ChannelDetailSerializer(channel, context={'request': request}).data})
 
 	return channel, None
 
@@ -82,3 +83,27 @@ def require_conversation_participant(request, pk):
 		return None, Response({'detail': 'Not a participant in this conversation.'}, status=status.HTTP_403_FORBIDDEN)
 
 	return conversation, None
+
+
+def require_message_access(request, pk):
+	"""Edit/delete/react all need this same check first — a message can
+	only be touched by someone who can already see its parent thread, so
+	this just fetches the Message and delegates to whichever of the two
+	membership checks above applies. Returns (message, None) or
+	(None, error_response)."""
+	org = request.user.organization
+	try:
+		message = Message.objects.select_related('channel', 'conversation').get(
+			Q(channel__organization=org) | Q(conversation__organization=org), pk=pk,
+		)
+	except ObjectDoesNotExist:
+		return None, Response({'detail': f"Message id - {pk} doesn't exist"}, status=status.HTTP_404_NOT_FOUND)
+
+	if message.channel_id:
+		_, error = require_channel_membership(request, message.channel_id)
+	else:
+		_, error = require_conversation_participant(request, message.conversation_id)
+	if error:
+		return None, error
+
+	return message, None

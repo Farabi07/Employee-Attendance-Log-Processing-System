@@ -12,4 +12,10 @@ urlpatterns = [
 	path('api/v1/message/conversation/<int:conversation_id>/', views.getConversationMessages),
 
 	path('api/v1/message/conversation/<int:conversation_id>/send/', views.sendConversationMessage),
+
+	path('api/v1/message/<int:pk>/edit/', views.editMessage),
+
+	path('api/v1/message/<int:pk>/delete/', views.deleteMessage),
+
+	path('api/v1/message/<int:pk>/react/', views.reactToMessage),
 ]

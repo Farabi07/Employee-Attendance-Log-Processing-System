@@ -96,6 +96,13 @@ class Message(models.Model):
 	body = models.TextField(null=True, blank=True)
 	attachment = models.FileField(upload_to=chat_attachment_upload_path, null=True, blank=True)
 
+	# Soft delete — the row stays (so the thread has no gap where it sat)
+	# but body/attachment are cleared server-side the moment this is set
+	# (see message_views.deleteMessage), so old content can never leak
+	# through even if a client forgets to check is_deleted.
+	is_deleted = models.BooleanField(default=False)
+	edited_at = models.DateTimeField(null=True, blank=True)
+
 	created_at = models.DateTimeField(auto_now_add=True)
 	updated_at = models.DateTimeField(auto_now=True)
 
@@ -104,3 +111,21 @@ class Message(models.Model):
 
 	def __str__(self):
 		return f'Message {self.pk} from {self.sender}'
+
+
+class MessageReaction(models.Model):
+	"""A single emoji reaction from one user on one message. Reacting with
+	an emoji the same user already gave toggles it off (see
+	message_views.reactToMessage) rather than duplicating — the same user
+	can still have several different emoji on one message at once."""
+
+	message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name='reactions')
+	user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='+')
+	emoji = models.CharField(max_length=8)
+	created_at = models.DateTimeField(auto_now_add=True)
+
+	class Meta:
+		unique_together = ('message', 'user', 'emoji')
+
+	def __str__(self):
+		return f'{self.emoji} from {self.user} on message {self.message_id}'

@@ -79,3 +79,12 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
 	async def channel_member_removed(self, event):
 		await self.send_json({'type': 'channel.member_removed', **event['payload']})
+
+	async def message_edited(self, event):
+		await self.send_json({'type': 'message.edited', **event['payload']})
+
+	async def message_deleted(self, event):
+		await self.send_json({'type': 'message.deleted', **event['payload']})
+
+	async def message_reaction(self, event):
+		await self.send_json({'type': 'message.reaction', **event['payload']})

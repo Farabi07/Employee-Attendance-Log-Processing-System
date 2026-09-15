@@ -74,7 +74,7 @@ def getMyConversations(request):
 	}
 	for conversation in page.object_list:
 		last_read_at = memberships.get(conversation.id)
-		unread = conversation.messages.exclude(sender=request.user)
+		unread = conversation.messages.exclude(sender=request.user).exclude(is_deleted=True)
 		if last_read_at:
 			unread = unread.filter(created_at__gt=last_read_at)
 		conversation._unread_count = unread.count()

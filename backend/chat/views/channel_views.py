@@ -64,7 +64,7 @@ def createChannel(request):
 	# (complete) member list — a public channel doesn't add rows for
 	# anyone but the creator, but still needs everyone nudged live/on next
 	# refresh so the channel shows up immediately.
-	payload = ChannelDetailSerializer(channel).data
+	payload = ChannelDetailSerializer(channel, context={'request': request}).data
 	for member in notify_members:
 		broadcast_to_group(f'chat_user_{member.id}', 'channel.created', {'channel': payload})
 
@@ -108,12 +108,12 @@ def getMyChannels(request):
 			channel._unread_count = 0
 			continue
 		last_read_at = memberships.get(channel.id)
-		unread = channel.messages.exclude(sender=request.user)
+		unread = channel.messages.exclude(sender=request.user).exclude(is_deleted=True)
 		if last_read_at:
 			unread = unread.filter(created_at__gt=last_read_at)
 		channel._unread_count = unread.count()
 
-	serializer = ChannelSerializer(page, many=True)
+	serializer = ChannelSerializer(page, many=True, context={'request': request})
 
 	return Response({
 		'channels': serializer.data,
@@ -133,7 +133,7 @@ def getChannel(request, pk):
 	channel, error = require_channel_membership(request, pk)
 	if error:
 		return error
-	return Response(ChannelDetailSerializer(channel).data, status=status.HTTP_200_OK)
+	return Response(ChannelDetailSerializer(channel, context={'request': request}).data, status=status.HTTP_200_OK)
 
 
 
@@ -159,13 +159,13 @@ def addChannelMembers(request, pk):
 	])
 
 	for member in members:
-		payload = {'channel_id': channel.id, 'channel': ChannelDetailSerializer(channel).data}
+		payload = {'channel_id': channel.id, 'channel': ChannelDetailSerializer(channel, context={'request': request}).data}
 		broadcast_to_group(f'chat_user_{member.id}', 'channel.created', payload)
 	if members:
-		member_payload = {'channel_id': channel.id, 'members': ChannelDetailSerializer(channel).data['members']}
+		member_payload = {'channel_id': channel.id, 'members': ChannelDetailSerializer(channel, context={'request': request}).data['members']}
 		broadcast_to_group(f'chat_channel_{channel.id}', 'channel.member_added', member_payload)
 
-	return Response(ChannelDetailSerializer(channel).data, status=status.HTTP_200_OK)
+	return Response(ChannelDetailSerializer(channel, context={'request': request}).data, status=status.HTTP_200_OK)
 
 
 
@@ -183,7 +183,7 @@ def removeChannelMember(request, pk):
 
 	broadcast_to_group(f'chat_channel_{channel.id}', 'channel.member_removed', {'channel_id': channel.id, 'member_id': member_id})
 
-	return Response(ChannelDetailSerializer(channel).data, status=status.HTTP_200_OK)
+	return Response(ChannelDetailSerializer(channel, context={'request': request}).data, status=status.HTTP_200_OK)
 
 
 
