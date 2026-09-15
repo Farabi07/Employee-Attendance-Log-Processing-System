@@ -155,6 +155,11 @@ export default function ChannelMembersScreen({ channelId, onBack }: { channelId:
           </>
         ) : (
           <ScrollView contentContainerStyle={styles.content}>
+            {channel?.is_public && (
+              <Text style={{ fontFamily: fonts.body.regular, fontSize: 12, color: T.muted, marginBottom: 12 }}>
+                Public channel — everyone in your organization can see it. This list only shows who's actually opened it so far.
+              </Text>
+            )}
             {(channel?.members || []).map((m: any, i: number) => (
               <View key={m.id} style={[styles.row, i > 0 && styles.rowBorder]}>
                 <Avatar initials={initialsOf(m.member)} size={34} src={mediaUrl(m.member.image)} />

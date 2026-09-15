@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, Pressable, FlatList, StyleSheet, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Hash, MessageCircle, Plus, Users } from "lucide-react-native";
+import { Globe, Hash, MessageCircle, Plus, Users } from "lucide-react-native";
 import { fonts } from "../../theme";
 import { useTheme } from "../../lib/ThemeContext";
 import { useAuth } from "../../lib/auth";
@@ -199,7 +199,7 @@ export default function ChatListScreen() {
                 <Card style={{ padding: 0 }}>
                   <Pressable onPress={() => openChannel(item)} style={styles.row}>
                     <IconChip bg={T.tealBg} size={40}>
-                      <Hash size={18} color={T.tealDeep} />
+                      {item.is_public ? <Globe size={18} color={T.tealDeep} /> : <Hash size={18} color={T.tealDeep} />}
                     </IconChip>
                     <View style={styles.rowText}>
                       <View style={styles.rowNameLine}>

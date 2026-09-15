@@ -126,7 +126,13 @@ export default function ChannelMembersModal({ channelId, onClose, onChanged }) {
             </button>
           </>
         ) : (
-          (channel?.members || []).map((m, i) => (
+          <>
+            {channel?.is_public && (
+              <p style={{ fontFamily: fontBody, fontSize: 12, color: T.muted, marginTop: 0, marginBottom: 12 }}>
+                Public channel — everyone in your organization can see it. This list only shows who's actually opened it so far.
+              </p>
+            )}
+            {(channel?.members || []).map((m, i) => (
             <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderTop: i > 0 ? `1px solid ${T.line2}` : "none" }}>
               <Avatar initials={initialsOf(m.member)} size={32} src={mediaUrl(m.member.image)} />
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -141,7 +147,8 @@ export default function ChannelMembersModal({ channelId, onClose, onChanged }) {
                 </button>
               )}
             </div>
-          ))
+            ))}
+          </>
         )}
 
         {error && <p style={{ fontFamily: fontBody, fontSize: 12, color: T.coral, marginTop: 10 }}>{error}</p>}

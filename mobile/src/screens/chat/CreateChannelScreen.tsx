@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, TextInput, Pressable, Modal, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ChevronLeft, Hash } from "lucide-react-native";
+import { ChevronLeft, Hash, Globe, Lock } from "lucide-react-native";
 import { fonts } from "../../theme";
 import { useTheme } from "../../lib/ThemeContext";
 import { api } from "../../lib/api";
@@ -50,12 +50,18 @@ export default function CreateChannelScreen({ onBack, onCreated }: { onBack: () 
           marginBottom: 16,
         },
         sectionLabel: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.ink, marginBottom: 8 },
+        visibilityRow: { flexDirection: "row", gap: 8, marginBottom: 20 },
+        visibilityBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, borderRadius: 9, borderWidth: 1.5, borderColor: T.line, backgroundColor: T.card },
+        visibilityBtnActive: { borderColor: T.teal, backgroundColor: T.tealBg },
+        visibilityBtnText: { fontFamily: fonts.body.semibold, fontSize: 12.5, color: T.muted },
+        visibilityBtnTextActive: { color: T.tealDeep },
       }),
     [T]
   );
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [isPublic, setIsPublic] = useState(false);
   const [employees, setEmployees] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [creating, setCreating] = useState(false);
@@ -79,7 +85,8 @@ export default function CreateChannelScreen({ onBack, onCreated }: { onBack: () 
       const channel = await api.post(endpoints.channelCreate(), {
         name: name.trim(),
         description: description.trim(),
-        member_ids: selectedIds,
+        is_public: isPublic,
+        ...(isPublic ? {} : { member_ids: selectedIds }),
       });
       toast.show("Channel created.");
       onCreated(channel);
@@ -107,10 +114,12 @@ export default function CreateChannelScreen({ onBack, onCreated }: { onBack: () 
           <ScrollView contentContainerStyle={styles.content}>
             <View style={styles.intro}>
               <View style={styles.iconCircle}>
-                <Hash size={18} color={T.tealDeep} />
+                {isPublic ? <Globe size={18} color={T.tealDeep} /> : <Hash size={18} color={T.tealDeep} />}
               </View>
               <Text style={styles.introText}>
-                Invite-only — only the people you add below can see this channel. You can add or remove members later.
+                {isPublic
+                  ? "Public — everyone in your organization can see and join this channel automatically."
+                  : "Selective — only the people you add below can see this channel. You can add or remove members later."}
               </Text>
             </View>
 
@@ -134,8 +143,30 @@ export default function CreateChannelScreen({ onBack, onCreated }: { onBack: () 
               maxLength={255}
             />
 
-            <Text style={styles.sectionLabel}>Add members{selectedIds.length > 0 ? ` (${selectedIds.length})` : ""}</Text>
-            <TeammatePickerList employees={employees} selectedIds={selectedIds} onToggle={toggle} />
+            <Text style={styles.sectionLabel}>Visibility</Text>
+            <View style={styles.visibilityRow}>
+              <Pressable
+                onPress={() => setIsPublic(false)}
+                style={[styles.visibilityBtn, !isPublic && styles.visibilityBtnActive]}
+              >
+                <Lock size={13} color={!isPublic ? T.tealDeep : T.muted} />
+                <Text style={[styles.visibilityBtnText, !isPublic && styles.visibilityBtnTextActive]}>Selective</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setIsPublic(true)}
+                style={[styles.visibilityBtn, isPublic && styles.visibilityBtnActive]}
+              >
+                <Globe size={13} color={isPublic ? T.tealDeep : T.muted} />
+                <Text style={[styles.visibilityBtnText, isPublic && styles.visibilityBtnTextActive]}>Public</Text>
+              </Pressable>
+            </View>
+
+            {!isPublic && (
+              <>
+                <Text style={styles.sectionLabel}>Add members{selectedIds.length > 0 ? ` (${selectedIds.length})` : ""}</Text>
+                <TeammatePickerList employees={employees} selectedIds={selectedIds} onToggle={toggle} />
+              </>
+            )}
           </ScrollView>
 
           <View style={{ padding: 16 }}>

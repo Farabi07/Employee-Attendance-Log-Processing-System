@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { X, Hash } from "lucide-react";
+import { X, Hash, Globe, Lock } from "lucide-react";
 import { T, fontBody, fontDisplay } from "../theme";
 import { api } from "../lib/api";
 import { endpoints } from "../lib/endpoints";
@@ -7,12 +7,13 @@ import Card from "./Card";
 import TeammatePickerList from "./TeammatePickerList";
 
 // Manager/moderator only (Chat.jsx only ever renders this for that role) —
-// an invite-only channel, so members are picked up front rather than the
-// channel starting open to the whole org. Mirrors mobile's
-// screens/chat/CreateChannelScreen.tsx.
+// either an invite-only ("selective") channel with member_ids picked up
+// front, or a "public" one every org member already has access to. Mirrors
+// mobile's screens/chat/CreateChannelScreen.tsx.
 export default function CreateChannelModal({ onClose, onCreated }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [isPublic, setIsPublic] = useState(false);
   const [employees, setEmployees] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [creating, setCreating] = useState(false);
@@ -38,7 +39,12 @@ export default function CreateChannelModal({ onClose, onCreated }) {
     setError(null);
     setCreating(true);
     try {
-      const channel = await api.post(endpoints.channelCreate(), { name: name.trim(), description: description.trim(), member_ids: selectedIds });
+      const channel = await api.post(endpoints.channelCreate(), {
+        name: name.trim(),
+        description: description.trim(),
+        is_public: isPublic,
+        ...(isPublic ? {} : { member_ids: selectedIds }),
+      });
       onCreated(channel);
     } catch (err) {
       setError(err.message);
@@ -53,7 +59,7 @@ export default function CreateChannelModal({ onClose, onCreated }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ width: 32, height: 32, borderRadius: 10, background: T.tealBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Hash size={16} color={T.tealDeep} />
+              {isPublic ? <Globe size={16} color={T.tealDeep} /> : <Hash size={16} color={T.tealDeep} />}
             </div>
             <h3 style={{ fontFamily: fontDisplay, fontSize: 16, fontWeight: 600, color: T.ink, margin: 0 }}>New channel</h3>
           </div>
@@ -63,17 +69,49 @@ export default function CreateChannelModal({ onClose, onCreated }) {
         </div>
 
         <p style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted, marginTop: 0, marginBottom: 16, lineHeight: 1.5 }}>
-          Invite-only — only the people you add below can see this channel. You can add or remove members later.
+          {isPublic
+            ? "Public — everyone in your organization can see and join this channel automatically."
+            : "Selective — only the people you add below can see this channel. You can add or remove members later."}
         </p>
 
         <form onSubmit={create}>
           <input placeholder="Channel name" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} style={inputStyle} />
           <input placeholder="Description (optional)" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={255} style={inputStyle} />
 
-          <p style={{ fontFamily: fontBody, fontSize: 12, fontWeight: 600, color: T.ink, margin: "4px 0 6px" }}>
-            Add members{selectedIds.length > 0 ? ` (${selectedIds.length})` : ""}
-          </p>
-          <TeammatePickerList employees={employees} selectedIds={selectedIds} onToggle={toggle} />
+          <p style={{ fontFamily: fontBody, fontSize: 12, fontWeight: 600, color: T.ink, margin: "4px 0 6px" }}>Visibility</p>
+          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+            <button
+              type="button"
+              onClick={() => setIsPublic(false)}
+              style={{
+                flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 0", borderRadius: 8,
+                border: `1.5px solid ${!isPublic ? T.teal : T.line}`, background: !isPublic ? T.tealBg : T.card, color: !isPublic ? T.tealDeep : T.muted,
+                fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+              }}
+            >
+              <Lock size={13} /> Selective
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsPublic(true)}
+              style={{
+                flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 0", borderRadius: 8,
+                border: `1.5px solid ${isPublic ? T.teal : T.line}`, background: isPublic ? T.tealBg : T.card, color: isPublic ? T.tealDeep : T.muted,
+                fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+              }}
+            >
+              <Globe size={13} /> Public
+            </button>
+          </div>
+
+          {!isPublic && (
+            <>
+              <p style={{ fontFamily: fontBody, fontSize: 12, fontWeight: 600, color: T.ink, margin: "4px 0 6px" }}>
+                Add members{selectedIds.length > 0 ? ` (${selectedIds.length})` : ""}
+              </p>
+              <TeammatePickerList employees={employees} selectedIds={selectedIds} onToggle={toggle} />
+            </>
+          )}
 
           {error && <p style={{ fontFamily: fontBody, fontSize: 12, color: T.coral, marginTop: 10 }}>{error}</p>}
 

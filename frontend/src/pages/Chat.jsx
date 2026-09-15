@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Hash, MessageCircle, Plus, Users, Paperclip, Send, ChevronLeft, X } from "lucide-react";
+import { Hash, Globe, MessageCircle, Plus, Users, Paperclip, Send, ChevronLeft, X } from "lucide-react";
 import { T, fontBody, fontDisplay } from "../theme";
 import { useAuth } from "../lib/auth";
 import { useIsMobile } from "../lib/useMediaQuery";
@@ -237,7 +237,7 @@ export default function Chat() {
                     >
                       {isChannel ? (
                         <div style={{ width: 36, height: 36, borderRadius: 10, background: T.tealBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                          <Hash size={16} color={T.tealDeep} />
+                          {item.is_public ? <Globe size={16} color={T.tealDeep} /> : <Hash size={16} color={T.tealDeep} />}
                         </div>
                       ) : (
                         <Avatar initials={initialsOf(other)} size={36} src={mediaUrl(other?.image)} />
