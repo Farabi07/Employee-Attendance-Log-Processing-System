@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Hash, Globe, MessageCircle, Plus, Users, Paperclip, Send, ChevronLeft, X, MoreHorizontal, Pencil, Trash2, SmilePlus, Check } from "lucide-react";
+import { Hash, Globe, MessageCircle, Plus, Users, Paperclip, Send, ChevronLeft, X, MoreHorizontal, Pencil, Trash2, SmilePlus, Check, Download } from "lucide-react";
 import { T, fontBody, fontDisplay } from "../theme";
 import { useAuth } from "../lib/auth";
 import { useIsMobile } from "../lib/useMediaQuery";
-import { api, mediaUrl } from "../lib/api";
+import { api, mediaUrl, downloadUrl } from "../lib/api";
 import { endpoints } from "../lib/endpoints";
 import { connect as connectChatSocket, disconnect as disconnectChatSocket, on as onChatEvent } from "../lib/chatSocket";
 import Card from "../components/Card";
@@ -13,6 +13,18 @@ import NewDirectMessageModal from "../components/NewDirectMessageModal";
 import ChannelMembersModal from "../components/ChannelMembersModal";
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+
+function filenameOf(url) {
+  try {
+    return decodeURIComponent(url.split("?")[0].split("/").pop() || "attachment");
+  } catch {
+    return "attachment";
+  }
+}
+
+function isImageUrl(url) {
+  return /\.(png|jpe?g|gif|webp|heic|heif|bmp)$/i.test(url.split("?")[0]);
+}
 
 // A message.reaction WS event carries only the ONE emoji that just changed
 // plus fresh counts for every emoji (see chat/views/message_views.py —
@@ -90,6 +102,7 @@ export default function Chat() {
   const [menuMessage, setMenuMessage] = useState(null); // message whose ⋯ dropdown is open
   const [menuMode, setMenuMode] = useState("actions"); // "actions" | "react"
   const menuRef = useRef(null);
+  const [downloadingId, setDownloadingId] = useState(null);
 
   const loadList = useCallback(async () => {
     const [channelsRes, conversationsRes] = await Promise.all([
@@ -304,6 +317,19 @@ export default function Chat() {
     }
   };
 
+  const downloadAttachment = async (message) => {
+    const url = mediaUrl(message.attachment);
+    if (!url || downloadingId) return;
+    setDownloadingId(message.id);
+    try {
+      await downloadUrl(url, filenameOf(url));
+    } catch (err) {
+      alert(err.message || "Could not download the file");
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   const openChannel = (channel) => setSelected({ type: "channel", id: channel.id, title: channel.name });
   const openConversation = (conversation) => {
     const other = conversation.other_participant;
@@ -474,7 +500,7 @@ export default function Chat() {
                               <div
                                 style={{
                                   borderRadius: 14,
-                                  padding: "9px 12px",
+                                  padding: !deleted && !!m.attachment && !m.body && isImageUrl(m.attachment) ? 4 : "9px 12px",
                                   background: deleted ? "transparent" : isSelf ? T.teal : T.line2,
                                   color: isSelf ? T.onAccent : T.ink,
                                   border: deleted ? `1px dashed ${T.line}` : "none",
@@ -489,10 +515,42 @@ export default function Chat() {
                                 ) : (
                                   <>
                                     {!!m.body && <span>{m.body}</span>}
-                                    {!!m.attachment && (
-                                      <a href={mediaUrl(m.attachment)} target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", gap: 5, marginTop: m.body ? 4 : 0, color: isSelf ? T.onAccent : T.navyDeep }}>
-                                        <Paperclip size={12} /> Attachment
-                                      </a>
+                                    {!!m.attachment && isImageUrl(m.attachment) && (
+                                      <button
+                                        onClick={() => downloadAttachment(m)}
+                                        title="Download image"
+                                        style={{
+                                          position: "relative", display: "block", border: "none", padding: 0, marginTop: m.body ? 6 : 0, cursor: "pointer",
+                                          borderRadius: 10, overflow: "hidden", width: 220, height: 160, background: "none",
+                                        }}
+                                      >
+                                        <img src={mediaUrl(m.attachment)} alt="Attachment" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                                        <span
+                                          style={{
+                                            position: "absolute", bottom: 6, right: 6, width: 26, height: 26, borderRadius: "50%",
+                                            background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center",
+                                          }}
+                                        >
+                                          {downloadingId === m.id ? (
+                                            <span style={{ width: 12, height: 12, border: "2px solid #fff", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+                                          ) : (
+                                            <Download size={13} color="#fff" />
+                                          )}
+                                        </span>
+                                      </button>
+                                    )}
+                                    {!!m.attachment && !isImageUrl(m.attachment) && (
+                                      <button
+                                        onClick={() => downloadAttachment(m)}
+                                        disabled={downloadingId === m.id}
+                                        style={{
+                                          display: "flex", alignItems: "center", gap: 5, marginTop: m.body ? 4 : 0, border: "none", background: "transparent",
+                                          padding: 0, cursor: "pointer", color: isSelf ? T.onAccent : T.navyDeep, fontFamily: fontBody, fontSize: 13, maxWidth: 200,
+                                        }}
+                                      >
+                                        <Download size={12} style={{ flexShrink: 0 }} />
+                                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{filenameOf(m.attachment)}</span>
+                                      </button>
                                     )}
                                   </>
                                 )}

@@ -68,3 +68,8 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
     transition: none;
   }
 }
+
+/* Used by Chat.jsx's attachment-downloading spinner */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

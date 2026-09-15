@@ -116,3 +116,28 @@ export async function downloadFile(path, filename) {
   a.remove();
   URL.revokeObjectURL(url);
 }
+
+// Same trick as downloadFile — fetch as a blob and click a synthetic
+// <a download>, so it actually saves instead of just navigating to the file
+// (a plain <a href> cross-origin download attribute is ignored by browsers).
+// Takes an already-absolute URL rather than a BASE_URL-relative path, since
+// chat attachments (chat/serializers.py's get_attachment) come back as full
+// URLs that may point straight at Cloudinary in production, not this API —
+// the auth header is only useful (and only sent) for our own origin.
+export async function downloadUrl(fileUrl, filename) {
+  const sameOrigin = fileUrl.startsWith(BASE_URL);
+  const token = sameOrigin ? getToken() : null;
+  const res = await fetch(fileUrl, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new ApiError("Could not download the file", res.status, null);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
