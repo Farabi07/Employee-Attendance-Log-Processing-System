@@ -65,6 +65,10 @@ export const endpoints = {
   notificationMarkRead: (pk) => `/notification/api/v1/notification/mark_read/${pk}`,
   notificationMarkAllRead: () => `/notification/api/v1/notification/mark_all_read/`,
 
+  noticesMine: (params = "") => `/notification/api/v1/notice/mine/${params}`,
+  noticeMarkAllRead: () => `/notification/api/v1/notice/mark_all_read/`,
+  noticeCreate: () => `/notification/api/v1/notice/create/`,
+
   channelCreate: () => `/chat/api/v1/channel/create/`,
   channelsMine: (params = "") => `/chat/api/v1/channel/mine/${params}`,
   channelDetail: (pk) => `/chat/api/v1/channel/${pk}/`,

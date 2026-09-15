@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { LogOut } from "lucide-react";
+import { LogOut, Megaphone } from "lucide-react";
 import { T, fontDisplay, fontBody } from "./theme";
 import { mediaUrl } from "./lib/api";
 import { useAuth } from "./lib/auth";
@@ -8,6 +8,7 @@ import Sidebar, { EMP_NAV, MGR_NAV } from "./components/Sidebar";
 import Avatar from "./components/Avatar";
 import NotificationBell from "./components/NotificationBell";
 import ProfileModal from "./components/ProfileModal";
+import SendNoticeModal from "./components/SendNoticeModal";
 import SubscribeGate, { TrialBanner } from "./components/SubscribeGate";
 import OfflineBanner from "./components/OfflineBanner";
 import Login from "./pages/Login";
@@ -40,6 +41,7 @@ function Shell() {
   const role = isManagerOrModerator ? "manager" : "employee";
   const [active, setActive] = useState(role === "employee" ? "today" : "overview");
   const [showProfile, setShowProfile] = useState(false);
+  const [showSendNotice, setShowSendNotice] = useState(false);
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -71,6 +73,16 @@ function Shell() {
             <h1 style={{ fontFamily: fontDisplay, fontSize: isMobile ? 16 : 19, fontWeight: 600, color: T.ink, margin: 0 }}>{title}</h1>
 
             <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 16 }}>
+              {isManagerOrModerator && (
+                <button
+                  onClick={() => setShowSendNotice(true)}
+                  aria-label="Send a notice"
+                  title="Send a notice"
+                  style={{ border: `1px solid ${T.amberBg}`, background: T.amberBg, borderRadius: 9, width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                >
+                  <Megaphone size={15} color={T.amber} />
+                </button>
+              )}
               <NotificationBell />
               <button
                 onClick={() => setShowProfile(true)}
@@ -115,6 +127,15 @@ function Shell() {
         </div>
 
         {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
+        {showSendNotice && (
+          <SendNoticeModal
+            onClose={() => setShowSendNotice(false)}
+            onSent={(detail) => {
+              setShowSendNotice(false);
+              if (detail) alert(detail);
+            }}
+          />
+        )}
       </div>
     </div>
   );
