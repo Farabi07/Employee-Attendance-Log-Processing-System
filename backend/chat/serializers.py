@@ -20,7 +20,7 @@ class ChannelSerializer(serializers.ModelSerializer):
 
 	class Meta:
 		model = Channel
-		fields = ['id', 'name', 'description', 'is_archived', 'created_by', 'created_at', 'updated_at', 'unread_count', 'last_message']
+		fields = ['id', 'name', 'description', 'is_public', 'is_archived', 'created_by', 'created_at', 'updated_at', 'unread_count', 'last_message']
 
 	def get_unread_count(self, channel):
 		# Populated by the view (channel._unread_count) to avoid an N+1

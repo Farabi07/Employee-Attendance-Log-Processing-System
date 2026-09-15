@@ -1,4 +1,5 @@
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Q
 from django.utils import timezone
 
 from rest_framework import status
@@ -23,10 +24,12 @@ from chat.views._access import require_channel_membership, require_channel_admin
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsManagerOrModerator])
 def createChannel(request):
-	"""A manager/moderator creates an invite-only channel and picks its
-	initial members up front — there is no "open to whole org" channel
-	type, per the product requirement that only named members can see a
-	channel."""
+	"""A manager/moderator creates a channel, either:
+	- Public (is_public=true): every current org member gets it — no
+	  member_ids needed, everyone already has implicit access (see
+	  require_channel_membership's lazy-join and getMyChannels' org-wide
+	  union below).
+	- Selective (default): invite-only, member_ids picks who can see it."""
 	if not request.user.organization_id:
 		return Response({'detail': 'You must belong to an organization to create a channel.'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -34,24 +37,35 @@ def createChannel(request):
 	if not name:
 		return Response({'detail': 'name is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-	member_ids = get_list_param(request.data, 'member_ids')
-	members = list(Employee.objects.filter(organization=request.user.organization, pk__in=member_ids).exclude(pk=request.user.id))
+	is_public = str(request.data.get('is_public', '')).lower() in ('true', '1', 'yes')
 
 	channel = Channel.objects.create(
 		organization=request.user.organization,
 		name=name,
 		description=(request.data.get('description') or '').strip() or None,
+		is_public=is_public,
 		created_by=request.user,
 	)
 
 	ChannelMembership.objects.create(channel=channel, user=request.user, is_admin=True, added_by=request.user)
-	ChannelMembership.objects.bulk_create([
-		ChannelMembership(channel=channel, user=member, added_by=request.user)
-		for member in members
-	])
 
+	if is_public:
+		notify_members = list(Employee.objects.filter(organization=request.user.organization).exclude(pk=request.user.id))
+	else:
+		member_ids = get_list_param(request.data, 'member_ids')
+		notify_members = list(Employee.objects.filter(organization=request.user.organization, pk__in=member_ids).exclude(pk=request.user.id))
+		ChannelMembership.objects.bulk_create([
+			ChannelMembership(channel=channel, user=member, added_by=request.user)
+			for member in notify_members
+		])
+
+	# Computed once, after every membership row for this creation is in
+	# place, so both the response and every broadcast see the same
+	# (complete) member list — a public channel doesn't add rows for
+	# anyone but the creator, but still needs everyone nudged live/on next
+	# refresh so the channel shows up immediately.
 	payload = ChannelDetailSerializer(channel).data
-	for member in members:
+	for member in notify_members:
 		broadcast_to_group(f'chat_user_{member.id}', 'channel.created', {'channel': payload})
 
 	return Response(payload, status=status.HTTP_201_CREATED)
@@ -67,7 +81,14 @@ def createChannel(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def getMyChannels(request):
-	channels = Channel.objects.filter(memberships__user=request.user, organization=request.user.organization)
+	# Public channels are visible org-wide even before a user has ever
+	# opened one (no ChannelMembership row yet — see
+	# require_channel_membership's lazy-join) so they can be discovered,
+	# not just ones already explicitly joined.
+	channels = Channel.objects.filter(
+		Q(memberships__user=request.user) | Q(is_public=True),
+		organization=request.user.organization,
+	).distinct()
 
 	total_elements = channels.count()
 
@@ -81,6 +102,11 @@ def getMyChannels(request):
 		for m in ChannelMembership.objects.filter(channel__in=page.object_list, user=request.user)
 	}
 	for channel in page.object_list:
+		if channel.id not in memberships:
+			# Public, never opened — no membership row yet, so there's
+			# nothing to compute unread against.
+			channel._unread_count = 0
+			continue
 		last_read_at = memberships.get(channel.id)
 		unread = channel.messages.exclude(sender=request.user)
 		if last_read_at:

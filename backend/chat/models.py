@@ -8,14 +8,22 @@ def chat_attachment_upload_path(instance, filename):
 
 
 class Channel(models.Model):
-	"""An invite-only chat room within one organization. Membership is
-	explicit (ChannelMembership) — there is no "open to whole org" channel
-	type; only a manager/moderator can create one, and only they (or a
-	channel admin) can add members."""
+	"""A chat room within one organization — only a manager/moderator can
+	create one. Two visibility modes:
+	- Selective (is_public=False): invite-only, explicit ChannelMembership
+	  rows control who can see it (only they, or a channel admin, can add
+	  members).
+	- Public (is_public=True): any org member can see/read it without being
+	  explicitly invited — see chat/views/_access.py's
+	  require_channel_membership, which lazily creates a ChannelMembership
+	  row the first time such a user actually opens the channel, so unread
+	  tracking and "who's actually here" still work the same way as a
+	  selective channel once someone's interacted with it."""
 
 	organization = models.ForeignKey('authentication.Organization', on_delete=models.CASCADE, related_name='channels')
 	name = models.CharField(max_length=100)
 	description = models.CharField(max_length=255, null=True, blank=True)
+	is_public = models.BooleanField(default=False)
 	is_archived = models.BooleanField(default=False)
 
 	created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, related_name='+', null=True, blank=True)
