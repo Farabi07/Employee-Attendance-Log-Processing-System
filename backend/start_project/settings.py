@@ -39,6 +39,11 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
+    # Must come before django.contrib.staticfiles per Channels' docs — it
+    # patches `runserver` to serve ASGI (HTTP + WebSocket) instead of
+    # Django's plain WSGI dev server.
+    'daphne',
+
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -53,6 +58,7 @@ INSTALLED_APPS = [
 	'phonenumber_field',
 	'djoser',
     'django_filters',
+    'channels',
 
     #local
     'authentication.apps.AuthenticationConfig',
@@ -62,7 +68,8 @@ INSTALLED_APPS = [
 	'url_shortener.apps.UrlShortenerConfig',
 	'attendance.apps.AttendanceConfig',
 	'billing.apps.BillingConfig',
-	'wallet.apps.WalletConfig'
+	'wallet.apps.WalletConfig',
+	'chat.apps.ChatConfig',
 ]
 
 INSTALLED_APPS += ['sequences.apps.SequencesConfig']
@@ -118,6 +125,21 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'start_project.wsgi.application'
+ASGI_APPLICATION = 'start_project.asgi.application'
+
+# Chat's WebSocket consumer (chat/consumers.py) fans messages out through
+# this channel layer — Redis so it works across multiple server processes,
+# not just in-memory within one. REDIS_URL is a new required env var
+# wherever this app is deployed (see chat feature's ops notes); falls back
+# to a local default so `runserver` + a local `redis-server` just works.
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [os.environ.get('REDIS_URL', 'redis://localhost:6379/0')],
+        },
+    },
+}
 
 AUTH_USER_MODEL = 'authentication.User'
 

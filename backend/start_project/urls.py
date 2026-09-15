@@ -74,6 +74,11 @@ urlpatterns = [
 	path('availability/', include('attendance.urls.availability_urls')),
 	path('shift_swap/', include('attendance.urls.shift_swap_urls')),
 
+	# Chat module
+	path('chat/', include('chat.urls.channel_urls')),
+	path('chat/', include('chat.urls.conversation_urls')),
+	path('chat/', include('chat.urls.message_urls')),
+
 	# Multi-tenant SaaS: signup + platform owner
 	path('saas/', include('authentication.urls.signup_urls')),
 	path('billing/', include('billing.urls.billing_urls')),
