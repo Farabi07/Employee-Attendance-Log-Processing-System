@@ -27,16 +27,20 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 	async def connect(self):
 		self.user = self.scope.get('user')
 		if not self.user or self.user.is_anonymous:
-			# Accept first, then close with a specific code — closing before
-			# accept() makes most ASGI servers (daphne included) reject the
-			# opening handshake at the HTTP level instead of completing it,
-			# which strips the close code entirely: browsers/React Native
-			# never surface the HTTP status of a failed WS handshake to JS,
-			# only a generic onclose/onerror. Accepting first is the only
-			# way the client's `onclose` handler actually receives 4001, so
-			# it can tell "bad token, stop retrying" apart from a network
-			# blip (see mobile/web chatSocket.js).
+			# Accept, then send an in-band "auth_error" message before
+			# closing. Originally this just closed with code 4001 so the
+			# client's onclose handler could tell "bad token, stop
+			# retrying" apart from a network blip — that works in local
+			# dev, but confirmed in production (behind Render/Cloudflare)
+			# that ordinary data frames arrive fine while the close frame
+			# itself never reaches the client (the socket just hangs until
+			# an intermediary force-closes it ~20s later with a generic
+			# code). An in-band message doesn't depend on close-frame
+			# delivery at all, so the client acts on it directly (see
+			# mobile/web chatSocket.js) — close() is still attempted after,
+			# as a no-op fallback for environments where it does work.
 			await self.accept()
+			await self.send_json({'type': 'auth_error', 'reason': 'invalid_or_missing_token'})
 			await self.close(code=4001)
 			return
 
