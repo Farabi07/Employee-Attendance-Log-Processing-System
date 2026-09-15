@@ -3,6 +3,7 @@ import { View, Text, TextInput, Pressable, FlatList, StyleSheet } from "react-na
 import { Search, Check } from "lucide-react-native";
 import { fonts } from "../../theme";
 import { useTheme } from "../../lib/ThemeContext";
+import { mediaUrl } from "../../lib/api";
 import Avatar from "../../components/Avatar";
 import EmptyState from "../../components/EmptyState";
 
@@ -80,7 +81,7 @@ export default function TeammatePickerList({
             const selected = selectedIds.includes(item.id);
             return (
               <Pressable onPress={() => onToggle(item.id)} style={[styles.row, index > 0 && styles.rowBorder]}>
-                <Avatar initials={initialsOf(item)} size={34} />
+                <Avatar initials={initialsOf(item)} size={34} src={mediaUrl(item.image)} />
                 <View style={styles.rowText}>
                   <Text style={styles.rowName}>
                     {item.first_name} {item.last_name}

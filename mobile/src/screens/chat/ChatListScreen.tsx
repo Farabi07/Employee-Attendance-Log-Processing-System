@@ -5,7 +5,7 @@ import { Hash, MessageCircle, Plus, Users } from "lucide-react-native";
 import { fonts } from "../../theme";
 import { useTheme } from "../../lib/ThemeContext";
 import { useAuth } from "../../lib/auth";
-import { api } from "../../lib/api";
+import { api, mediaUrl } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import { connect as connectChatSocket, disconnect as disconnectChatSocket, on as onChatEvent } from "../../lib/chatSocket";
 import Card from "../../components/Card";
@@ -239,7 +239,7 @@ export default function ChatListScreen() {
             return (
               <Card style={{ padding: 0 }}>
                 <Pressable onPress={() => openConversation(item)} style={styles.row}>
-                  <Avatar initials={initialsOf(other)} size={40} />
+                  <Avatar initials={initialsOf(other)} size={40} src={mediaUrl(other?.image)} />
                   <View style={styles.rowText}>
                     <View style={styles.rowNameLine}>
                       <Text style={styles.rowName} numberOfLines={1}>

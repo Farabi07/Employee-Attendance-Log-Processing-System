@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Search, Check } from "lucide-react";
 import { T, fontBody } from "../theme";
+import { mediaUrl } from "../lib/api";
 import Avatar from "./Avatar";
 
 function initialsOf(person) {
@@ -49,7 +50,7 @@ export default function TeammatePickerList({ employees, selectedIds, onToggle, m
                 textAlign: "left",
               }}
             >
-              <Avatar initials={initialsOf(emp)} size={32} />
+              <Avatar initials={initialsOf(emp)} size={32} src={mediaUrl(emp.image)} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontFamily: fontBody, fontSize: 13, fontWeight: 500, color: T.ink, margin: 0 }}>
                   {emp.first_name} {emp.last_name}

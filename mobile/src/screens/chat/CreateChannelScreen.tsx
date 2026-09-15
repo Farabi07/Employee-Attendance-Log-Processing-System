@@ -93,7 +93,10 @@ export default function CreateChannelScreen({ onBack, onCreated }: { onBack: () 
   return (
     <Modal visible animationType="slide" onRequestClose={onBack}>
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        {/* "height" on Android, not the usual "undefined" — this screen is a
+            full-screen Modal, where Android's windowSoftInputMode=adjustResize
+            doesn't apply (see ThreadScreen.tsx for the fuller explanation). */}
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <View style={styles.header}>
             <Pressable onPress={onBack} hitSlop={8} style={styles.backButton} accessibilityLabel="Go back" accessibilityRole="button">
               <ChevronLeft size={18} color={T.ink} />

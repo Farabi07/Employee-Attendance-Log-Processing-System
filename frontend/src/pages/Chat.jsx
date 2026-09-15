@@ -240,7 +240,7 @@ export default function Chat() {
                           <Hash size={16} color={T.tealDeep} />
                         </div>
                       ) : (
-                        <Avatar initials={initialsOf(other)} size={36} />
+                        <Avatar initials={initialsOf(other)} size={36} src={mediaUrl(other?.image)} />
                       )}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 6 }}>

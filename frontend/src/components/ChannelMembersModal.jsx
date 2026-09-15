@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { X, Plus, ChevronLeft } from "lucide-react";
 import { T, fontBody, fontDisplay } from "../theme";
 import { useAuth } from "../lib/auth";
-import { api } from "../lib/api";
+import { api, mediaUrl } from "../lib/api";
 import { endpoints } from "../lib/endpoints";
 import Card from "./Card";
 import Avatar from "./Avatar";
@@ -128,7 +128,7 @@ export default function ChannelMembersModal({ channelId, onClose, onChanged }) {
         ) : (
           (channel?.members || []).map((m, i) => (
             <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderTop: i > 0 ? `1px solid ${T.line2}` : "none" }}>
-              <Avatar initials={initialsOf(m.member)} size={32} />
+              <Avatar initials={initialsOf(m.member)} size={32} src={mediaUrl(m.member.image)} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontFamily: fontBody, fontSize: 13, fontWeight: 500, color: T.ink, margin: 0 }}>
                   {m.member.first_name} {m.member.last_name}

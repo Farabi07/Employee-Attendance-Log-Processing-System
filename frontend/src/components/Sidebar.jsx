@@ -2,6 +2,32 @@ import React from "react";
 import { Clock, CalendarDays, FileText, LayoutGrid, MessageCircle, TrendingUp, Users, Wallet } from "lucide-react";
 import { T, fontDisplay, fontBody } from "../theme";
 import { useIsMobile } from "../lib/useMediaQuery";
+import { useChatUnreadCount } from "../lib/useChatUnread";
+
+function ChatBadge({ count, style }) {
+  if (!count) return null;
+  return (
+    <span
+      style={{
+        minWidth: 16,
+        height: 16,
+        padding: "0 4px",
+        borderRadius: 8,
+        background: T.coral,
+        color: "#fff",
+        fontFamily: fontBody,
+        fontSize: 10,
+        fontWeight: 600,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        ...style,
+      }}
+    >
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
 
 export const EMP_NAV = [
   { key: "today", label: "Today", icon: Clock },
@@ -24,6 +50,7 @@ export const MGR_NAV = [
 export default function Sidebar({ role, active, setActive }) {
   const items = role === "employee" ? EMP_NAV : MGR_NAV;
   const isMobile = useIsMobile();
+  const chatUnread = useChatUnreadCount();
 
   if (isMobile) {
     return (
@@ -58,8 +85,12 @@ export default function Sidebar({ role, active, setActive }) {
                 background: "transparent",
                 color: isActive ? T.tealDeep : T.muted,
                 cursor: "pointer",
+                position: "relative",
               }}
             >
+              {it.key === "chat" && (
+                <ChatBadge count={chatUnread} style={{ position: "absolute", top: 2, right: "28%" }} />
+              )}
               <Icon size={18} strokeWidth={isActive ? 2.2 : 1.8} />
               <span style={{ fontFamily: fontBody, fontSize: 10, fontWeight: isActive ? 600 : 500 }}>{it.label}</span>
             </button>
@@ -112,7 +143,8 @@ export default function Sidebar({ role, active, setActive }) {
             }}
           >
             <Icon size={16.5} strokeWidth={1.8} />
-            {it.label}
+            <span style={{ flex: 1 }}>{it.label}</span>
+            {it.key === "chat" && <ChatBadge count={chatUnread} />}
           </button>
         );
       })}

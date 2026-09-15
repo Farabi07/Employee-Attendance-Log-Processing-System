@@ -179,7 +179,13 @@ export default function ThreadScreen({ type, id, title, onBack }: ThreadProps) {
   return (
     <Modal visible animationType="slide" onRequestClose={onBack}>
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={0}>
+        {/* "height" (not the usual "undefined") on Android — this screen is a
+            full-screen Modal, and Android's windowSoftInputMode=adjustResize
+            (what the rest of the app relies on for keyboard avoidance)
+            doesn't reach into a Modal's separate native view hierarchy, so
+            the composer gets hidden behind the keyboard without an explicit
+            behavior here. */}
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={0}>
           <View style={styles.header}>
             <Pressable onPress={onBack} hitSlop={8} style={styles.backButton} accessibilityLabel="Go back" accessibilityRole="button">
               <ChevronLeft size={18} color={T.ink} />

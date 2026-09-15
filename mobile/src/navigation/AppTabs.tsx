@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Platform } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { fonts } from "../theme";
 import { useTheme } from "../lib/ThemeContext";
+import { useChatUnreadCount } from "../lib/useChatUnread";
 import { EMP_NAV, MGR_NAV } from "./navConfig";
 import AppHeader from "../components/AppHeader";
 import GradientBackground from "../components/GradientBackground";
@@ -18,6 +19,9 @@ const Tab = createBottomTabNavigator();
 export default function AppTabs({ role }: { role: "employee" | "manager" }) {
   const T = useTheme();
   const items = role === "employee" ? EMP_NAV : MGR_NAV;
+  // Polled independently of whether Chat is the active tab — a badge on an
+  // inactive tab is the whole point, same idea as NotificationBell's badge.
+  const chatUnread = useChatUnreadCount();
 
   const styles = useMemo(
     () =>
@@ -96,6 +100,8 @@ export default function AppTabs({ role }: { role: "employee" | "manager" }) {
             options={{
               title: item.label,
               header: () => <AppHeader title={item.label} />,
+              tabBarBadge: item.key === "Chat" && chatUnread > 0 ? (chatUnread > 99 ? "99+" : chatUnread) : undefined,
+              tabBarBadgeStyle: { backgroundColor: T.coral, fontFamily: fonts.body.semibold, fontSize: 9.5 },
               tabBarIcon: ({ focused, color, size }) => (
                 <View style={[styles.iconPill, focused && styles.iconPillActive]}>
                   {focused && <View style={styles.activeDot} />}

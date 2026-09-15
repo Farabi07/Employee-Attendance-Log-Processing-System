@@ -5,7 +5,7 @@ import { ChevronLeft, Plus, X } from "lucide-react-native";
 import { fonts } from "../../theme";
 import { useTheme } from "../../lib/ThemeContext";
 import { useAuth } from "../../lib/auth";
-import { api } from "../../lib/api";
+import { api, mediaUrl } from "../../lib/api";
 import { endpoints } from "../../lib/endpoints";
 import { useToast } from "../../components/Toast";
 import { PrimaryButton } from "../../components/Button";
@@ -157,7 +157,7 @@ export default function ChannelMembersScreen({ channelId, onBack }: { channelId:
           <ScrollView contentContainerStyle={styles.content}>
             {(channel?.members || []).map((m: any, i: number) => (
               <View key={m.id} style={[styles.row, i > 0 && styles.rowBorder]}>
-                <Avatar initials={initialsOf(m.member)} size={34} />
+                <Avatar initials={initialsOf(m.member)} size={34} src={mediaUrl(m.member.image)} />
                 <View style={styles.rowText}>
                   <Text style={styles.rowName}>
                     {m.member.first_name} {m.member.last_name}
