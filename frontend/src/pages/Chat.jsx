@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Hash, Globe, MessageCircle, Plus, Users, Paperclip, Send, ChevronLeft, X } from "lucide-react";
+import { Hash, Globe, MessageCircle, Plus, Users, Paperclip, Send, ChevronLeft, X, MoreHorizontal, Pencil, Trash2, SmilePlus, Check } from "lucide-react";
 import { T, fontBody, fontDisplay } from "../theme";
 import { useAuth } from "../lib/auth";
 import { useIsMobile } from "../lib/useMediaQuery";
@@ -11,6 +11,27 @@ import Avatar from "../components/Avatar";
 import CreateChannelModal from "../components/CreateChannelModal";
 import NewDirectMessageModal from "../components/NewDirectMessageModal";
 import ChannelMembersModal from "../components/ChannelMembersModal";
+
+const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+
+// A message.reaction WS event carries only the ONE emoji that just changed
+// plus fresh counts for every emoji (see chat/views/message_views.py —
+// reacted_by_me is deliberately left out of the broadcast since it's only
+// meaningful from the requester's own point of view). Each client rebuilds
+// reacted_by_me itself: true for the emoji the event says IT (my own user
+// id) just toggled on, otherwise carried over from whatever this client
+// already knew for that emoji.
+function applyReactionEvent(message, event, myUserId) {
+  const prevByEmoji = new Map((message.reactions || []).map((r) => [r.emoji, r]));
+  const reactions = (event.reactions || []).map((r) => {
+    if (r.emoji === event.emoji && event.user_id === myUserId) {
+      return { ...r, reacted_by_me: !event.removed };
+    }
+    const prev = prevByEmoji.get(r.emoji);
+    return { ...r, reacted_by_me: prev?.reacted_by_me || false };
+  });
+  return { ...message, reactions };
+}
 
 function timeAgo(iso) {
   if (!iso) return "";
@@ -29,6 +50,7 @@ function timeOf(iso) {
 
 function previewOf(message) {
   if (!message) return "No messages yet";
+  if (message.is_deleted) return "Message deleted";
   if (message.body) return message.body;
   return message.attachment ? "Sent an attachment" : "";
 }
@@ -63,6 +85,11 @@ export default function Chat() {
   const [text, setText] = useState("");
   const [attachment, setAttachment] = useState(null);
   const [sending, setSending] = useState(false);
+  const [editingMessage, setEditingMessage] = useState(null);
+  const [hoveredMessageId, setHoveredMessageId] = useState(null);
+  const [menuMessage, setMenuMessage] = useState(null); // message whose ⋯ dropdown is open
+  const [menuMode, setMenuMode] = useState("actions"); // "actions" | "react"
+  const menuRef = useRef(null);
 
   const loadList = useCallback(async () => {
     const [channelsRes, conversationsRes] = await Promise.all([
@@ -127,6 +154,55 @@ export default function Chat() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected?.type, selected?.id]);
 
+  useEffect(() => {
+    if (!selected) return;
+    return onChatEvent("message.edited", (event) => {
+      const updated = event.message;
+      const matches = selected.type === "channel" ? updated.channel === selected.id : updated.conversation === selected.id;
+      if (!matches) {
+        loadList();
+        return;
+      }
+      setMessages((cur) => (cur.some((m) => m.id === updated.id) ? cur.map((m) => (m.id === updated.id ? updated : m)) : cur));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.type, selected?.id]);
+
+  useEffect(() => {
+    if (!selected) return;
+    return onChatEvent("message.deleted", (event) => {
+      const updated = event.message;
+      const matches = selected.type === "channel" ? updated.channel === selected.id : updated.conversation === selected.id;
+      if (!matches) {
+        loadList();
+        return;
+      }
+      setMessages((cur) => (cur.some((m) => m.id === updated.id) ? cur.map((m) => (m.id === updated.id ? updated : m)) : cur));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.type, selected?.id]);
+
+  // Reactions never change a list preview — patching only needs to check
+  // whether the message is in the currently loaded thread page, same
+  // idempotent existence check ThreadScreen.tsx uses on mobile.
+  useEffect(
+    () =>
+      onChatEvent("message.reaction", (event) => {
+        setMessages((cur) =>
+          cur.some((m) => m.id === event.message_id) ? cur.map((m) => (m.id === event.message_id ? applyReactionEvent(m, event, user?.id) : m)) : cur
+        );
+      }),
+    [user?.id]
+  );
+
+  useEffect(() => {
+    const onClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuMessage(null);
+    };
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
   const loadOlder = async () => {
     if (loadingOlder || !page || page <= 1) return;
     setLoadingOlder(true);
@@ -166,6 +242,65 @@ export default function Chat() {
       alert(err.message);
     } finally {
       setSending(false);
+    }
+  };
+
+  const openMenu = (message) => {
+    setMenuMessage(message);
+    setMenuMode("actions");
+  };
+  const closeMenu = () => setMenuMessage(null);
+
+  const startEdit = (message) => {
+    setEditingMessage(message);
+    setText(message.body || "");
+    setAttachment(null);
+    closeMenu();
+  };
+
+  const cancelEdit = () => {
+    setEditingMessage(null);
+    setText("");
+  };
+
+  const submitEdit = async () => {
+    if (!editingMessage) return;
+    const body = text.trim();
+    if (!body) return;
+    setSending(true);
+    try {
+      const updated = await api.post(endpoints.messageEdit(editingMessage.id), { body });
+      setMessages((cur) => cur.map((m) => (m.id === updated.id ? updated : m)));
+      setEditingMessage(null);
+      setText("");
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const deleteMessageNow = async (message) => {
+    try {
+      const updated = await api.post(endpoints.messageDelete(message.id));
+      setMessages((cur) => cur.map((m) => (m.id === updated.id ? updated : m)));
+      if (editingMessage?.id === message.id) cancelEdit();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const confirmUnsend = (message) => {
+    closeMenu();
+    if (window.confirm("Unsend this message? This can't be undone.")) deleteMessageNow(message);
+  };
+
+  const react = async (message, emoji) => {
+    try {
+      const updated = await api.post(endpoints.messageReact(message.id), { emoji });
+      setMessages((cur) => cur.map((m) => (m.id === updated.id ? updated : m)));
+    } catch (err) {
+      alert(err.message);
     }
   };
 
@@ -315,32 +450,149 @@ export default function Chat() {
                     )}
                     {messages.map((m) => {
                       const isSelf = m.sender?.id === user?.id;
+                      const deleted = !!m.is_deleted;
+                      const showActions = !deleted && (hoveredMessageId === m.id || menuMessage?.id === m.id);
                       return (
-                        <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: isSelf ? "flex-end" : "flex-start", maxWidth: "72%", alignSelf: isSelf ? "flex-end" : "flex-start" }}>
-                          {selected.type === "channel" && !isSelf && (
-                            <span style={{ fontFamily: fontBody, fontSize: 11, fontWeight: 600, color: T.muted, marginBottom: 2, marginLeft: 4 }}>
-                              {m.sender ? `${m.sender.first_name} ${m.sender.last_name}` : "Unknown"}
-                            </span>
+                        <div
+                          key={m.id}
+                          onMouseEnter={() => setHoveredMessageId(m.id)}
+                          onMouseLeave={() => setHoveredMessageId((cur) => (cur === m.id ? null : cur))}
+                          style={{ display: "flex", gap: 8, maxWidth: "72%", alignSelf: isSelf ? "flex-end" : "flex-start", flexDirection: isSelf ? "row-reverse" : "row" }}
+                        >
+                          {!isSelf && (
+                            <div style={{ flexShrink: 0, marginTop: selected.type === "channel" ? 16 : 0 }}>
+                              <Avatar initials={initialsOf(m.sender)} size={26} src={mediaUrl(m.sender?.image)} />
+                            </div>
                           )}
-                          <div
-                            style={{
-                              borderRadius: 14,
-                              padding: "9px 12px",
-                              background: isSelf ? T.teal : T.line2,
-                              color: isSelf ? T.onAccent : T.ink,
-                              fontFamily: fontBody,
-                              fontSize: 13.5,
-                              wordBreak: "break-word",
-                            }}
-                          >
-                            {!!m.body && <span>{m.body}</span>}
-                            {!!m.attachment && (
-                              <a href={mediaUrl(m.attachment)} target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", gap: 5, marginTop: m.body ? 4 : 0, color: isSelf ? T.onAccent : T.navyDeep }}>
-                                <Paperclip size={12} /> Attachment
-                              </a>
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: isSelf ? "flex-end" : "flex-start", minWidth: 0 }}>
+                            {selected.type === "channel" && !isSelf && (
+                              <span style={{ fontFamily: fontBody, fontSize: 11, fontWeight: 600, color: T.muted, marginBottom: 2, marginLeft: 4 }}>
+                                {m.sender ? `${m.sender.first_name} ${m.sender.last_name}` : "Unknown"}
+                              </span>
                             )}
+                            <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 4, flexDirection: isSelf ? "row-reverse" : "row" }}>
+                              <div
+                                style={{
+                                  borderRadius: 14,
+                                  padding: "9px 12px",
+                                  background: deleted ? "transparent" : isSelf ? T.teal : T.line2,
+                                  color: isSelf ? T.onAccent : T.ink,
+                                  border: deleted ? `1px dashed ${T.line}` : "none",
+                                  fontFamily: fontBody,
+                                  fontSize: 13.5,
+                                  fontStyle: deleted ? "italic" : "normal",
+                                  wordBreak: "break-word",
+                                }}
+                              >
+                                {deleted ? (
+                                  <span style={{ color: T.faint }}>This message was deleted</span>
+                                ) : (
+                                  <>
+                                    {!!m.body && <span>{m.body}</span>}
+                                    {!!m.attachment && (
+                                      <a href={mediaUrl(m.attachment)} target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", gap: 5, marginTop: m.body ? 4 : 0, color: isSelf ? T.onAccent : T.navyDeep }}>
+                                        <Paperclip size={12} /> Attachment
+                                      </a>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+
+                              {showActions && (
+                                <button
+                                  onClick={() => openMenu(m)}
+                                  aria-label="Message actions"
+                                  style={{ width: 24, height: 24, borderRadius: "50%", border: "none", background: T.line2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                                >
+                                  <MoreHorizontal size={13} color={T.muted} />
+                                </button>
+                              )}
+
+                              {menuMessage?.id === m.id && (
+                                <div
+                                  ref={menuRef}
+                                  style={{
+                                    position: "absolute",
+                                    top: "100%",
+                                    marginTop: 4,
+                                    [isSelf ? "right" : "left"]: 0,
+                                    background: T.card,
+                                    border: `1px solid ${T.line}`,
+                                    borderRadius: 10,
+                                    boxShadow: `0 8px 24px rgba(${T.shadow}, 0.16)`,
+                                    zIndex: 20,
+                                    minWidth: menuMode === "react" ? "auto" : 140,
+                                    overflow: "hidden",
+                                  }}
+                                >
+                                  {menuMode === "actions" ? (
+                                    <>
+                                      <button
+                                        onClick={() => setMenuMode("react")}
+                                        style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", border: "none", background: "transparent", cursor: "pointer", fontFamily: fontBody, fontSize: 12.5, color: T.ink, textAlign: "left" }}
+                                      >
+                                        <SmilePlus size={14} /> React
+                                      </button>
+                                      {isSelf && (
+                                        <>
+                                          <button
+                                            onClick={() => startEdit(m)}
+                                            style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", border: "none", background: "transparent", cursor: "pointer", fontFamily: fontBody, fontSize: 12.5, color: T.ink, textAlign: "left" }}
+                                          >
+                                            <Pencil size={14} /> Edit
+                                          </button>
+                                          <button
+                                            onClick={() => confirmUnsend(m)}
+                                            style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", border: "none", background: "transparent", cursor: "pointer", fontFamily: fontBody, fontSize: 12.5, fontWeight: 600, color: T.coral, textAlign: "left" }}
+                                          >
+                                            <Trash2 size={14} /> Unsend
+                                          </button>
+                                        </>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <div style={{ display: "flex", gap: 4, padding: 8 }}>
+                                      {QUICK_REACTIONS.map((emoji) => (
+                                        <button
+                                          key={emoji}
+                                          onClick={() => {
+                                            react(m, emoji);
+                                            closeMenu();
+                                          }}
+                                          style={{ width: 30, height: 30, borderRadius: "50%", border: "none", background: "transparent", cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}
+                                        >
+                                          {emoji}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            {!deleted && m.reactions?.length > 0 && (
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 4 }}>
+                                {m.reactions.map((r) => (
+                                  <button
+                                    key={r.emoji}
+                                    onClick={() => react(m, r.emoji)}
+                                    style={{
+                                      display: "flex", alignItems: "center", gap: 3, padding: "2px 7px", borderRadius: 999, cursor: "pointer",
+                                      background: r.reacted_by_me ? T.tealBg : T.line2, border: `1px solid ${r.reacted_by_me ? T.teal : "transparent"}`,
+                                      fontFamily: fontBody, fontSize: 11, fontWeight: 600, color: r.reacted_by_me ? T.tealDeep : T.muted,
+                                    }}
+                                  >
+                                    <span style={{ fontSize: 12.5 }}>{r.emoji}</span> {r.count}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+
+                            <span style={{ fontFamily: fontBody, fontSize: 10, color: T.faint, marginTop: 3, marginInline: 4 }}>
+                              {timeOf(m.created_at)}
+                              {!deleted && !!m.edited_at && <em> · edited</em>}
+                            </span>
                           </div>
-                          <span style={{ fontFamily: fontBody, fontSize: 10, color: T.faint, marginTop: 3, marginInline: 4 }}>{timeOf(m.created_at)}</span>
                         </div>
                       );
                     })}
@@ -348,7 +600,7 @@ export default function Chat() {
                 )}
               </div>
 
-              {attachment && (
+              {attachment && !editingMessage && (
                 <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 16px 8px" }}>
                   <Paperclip size={13} color={T.muted} />
                   <span style={{ fontFamily: fontBody, fontSize: 12, color: T.muted, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{attachment.name}</span>
@@ -358,38 +610,52 @@ export default function Chat() {
                 </div>
               )}
 
+              {editingMessage && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 16px", background: T.tealBg, borderTop: `1px solid ${T.line}` }}>
+                  <Pencil size={13} color={T.tealDeep} />
+                  <span style={{ flex: 1, fontFamily: fontBody, fontSize: 12, fontWeight: 600, color: T.tealDeep, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Editing message</span>
+                  <button onClick={cancelEdit} style={{ border: "none", background: "transparent", cursor: "pointer", padding: 2 }} aria-label="Cancel edit">
+                    <X size={15} color={T.tealDeep} />
+                  </button>
+                </div>
+              )}
+
               <div style={{ display: "flex", alignItems: "flex-end", gap: 8, padding: 12, borderTop: `1px solid ${T.line}` }}>
-                <input ref={fileInputRef} type="file" onChange={pickAttachment} style={{ display: "none" }} />
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  aria-label="Attach a file"
-                  style={{ width: 34, height: 34, borderRadius: "50%", border: "none", background: T.line2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
-                >
-                  <Paperclip size={15} color={T.muted} />
-                </button>
+                {!editingMessage && (
+                  <>
+                    <input ref={fileInputRef} type="file" onChange={pickAttachment} style={{ display: "none" }} />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      aria-label="Attach a file"
+                      style={{ width: 34, height: 34, borderRadius: "50%", border: "none", background: T.line2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                    >
+                      <Paperclip size={15} color={T.muted} />
+                    </button>
+                  </>
+                )}
                 <textarea
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      send();
+                      editingMessage ? submitEdit() : send();
                     }
                   }}
-                  placeholder="Message…"
+                  placeholder={editingMessage ? "Edit message…" : "Message…"}
                   rows={1}
                   style={{ flex: 1, resize: "none", maxHeight: 100, borderRadius: 18, border: `1px solid ${T.line}`, padding: "9px 14px", fontFamily: fontBody, fontSize: 13.5, boxSizing: "border-box" }}
                 />
                 <button
-                  onClick={send}
+                  onClick={editingMessage ? submitEdit : send}
                   disabled={sending || (!text.trim() && !attachment)}
-                  aria-label="Send"
+                  aria-label={editingMessage ? "Save edit" : "Send"}
                   style={{
                     width: 34, height: 34, borderRadius: "50%", border: "none", background: T.teal, color: T.onAccent, cursor: "pointer",
                     display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, opacity: sending || (!text.trim() && !attachment) ? 0.5 : 1,
                   }}
                 >
-                  <Send size={14} />
+                  {editingMessage ? <Check size={14} /> : <Send size={14} />}
                 </button>
               </div>
             </>
