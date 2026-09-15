@@ -6,11 +6,12 @@
 // Auth is the access token as a query param (?token=...), not a header —
 // neither the browser nor React Native's WebSocket constructor can attach
 // an Authorization header to the handshake request. The server accepts the
-// handshake either way and then closes with code 4001 if the token is
-// missing/invalid, specifically so this module can tell "bad token, stop
-// retrying and sign out" apart from an ordinary dropped connection (see
-// chat/consumers.py's connect() on the backend branch for why it accepts
-// before closing).
+// handshake either way and sends an in-band {type: "auth_error"} message if
+// the token is missing/invalid, rather than relying on a WS close code —
+// some hosting setups (confirmed behind Render/Cloudflare in production)
+// deliver ordinary message frames fine but silently drop the close frame
+// itself, so a close-code check alone would never fire there. See
+// chat/consumers.py's connect() on the backend branch.
 import { AppState } from "react-native";
 import { getToken, BASE_URL, triggerUnauthorized } from "./api";
 
@@ -56,6 +57,7 @@ async function open() {
 
   const ws = new WebSocket(wsUrl(token));
   socket = ws;
+  let authFailed = false;
 
   ws.onopen = () => {
     reconnectAttempt = 0;
@@ -68,15 +70,23 @@ async function open() {
     } catch {
       return; // malformed frame — ignore rather than crash the listener loop
     }
+    if (data?.type === "auth_error") {
+      // Bad/expired token — retrying would just loop forever. Route
+      // through the same handler a 401 triggers elsewhere in the app, and
+      // close the socket ourselves rather than waiting on a close frame
+      // from the server that may never arrive (see module comment above).
+      authFailed = true;
+      triggerUnauthorized();
+      ws.close();
+      return;
+    }
     if (data?.type) emit(data.type, data);
   };
 
   ws.onclose = (event) => {
     if (socket === ws) socket = null;
-    if (manualClose) return;
+    if (manualClose || authFailed) return;
     if (event.code === 4001) {
-      // Bad/expired token — retrying would just loop forever. Route
-      // through the same handler a 401 triggers elsewhere in the app.
       triggerUnauthorized();
       return;
     }

@@ -1,12 +1,15 @@
 // Browser counterpart to mobile/src/lib/chatSocket.js — same protocol
 // (chat/consumers.py::ChatConsumer on the backend branch), same
 // query-string token auth (a WebSocket handshake can't carry an
-// Authorization header), same "accept then close(4001)" contract for a
-// bad/expired token so this can tell that apart from an ordinary dropped
-// connection. Reconnects on window 'online' instead of React Native's
-// AppState — the web equivalent of "we're back, try again now" (the same
-// browser event lib/useOnlineStatus.js's hook listens to, just read
-// directly here since this is a plain module, not a component).
+// Authorization header). Auth failure arrives as an in-band
+// {type: "auth_error"} message rather than a WS close code — confirmed in
+// production (behind Render/Cloudflare) that ordinary message frames
+// arrive fine but the close frame itself is silently dropped, so a
+// close-code check alone would never fire there. Reconnects on window
+// 'online' instead of React Native's AppState — the web equivalent of
+// "we're back, try again now" (the same browser event
+// lib/useOnlineStatus.js's hook listens to, just read directly here since
+// this is a plain module, not a component).
 import { getToken, BASE_URL, triggerUnauthorized } from "./api";
 
 const listeners = new Map();
@@ -46,6 +49,7 @@ function open() {
 
   const ws = new WebSocket(wsUrl(token));
   socket = ws;
+  let authFailed = false;
 
   ws.onopen = () => {
     reconnectAttempt = 0;
@@ -58,12 +62,18 @@ function open() {
     } catch {
       return;
     }
+    if (data?.type === "auth_error") {
+      authFailed = true;
+      triggerUnauthorized();
+      ws.close();
+      return;
+    }
     if (data?.type) emit(data.type, data);
   };
 
   ws.onclose = (event) => {
     if (socket === ws) socket = null;
-    if (manualClose) return;
+    if (manualClose || authFailed) return;
     if (event.code === 4001) {
       triggerUnauthorized();
       return;
