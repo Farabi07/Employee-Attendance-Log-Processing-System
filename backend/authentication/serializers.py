@@ -578,7 +578,7 @@ class EmployeeListSerializer(serializers.ModelSerializer):
 class EmployeeMinimalListSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = Employee
-		fields = ['id', 'email', 'first_name', 'last_name', 'username']
+		fields = ['id', 'email', 'first_name', 'last_name', 'username', 'image']
 
 
 
