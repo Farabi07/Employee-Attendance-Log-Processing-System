@@ -127,11 +127,28 @@ ASGI_APPLICATION = 'start_project.asgi.application'
 # not just in-memory within one. REDIS_URL is a new required env var
 # wherever this app is deployed (see chat feature's ops notes); falls back
 # to a local default so `runserver` + a local `redis-server` just works.
+#
+# socket_keepalive/health_check_interval/retry_on_timeout: Render's managed
+# Redis silently drops a connection that's been idle for a while (no TCP
+# FIN/RST, it just stops responding), which otherwise surfaces in prod as an
+# unhandled `redis.exceptions.TimeoutError: Timeout reading from ...` deep
+# inside the consumer's receive loop — killing that one WebSocket (the
+# client's own reconnect logic recovers it, but it's a real gap + log spam).
+# health_check_interval makes redis-py proactively PING idle connections and
+# recycle dead ones before they're used for a real command; socket_keepalive
+# adds OS-level TCP keepalives so a silently-dropped connection is detected
+# sooner; retry_on_timeout retries once on a fresh connection instead of
+# blowing up the whole consumer if a command does still hit a timeout.
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            'hosts': [os.environ.get('REDIS_URL', 'redis://localhost:6379/0')],
+            'hosts': [{
+                'address': os.environ.get('REDIS_URL', 'redis://localhost:6379/0'),
+                'socket_keepalive': True,
+                'retry_on_timeout': True,
+                'health_check_interval': 30,
+            }],
         },
     },
 }
