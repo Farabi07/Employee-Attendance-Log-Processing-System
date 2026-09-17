@@ -1,5 +1,5 @@
 import React from "react";
-import { Clock, CalendarDays, FileText, LayoutGrid, MessageCircle, TrendingUp, Users, Wallet, Receipt } from "lucide-react";
+import { Clock, CalendarDays, FileText, LayoutGrid, MessageCircle, Users, Wallet, MoreHorizontal } from "lucide-react";
 import { T, fontDisplay, fontBody } from "../theme";
 import { useIsMobile } from "../lib/useMediaQuery";
 import { useChatUnreadCount } from "../lib/useChatUnread";
@@ -43,9 +43,8 @@ export const MGR_NAV = [
   { key: "roster", label: "Roster", icon: CalendarDays },
   { key: "approvals", label: "Approvals", icon: FileText },
   { key: "payroll", label: "Payroll & Wallets", icon: Wallet },
-  { key: "reports", label: "Reports", icon: TrendingUp },
-  { key: "expenses", label: "Business Finance", icon: Receipt },
   { key: "chat", label: "Chat", icon: MessageCircle },
+  { key: "more", label: "More", icon: MoreHorizontal },
 ];
 
 export default function Sidebar({ role, active, setActive }) {

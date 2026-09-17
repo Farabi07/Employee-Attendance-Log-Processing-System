@@ -28,6 +28,7 @@ import ManagerApprovals from "./pages/manager/Approvals";
 import ManagerPayroll from "./pages/manager/Payroll";
 import ManagerReports from "./pages/manager/Reports";
 import ManagerExpenses from "./pages/manager/Expenses";
+import ManagerMore from "./pages/manager/More";
 
 import Chat from "./pages/Chat";
 
@@ -50,7 +51,7 @@ function Shell() {
   }, [role]);
 
   const initials = `${(user.first_name || "?")[0]}${(user.last_name || "?")[0]}`.toUpperCase();
-  const title = role === "employee" ? EMP_NAV.find((n) => n.key === active)?.label : MGR_NAV.find((n) => n.key === active)?.label;
+  const title = role === "employee" ? EMP_NAV.find((n) => n.key === active)?.label : MGR_NAV.find((n) => n.key === active)?.label || (active === "reports" ? "Reports" : active === "expenses" ? "Business Finance" : "More");
   const roleLabel = isManager ? "Manager" : isManagerOrModerator ? "Moderator" : "Employee";
 
   return (
@@ -123,6 +124,7 @@ function Shell() {
             {role === "manager" && active === "payroll" && <ManagerPayroll />}
             {role === "manager" && active === "reports" && <ManagerReports />}
             {role === "manager" && active === "expenses" && <ManagerExpenses />}
+            {role === "manager" && active === "more" && <ManagerMore onOpen={(key) => setActive(key)} />}
 
             {active === "chat" && <Chat />}
           </div>

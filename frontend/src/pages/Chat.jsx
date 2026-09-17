@@ -71,6 +71,12 @@ function initialsOf(person) {
   return `${(person?.first_name || "?")[0]}${(person?.last_name || "?")[0]}`.toUpperCase();
 }
 
+function isOnline(person) {
+  if (typeof person?.is_online === "boolean") return person.is_online;
+  if (!person?.last_seen_at) return false;
+  return Date.now() - new Date(person.last_seen_at).getTime() < 5 * 60 * 1000;
+}
+
 // Role-agnostic — every org member gets chat (managers/moderators additionally
 // get channel creation and member management), same as mobile's ChatListScreen
 // + ThreadScreen combined into one two-pane layout since desktop has the
@@ -405,7 +411,8 @@ export default function Chat() {
                       )}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 6 }}>
-                          <p style={{ fontFamily: fontBody, fontSize: 13, fontWeight: 600, color: T.ink, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <p style={{ fontFamily: fontBody, fontSize: 13, fontWeight: 600, color: T.ink, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5 }}>
+                            {!isChannel && <span style={{ width: 7, height: 7, borderRadius: "50%", background: isOnline(other) ? T.teal : T.faint, flexShrink: 0 }} />}
                             {isChannel ? item.name : other ? `${other.first_name} ${other.last_name}` : "Direct message"}
                           </p>
                           <span style={{ fontFamily: fontBody, fontSize: 10.5, color: T.faint, flexShrink: 0 }}>{timeAgo(item.last_message?.created_at || item.updated_at || item.created_at)}</span>

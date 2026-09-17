@@ -15,12 +15,18 @@ export default function Signup({ onBackToLogin }) {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [country, setCountry] = useState("");
+  const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    if (!country) {
+      setError("Select your store country to continue.");
+      return;
+    }
     setSubmitting(true);
     try {
       await signup({
@@ -29,6 +35,8 @@ export default function Signup({ onBackToLogin }) {
         last_name: lastName,
         email,
         password,
+        country,
+        phone,
       });
     } catch (err) {
       setError(err.message || "Signup failed");
@@ -69,6 +77,23 @@ export default function Signup({ onBackToLogin }) {
 
           <label style={labelStyle}>Email</label>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required style={inputStyle} placeholder="you@yourstore.com" />
+
+          <label style={labelStyle}>Store country</label>
+          <select value={country} onChange={(e) => setCountry(e.target.value)} required style={inputStyle}>
+            <option value="">Select country</option>
+            <option value="BD">Bangladesh (+880) · SSLCommerz</option>
+            <option value="US">United States (+1) · Stripe</option>
+            <option value="GB">United Kingdom (+44) · Stripe</option>
+            <option value="CA">Canada (+1) · Stripe</option>
+            <option value="AU">Australia (+61) · Stripe</option>
+            <option value="AE">United Arab Emirates (+971) · Stripe</option>
+            <option value="IN">India (+91) · Stripe</option>
+            <option value="SG">Singapore (+65) · Stripe</option>
+            <option value="MY">Malaysia (+60) · Stripe</option>
+          </select>
+
+          <label style={labelStyle}>Phone number</label>
+          <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required style={inputStyle} placeholder={country === "BD" ? "+880 17XXXXXXXX" : "Include country code"} />
 
           <label style={labelStyle}>Password</label>
           <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} required style={inputStyle} placeholder="••••••••" />

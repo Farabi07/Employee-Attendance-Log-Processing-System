@@ -18,6 +18,7 @@ let manualClose = false;
 let reconnectAttempt = 0;
 let reconnectTimer = null;
 let onlineListenerAdded = false;
+let heartbeatTimer = null;
 
 function wsUrl(token) {
   return `${BASE_URL.replace(/^http/, "ws")}/ws/chat/?token=${encodeURIComponent(token)}`;
@@ -53,6 +54,9 @@ function open() {
 
   ws.onopen = () => {
     reconnectAttempt = 0;
+    heartbeatTimer = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "presence.heartbeat" }));
+    }, 60000);
   };
 
   ws.onmessage = (event) => {
@@ -72,6 +76,10 @@ function open() {
   };
 
   ws.onclose = (event) => {
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+    }
     if (socket === ws) socket = null;
     if (manualClose || authFailed) return;
     if (event.code === 4001) {
@@ -104,4 +112,8 @@ export function disconnect() {
   }
   socket?.close();
   socket = null;
+  if (heartbeatTimer) {
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
 }
