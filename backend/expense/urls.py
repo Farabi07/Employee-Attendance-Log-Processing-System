@@ -9,4 +9,7 @@ urlpatterns = [
     path("api/v1/expense/import/excel/", views.expense_import_excel),
     path("api/v1/expense/template/", views.expense_template),
     path("api/v1/expense/receipt/extract/", views.expense_receipt_extract),
+    path("api/v1/expense/income/create/", views.income_create),
+    path("api/v1/expense/income/all/", views.income_list),
+    path("api/v1/expense/income/import/excel/", views.income_import_excel),
 ]

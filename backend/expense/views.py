@@ -16,8 +16,8 @@ from rest_framework.response import Response
 from authentication.models import Employee
 from authentication.permissions import HasActiveSubscription, IsManagerOrModerator
 from attendance.models import Attendance
-from .models import Expense
-from .serializers import ExpenseSerializer
+from .models import Expense, Income
+from .serializers import ExpenseSerializer, IncomeSerializer
 
 
 def _period_bounds(period):
@@ -34,7 +34,9 @@ def _base_queryset(request):
 
 
 def _revenue(organization, start, end):
-    return Attendance.objects.filter(employee__organization=organization, date__range=(start, end)).aggregate(total=Sum("earnings"))["total"] or Decimal("0")
+    attendance = Attendance.objects.filter(employee__organization=organization, date__range=(start, end)).aggregate(total=Sum("earnings"))["total"] or Decimal("0")
+    income = Income.objects.filter(organization=organization, date__range=(start, end)).aggregate(total=Sum("amount"))["total"] or Decimal("0")
+    return attendance + income
 
 
 @api_view(["GET"])
@@ -136,6 +138,48 @@ def expense_template(request):
     response["Content-Disposition"] = 'attachment; filename="expense-template.xlsx"'
     workbook.save(response)
     return response
+
+
+@api_view(["POST"])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
+def income_create(request):
+    serializer = IncomeSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    serializer.save(organization=request.user.organization, branch=getattr(request.user, "branch", None), created_by=request.user, source="direct")
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(["GET"])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
+def income_list(request):
+    start, end = _period_bounds(request.query_params.get("period", "monthly"))
+    income = Income.objects.filter(organization=request.user.organization, date__range=(start, end))
+    return Response({"income": IncomeSerializer(income[:500], many=True).data})
+
+
+@api_view(["POST"])
+@parser_classes([MultiPartParser])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
+def income_import_excel(request):
+    upload = request.FILES.get("file")
+    if not upload:
+        return Response({"detail": "Attach an Excel file in the file field."}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        workbook = load_workbook(upload, read_only=True, data_only=True)
+        rows = list(workbook.active.iter_rows(values_only=True))
+        headers = {str(value).strip().lower(): index for index, value in enumerate(rows[0]) if value is not None} if rows else {}
+        missing = {"amount", "category"} - headers.keys()
+        if missing:
+            return Response({"detail": f"Missing columns: {', '.join(sorted(missing))}"}, status=status.HTTP_400_BAD_REQUEST)
+        created = []
+        for row in rows[1:]:
+            if not any(value is not None for value in row):
+                continue
+            created.append(Income(organization=request.user.organization, branch=getattr(request.user, "branch", None), created_by=request.user, source="excel", amount=row[headers["amount"]], category=str(row[headers["category"]]).strip().lower(), description=str(row[headers["description"]]).strip() if "description" in headers and row[headers["description"]] else "", date=row[headers["date"]] if "date" in headers and row[headers["date"]] else timezone.localdate()))
+        Income.objects.bulk_create(created)
+        return Response({"created": len(created)}, status=status.HTTP_201_CREATED)
+    except (ValueError, TypeError, KeyError) as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 def _receipt_amount(lines):

@@ -35,3 +35,19 @@ class Expense(models.Model):
 
     def __str__(self):
         return f"{self.category}: {self.amount} ({self.date})"
+
+
+class Income(models.Model):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="business_income")
+    branch = models.ForeignKey(Branch, on_delete=models.SET_NULL, null=True, blank=True, related_name="business_income")
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    category = models.CharField(max_length=30, default="sales")
+    description = models.CharField(max_length=255, blank=True)
+    date = models.DateField(default=timezone.localdate, db_index=True)
+    source = models.CharField(max_length=20, default="direct")
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-date", "-id")
+        indexes = [models.Index(fields=("organization", "date"))]

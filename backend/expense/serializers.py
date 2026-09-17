@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from authentication.models import Employee
-from .models import Expense
+from .models import Expense, Income
 
 
 class RecipientSerializer(serializers.ModelSerializer):
@@ -26,3 +26,10 @@ class ExpenseSerializer(serializers.ModelSerializer):
         if not Employee.objects.filter(pk=value, organization=request.user.organization).exists():
             raise serializers.ValidationError("Recipient is not a member of this store.")
         return value
+
+
+class IncomeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Income
+        fields = ("id", "amount", "category", "description", "date", "source", "branch", "created_at")
+        read_only_fields = ("id", "source", "branch", "created_at")
