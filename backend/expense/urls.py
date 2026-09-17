@@ -18,6 +18,7 @@ urlpatterns = [
     path("api/v1/business/finance/import/expenses/", views.expense_import_excel),
     path("api/v1/business/finance/import/income/", views.income_import_excel),
     path("api/v1/expense/import/excel/", views.expense_import_excel),
+    path("api/v1/expense/import/workbook/", views.finance_workbook_import),
     path("api/v1/expense/template/", views.expense_template),
     path("api/v1/expense/receipt/extract/", views.expense_receipt_extract),
     path("api/v1/expense/income/create/", views.income_create),

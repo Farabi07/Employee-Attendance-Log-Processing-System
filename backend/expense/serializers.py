@@ -16,6 +16,14 @@ class ExpenseCategorySerializer(serializers.ModelSerializer):
         fields = ("id", "name", "is_active", "created_at")
         read_only_fields = ("id", "created_at")
 
+    def validate_name(self, value):
+        name = str(value).strip()
+        if not name:
+            raise serializers.ValidationError("Category name is required.")
+        if name.lower() == "profit":
+            raise serializers.ValidationError("Profit is a result, not an expense category.")
+        return name
+
 
 class ExpenseSerializer(serializers.ModelSerializer):
     recipient = RecipientSerializer(read_only=True)
@@ -27,6 +35,14 @@ class ExpenseSerializer(serializers.ModelSerializer):
         model = Expense
         fields = ("id", "amount", "category", "category_id", "category_name", "description", "vendor_name", "uploaded_receipt", "payment_method", "date", "source", "recipient", "recipient_id", "branch", "created_at")
         read_only_fields = ("id", "source", "branch", "created_at")
+
+    def validate_category(self, value):
+        normalized = str(value).strip().lower()
+        if not normalized:
+            raise serializers.ValidationError("Category is required.")
+        if normalized == "profit":
+            raise serializers.ValidationError("Profit is calculated from income minus expenses; it is not an expense category.")
+        return normalized
 
     def validate_recipient_id(self, value):
         request = self.context["request"]
