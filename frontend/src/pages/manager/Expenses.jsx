@@ -7,6 +7,7 @@ import QrScannerModal from "../../components/QrScannerModal";
 import Card from "../../components/Card";
 
 const CATEGORIES = ["supplies", "rent", "utilities", "transport", "marketing", "salary", "other"];
+const INCOME_CATEGORIES = ["sales", "services", "subscription", "commission", "other"];
 const periods = ["daily", "monthly", "yearly"];
 
 function money(value) {
@@ -31,6 +32,8 @@ export default function ManagerExpenses() {
   const [importing, setImporting] = useState(false);
   const [receiptScanning, setReceiptScanning] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [incomeImporting, setIncomeImporting] = useState(false);
+  const [formType, setFormType] = useState("expense");
   const [form, setForm] = useState({ amount: "", category: "supplies", date: new Date().toISOString().slice(0, 10), description: "", recipient_id: "" });
 
   const load = useCallback(async () => {
@@ -53,7 +56,7 @@ export default function ManagerExpenses() {
     if (Number(form.amount) <= 0) return window.alert("Enter an amount greater than zero.");
     setSaving(true);
     try {
-      await api.post(endpoints.expenseCreate(), { ...form, amount: Number(form.amount), recipient_id: form.recipient_id || null });
+      await api.post(formType === "income" ? endpoints.incomeCreate() : endpoints.expenseCreate(), { ...form, amount: Number(form.amount), recipient_id: formType === "expense" ? (form.recipient_id || null) : undefined });
       setForm({ amount: "", category: "supplies", date: new Date().toISOString().slice(0, 10), description: "", recipient_id: "" });
       setFormOpen(false);
       await load();
@@ -61,6 +64,26 @@ export default function ManagerExpenses() {
       window.alert(error.message || "Could not add expense");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const uploadIncomeExcel = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setIncomeImporting(true);
+    try {
+      const data = new FormData();
+      data.append("file", file);
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}${endpoints.incomeImportExcel()}`, { method: "POST", headers: { Authorization: `Bearer ${getToken()}` }, body: data });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || "Could not import income spreadsheet");
+      window.alert(`${payload.created || 0} income records imported.`);
+      await load();
+    } catch (error) {
+      window.alert(error.message || "Could not import income spreadsheet");
+    } finally {
+      setIncomeImporting(false);
     }
   };
 
@@ -163,22 +186,24 @@ export default function ManagerExpenses() {
           <p style={styles.muted}>Track store spending, revenue and net profit.</p>
           <div style={styles.tabs}>{periods.map((value) => <button key={value} onClick={() => setPeriod(value)} style={{ ...styles.tab, ...(period === value ? styles.tabActive : {}) }}>{value[0].toUpperCase() + value.slice(1)}</button>)}</div>
           <div style={styles.actions}>
-            <button style={styles.action} onClick={() => setFormOpen(true)}><Plus size={14} /> Add expense</button>
+            <button style={styles.action} onClick={() => { setFormType("expense"); setFormOpen(true); }}><Plus size={14} /> Add expense</button>
+            <button style={styles.action} onClick={() => { setFormType("income"); update("category", "sales"); setFormOpen(true); }}><Plus size={14} /> Add income</button>
             <button style={styles.action} onClick={() => setScannerOpen(true)}><Camera size={14} /> Scan recipient</button>
             <label style={styles.action}><Receipt size={14} /> {receiptScanning ? "Reading receipt..." : "Scan receipt"}<input type="file" accept="image/*" onChange={scanReceipt} hidden /></label>
             <label style={styles.action}><FileSpreadsheet size={14} /> {importing ? "Importing…" : "Upload Excel"}<input type="file" accept=".xlsx,.xls" onChange={uploadExcel} hidden /></label>
+            <label style={styles.action}><FileSpreadsheet size={14} /> {incomeImporting ? "Importing…" : "Income Excel"}<input type="file" accept=".xlsx,.xls" onChange={uploadIncomeExcel} hidden /></label>
           </div>
         </Card>
         {metrics.map(([label, value, color]) => <Card key={label} style={styles.metric}><p style={styles.metricLabel}>{label}</p><p style={{ ...styles.metricValue, color }}>{money(value)}</p></Card>)}
       </div>
 
       {formOpen && <Card style={{ ...styles.card, marginBottom: 14 }}>
-        <h3 style={styles.sectionTitle}>Add expense</h3>
+        <h3 style={styles.sectionTitle}>Add {formType}</h3>
         <form onSubmit={save} style={styles.form}>
           <label style={styles.field}><span style={styles.label}>Amount</span><input style={styles.input} type="number" min="0.01" step="0.01" value={form.amount} onChange={(e) => update("amount", e.target.value)} required /></label>
           <label style={styles.field}><span style={styles.label}>Date</span><input style={styles.input} type="date" value={form.date} onChange={(e) => update("date", e.target.value)} required /></label>
-          <label style={styles.field}><span style={styles.label}>Category</span><select style={styles.input} value={form.category} onChange={(e) => update("category", e.target.value)}>{CATEGORIES.map((item) => <option key={item} value={item}>{item[0].toUpperCase() + item.slice(1)}</option>)}</select></label>
-          <label style={styles.field}><span style={styles.label}>Recipient ID (optional)</span><input style={styles.input} value={form.recipient_id} onChange={(e) => update("recipient_id", e.target.value)} placeholder="Scan or enter employee ID" /></label>
+          <label style={styles.field}><span style={styles.label}>Category</span><select style={styles.input} value={form.category} onChange={(e) => update("category", e.target.value)}>{(formType === "income" ? INCOME_CATEGORIES : CATEGORIES).map((item) => <option key={item} value={item}>{item[0].toUpperCase() + item.slice(1)}</option>)}</select></label>
+          {formType === "expense" && <label style={styles.field}><span style={styles.label}>Recipient ID (optional)</span><input style={styles.input} value={form.recipient_id} onChange={(e) => update("recipient_id", e.target.value)} placeholder="Scan or enter employee ID" /></label>}
           <label style={{ ...styles.field, ...styles.fieldFull }}><span style={styles.label}>Description</span><input style={styles.input} value={form.description} onChange={(e) => update("description", e.target.value)} placeholder="What was this expense for?" /></label>
           <div style={{ ...styles.fieldFull, display: "flex", gap: 8, flexDirection: "row" }}><button style={styles.submit} disabled={saving}>{saving ? "Saving…" : "Save expense"}</button><button type="button" style={styles.cancel} onClick={() => setFormOpen(false)}>Cancel</button></div>
         </form>
