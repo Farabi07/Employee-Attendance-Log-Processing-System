@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, TextInput, ScrollView, Pressable, StyleSheet, RefreshControl, KeyboardAvoidingView, Platform, Alert } from "react-native";
+import { View, Text, TextInput, ScrollView, Pressable, StyleSheet, RefreshControl, KeyboardAvoidingView, Platform, Modal } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
-import { CalendarDays, Camera, FileSpreadsheet, Plus, Receipt, Wallet } from "lucide-react-native";
+import { CalendarDays, Camera, FileSpreadsheet, Plus, Receipt, Upload, Wallet } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { fonts } from "../../theme";
 import { useTheme } from "../../lib/ThemeContext";
@@ -55,6 +55,11 @@ export default function Expenses() {
     safe: { flex: 1, backgroundColor: T.paper },
     content: { padding: 16, gap: 14 },
     card: { padding: 18 },
+    heroCard: { padding: 20, backgroundColor: T.navy },
+    heroTitle: { fontFamily: fonts.display.bold, fontSize: 21, color: T.onAccent, marginBottom: 5 },
+    heroText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.onAccent, lineHeight: 19, opacity: 0.82 },
+    filterCard: { padding: 18 },
+    filterLabel: { fontFamily: fonts.body.semibold, fontSize: 11, color: T.faint, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 },
     titleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 5 },
     title: { fontFamily: fonts.display.semibold, fontSize: 16, color: T.ink },
     muted: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted },
@@ -68,8 +73,10 @@ export default function Expenses() {
     metricLabel: { fontFamily: fonts.body.regular, fontSize: 11.5, color: T.muted, marginBottom: 6 },
     metricValue: { fontFamily: fonts.display.semibold, fontSize: 19, color: T.ink },
     actionRow: { flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 14 },
-    action: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 9, paddingHorizontal: 12, borderRadius: 8, backgroundColor: T.navyBg },
+    action: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 9, paddingHorizontal: 12, borderRadius: 8, backgroundColor: T.line2 },
+    receiptAction: { backgroundColor: T.tealBg },
     actionText: { fontFamily: fonts.body.semibold, fontSize: 12, color: T.navyDeep },
+    receiptActionText: { color: T.tealDeep },
     sectionTitle: { fontFamily: fonts.display.semibold, fontSize: 15, color: T.ink, marginBottom: 12 },
     categoryRow: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
     categoryName: { flex: 1, fontFamily: fonts.body.regular, fontSize: 12.5, color: T.ink },
@@ -90,6 +97,16 @@ export default function Expenses() {
     listName: { flex: 1, fontFamily: fonts.body.medium, fontSize: 13, color: T.ink },
     listAmount: { fontFamily: fonts.mono.medium, fontSize: 13, color: T.coral },
     listMeta: { fontFamily: fonts.mono.regular, fontSize: 11, color: T.faint, marginTop: 4 },
+    modalBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(8, 25, 32, 0.48)" },
+    receiptSheet: { backgroundColor: T.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 22, paddingBottom: 30 },
+    sheetHandle: { alignSelf: "center", width: 38, height: 4, borderRadius: 3, backgroundColor: T.line, marginBottom: 18 },
+    sheetTitle: { fontFamily: fonts.display.semibold, fontSize: 19, color: T.ink, marginBottom: 5 },
+    sheetText: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 18 },
+    receiptChoice: { flexDirection: "row", alignItems: "center", gap: 13, padding: 14, borderRadius: 13, backgroundColor: T.line2, marginBottom: 10 },
+    receiptChoiceIcon: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: T.tealBg },
+    receiptChoiceTitle: { fontFamily: fonts.body.semibold, fontSize: 13.5, color: T.ink },
+    receiptChoiceText: { fontFamily: fonts.body.regular, fontSize: 11.5, color: T.muted, marginTop: 2 },
+    sheetCancel: { alignItems: "center", paddingVertical: 12, marginTop: 2 },
   }), [T]);
 
   const [period, setPeriod] = useState<Period>("monthly");
@@ -98,6 +115,7 @@ export default function Expenses() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [showReceiptOptions, setShowReceiptOptions] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -143,7 +161,8 @@ export default function Expenses() {
   };
 
   const resetForm = () => {
-    setValue(""); setDescription(""); setRecipient(""); setCategory("supplies"); setDate(todayISO()); setError("");
+    setValue(""); setDescription(""); setRecipient(""); setVendorName(""); setPaymentMethod("cash");
+    setCategory("supplies"); setDate(todayISO()); setReceiptUri(null); setError("");
   };
 
   const saveExpense = async () => {
@@ -242,11 +261,7 @@ export default function Expenses() {
     if (!captured.canceled) await extractReceipt(captured.assets[0].uri, captured.assets[0].mimeType || "image/jpeg");
   };
 
-  const chooseReceiptAction = () => Alert.alert("Receipt", "Choose how to add the receipt", [
-    { text: "Upload receipt", onPress: uploadReceipt },
-    { text: "Scan with camera", onPress: captureReceipt },
-    { text: "Cancel", style: "cancel" },
-  ]);
+  const chooseReceiptAction = () => setShowReceiptOptions(true);
 
   const addCategory = async () => {
     const name = newCategory.trim();
@@ -275,9 +290,13 @@ export default function Expenses() {
   return (
     <SafeAreaView style={styles.safe} edges={["left", "right", "bottom"]}>
       <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}>
-        <Card style={styles.card}>
-          <View style={styles.titleRow}><Wallet size={18} color={T.navy} /><Text style={styles.title}>Business Finance</Text></View>
-          <Text style={styles.muted}>Track store spending, revenue and net profit.</Text>
+        <Card style={styles.heroCard}>
+          <Text style={styles.heroTitle}>Business Finance</Text>
+          <Text style={styles.heroText}>A clear view of business spending, revenue and net profit.</Text>
+        </Card>
+
+        <Card style={styles.filterCard}>
+          <Text style={styles.filterLabel}>Reporting period</Text>
           <View style={styles.periodRow}>
             {(["daily", "monthly", "yearly"] as Period[]).map((item) => (
               <Pressable key={item} onPress={() => setPeriod(item)} style={[styles.period, period === item && styles.periodActive]}>
@@ -287,16 +306,21 @@ export default function Expenses() {
           </View>
           <View style={styles.formRow}><View style={styles.formHalf}><DateField label="From" value={dateFrom} onChange={setDateFrom} /></View><View style={styles.formHalf}><DateField label="To" value={dateTo} onChange={setDateTo} /></View></View>
           <InlinePicker selectedValue={categoryFilter} onValueChange={setCategoryFilter} items={[{ value: "", label: "All categories" }, ...CATEGORIES]} style={{ marginTop: 10 }} />
+        </Card>
+
+        <Card style={styles.card}>
+          <View style={styles.titleRow}><Wallet size={17} color={T.navy} /><Text style={styles.sectionTitle}>Financial summary</Text></View>
           <View style={styles.metrics}>
             <Card style={styles.metric}><Text style={styles.metricLabel}>Revenue</Text><Text style={styles.metricValue}>{formatMoney(revenue, "bdt")}</Text></Card>
             <Card style={styles.metric}><Text style={styles.metricLabel}>Expenses</Text><Text style={[styles.metricValue, { color: T.coral }]}>{formatMoney(totalExpense, "bdt")}</Text></Card>
             <Card style={styles.metric}><Text style={styles.metricLabel}>Net profit</Text><Text style={[styles.metricValue, { color: profit >= 0 ? T.tealDeep : T.coral }]}>{formatMoney(profit, "bdt")}</Text></Card>
           </View>
+          <Text style={[styles.filterLabel, { marginTop: 18 }]}>Quick actions</Text>
           <View style={styles.actionRow}>
             <Pressable style={styles.action} onPress={() => { setFormType("expense"); resetForm(); setShowForm(true); }}><Plus size={14} color={T.navyDeep} /><Text style={styles.actionText}>Add expense</Text></Pressable>
             <Pressable style={styles.action} onPress={() => { setFormType("income"); resetForm(); setCategory("sales"); setShowForm(true); }}><Plus size={14} color={T.navyDeep} /><Text style={styles.actionText}>Add income</Text></Pressable>
             <Pressable style={styles.action} onPress={() => setShowScanner(true)}><Camera size={14} color={T.navyDeep} /><Text style={styles.actionText}>Scan recipient</Text></Pressable>
-            <Pressable style={styles.action} onPress={chooseReceiptAction} disabled={receiptScanning}><Receipt size={14} color={T.navyDeep} /><Text style={styles.actionText}>{receiptScanning ? "Reading receipt..." : "Receipt"}</Text></Pressable>
+            <Pressable style={[styles.action, styles.receiptAction]} onPress={chooseReceiptAction} disabled={receiptScanning}><Receipt size={14} color={T.tealDeep} /><Text style={[styles.actionText, styles.receiptActionText]}>{receiptScanning ? "Reading receipt..." : "Upload receipt"}</Text></Pressable>
             <Pressable style={styles.action} onPress={uploadExcel} disabled={importing}><FileSpreadsheet size={14} color={T.navyDeep} /><Text style={styles.actionText}>{importing ? "Importing…" : "Upload Excel"}</Text></Pressable>
           </View>
         </Card>
@@ -348,6 +372,24 @@ export default function Expenses() {
           ))}
         </Card>
       </ScrollView>
+      <Modal visible={showReceiptOptions} transparent animationType="slide" onRequestClose={() => setShowReceiptOptions(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.receiptSheet}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>Add a receipt</Text>
+            <Text style={styles.sheetText}>Choose how you want to add the receipt. We will extract the details for you to review.</Text>
+            <Pressable style={styles.receiptChoice} onPress={() => { setShowReceiptOptions(false); uploadReceipt(); }}>
+              <View style={styles.receiptChoiceIcon}><Upload size={19} color={T.tealDeep} /></View>
+              <View><Text style={styles.receiptChoiceTitle}>Upload receipt</Text><Text style={styles.receiptChoiceText}>Choose an image from your device</Text></View>
+            </Pressable>
+            <Pressable style={styles.receiptChoice} onPress={() => { setShowReceiptOptions(false); captureReceipt(); }}>
+              <View style={styles.receiptChoiceIcon}><Camera size={19} color={T.tealDeep} /></View>
+              <View><Text style={styles.receiptChoiceTitle}>Scan with camera</Text><Text style={styles.receiptChoiceText}>Capture a clear photo of the receipt</Text></View>
+            </Pressable>
+            <Pressable style={styles.sheetCancel} onPress={() => setShowReceiptOptions(false)}><Text style={[styles.actionText, { color: T.muted }]}>Cancel</Text></Pressable>
+          </View>
+        </View>
+      </Modal>
       {showScanner && <QrScannerModal title="Scan expense recipient" onClose={() => setShowScanner(false)} onToken={scanRecipient} />}
     </SafeAreaView>
   );

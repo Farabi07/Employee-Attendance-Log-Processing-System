@@ -64,10 +64,13 @@ export const GUIDE_CONTENT = {
         },
         {
           icon: "trending",
-          title: "Reports",
-          location: "You'll find this under the Reports tab at the bottom of the screen.",
+          title: "More — Reports & Business finance",
+          location: "You'll find these tools under More at the bottom of the screen.",
           items: [
-            { title: "Attendance & timesheet exports", body: "Pick any date range and export the full attendance record — as a spreadsheet-friendly CSV, a PDF you can print, or an Excel file — whichever your bookkeeping needs." },
+            { title: "Attendance & timesheet exports", body: "Open More, choose Reports, then pick any date range and export the full attendance record as CSV, PDF, or Excel." },
+            { title: "Business finance & receipts", chip: "Upload receipt", body: "Open More and choose Business finance to review revenue, expenses, profit, and categories. Use Upload receipt to choose an image or scan it with your camera; review the extracted details before saving." },
+            { title: "Payment gateway", body: "Your store country is selected during signup. Bangladesh stores use SSLCommerz; stores in other countries use Stripe. The payment provider is selected automatically from the store country." },
+            { title: "Notices", body: "Send important store-wide announcements from Account > Send a notice. Employees receive them in the Notices section of the notification bell and can mark them as read." },
           ],
         },
       ],
@@ -125,10 +128,13 @@ export const GUIDE_CONTENT = {
         },
         {
           icon: "trending",
-          title: "Reports",
-          location: "স্ক্রিনের নিচে Reports ট্যাবে গেলেই এটা পাবে।",
+          title: "More — Reports ও Business finance",
+          location: "স্ক্রিনের নিচে More ট্যাবের ভেতর এই toolগুলো পাবে।",
           items: [
-            { title: "Attendance & timesheet exports", body: "যেকোনো তারিখের রেঞ্জ বেছে পুরো হাজিরার রেকর্ড export করো — spreadsheet-friendly CSV, প্রিন্ট করার মতো PDF, অথবা Excel — যেটা তোমার হিসাবের জন্য সুবিধাজনক।" },
+            { title: "Attendance & timesheet exports", body: "More খুলে Reports বেছে নাও। তারপর date range দিয়ে attendance record CSV, PDF বা Excel হিসেবে export করো।" },
+            { title: "Business finance ও receipt", chip: "Upload receipt", body: "More থেকে Business finance খুলে revenue, expense, profit আর category দেখো। Upload receipt চাপলে image upload বা camera scan বেছে নিতে পারবে; save করার আগে extracted তথ্য review করো।" },
+            { title: "Payment gateway", body: "Signup-এর সময় store country বেছে নাও। Bangladesh হলে SSLCommerz, আর অন্য country হলে Stripe automatically ব্যবহার হবে।" },
+            { title: "Notices", body: "Account > Send a notice থেকে পুরো store-এর জন্য announcement পাঠাও। Employee-রা notification bell-এর Notices অংশে সেটা পাবে এবং পড়া হিসেবে mark করতে পারবে।" },
           ],
         },
       ],

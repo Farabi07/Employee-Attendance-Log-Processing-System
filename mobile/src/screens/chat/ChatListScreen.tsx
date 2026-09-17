@@ -36,6 +36,13 @@ function previewOf(message: any) {
   return message.attachment ? "Sent an attachment" : "";
 }
 
+function isOnline(person: any) {
+  if (typeof person?.is_online === "boolean") return person.is_online;
+  if (typeof person?.online === "boolean") return person.online;
+  if (!person?.last_seen) return false;
+  return Date.now() - new Date(person.last_seen).getTime() < 5 * 60 * 1000;
+}
+
 type Tab = "channels" | "direct";
 type Selected = { type: "channel" | "dm"; id: number; title: string } | null;
 
@@ -72,6 +79,9 @@ export default function ChatListScreen() {
         rowText: { flex: 1, minWidth: 0 },
         rowNameLine: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
         rowName: { fontFamily: fonts.body.semibold, fontSize: 14, color: T.ink, flexShrink: 1 },
+        presenceRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+        presenceDot: { width: 8, height: 8, borderRadius: 4 },
+        presenceText: { fontFamily: fonts.body.regular, fontSize: 10.5, color: T.faint },
         rowTime: { fontFamily: fonts.body.regular, fontSize: 11, color: T.faint },
         rowPreviewLine: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
         rowPreview: { flex: 1, fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted },
@@ -245,9 +255,13 @@ export default function ChatListScreen() {
                   <Avatar initials={initialsOf(other)} size={40} src={mediaUrl(other?.image)} />
                   <View style={styles.rowText}>
                     <View style={styles.rowNameLine}>
-                      <Text style={styles.rowName} numberOfLines={1}>
-                        {other ? `${other.first_name} ${other.last_name}` : "Direct message"}
-                      </Text>
+                      <View style={styles.presenceRow}>
+                        <View style={[styles.presenceDot, { backgroundColor: isOnline(other) ? T.teal : T.faint }]} />
+                        <Text style={styles.rowName} numberOfLines={1}>
+                          {other ? `${other.first_name} ${other.last_name}` : "Direct message"}
+                        </Text>
+                      </View>
+                      <Text style={styles.presenceText}>{isOnline(other) ? "Active now" : "Offline"}</Text>
                       <Text style={styles.rowTime}>{timeAgo(item.last_message?.created_at || item.created_at)}</Text>
                     </View>
                     <View style={styles.rowPreviewLine}>

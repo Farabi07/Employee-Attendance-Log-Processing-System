@@ -5,6 +5,7 @@ import { useTheme } from "../../lib/ThemeContext";
 import { useAuth } from "../../lib/auth";
 import AuthShell from "../../components/AuthShell";
 import FormField from "../../components/FormField";
+import InlinePicker from "../../components/InlinePicker";
 import { PrimaryButton, TextButton } from "../../components/Button";
 
 // Ported from frontend/src/pages/Signup.jsx.
@@ -19,6 +20,7 @@ export default function Signup({ navigation }: any) {
         rowField: { flex: 1 },
         error: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.coral, marginBottom: 14 },
         backRow: { marginTop: 10, alignItems: "center" },
+        fieldLabel: { fontFamily: fonts.body.regular, fontSize: 12.5, color: T.muted, marginBottom: 6 },
       }),
     [T]
   );
@@ -28,11 +30,17 @@ export default function Signup({ navigation }: any) {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [country, setCountry] = useState("");
+  const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
     setError("");
+    if (!country) {
+      setError("Select your store country to continue.");
+      return;
+    }
     setSubmitting(true);
     try {
       await signup({
@@ -41,6 +49,10 @@ export default function Signup({ navigation }: any) {
         last_name: lastName,
         email,
         password,
+        country,
+        phone,
+        phone_country_code: COUNTRY_CODES[country].code,
+        payment_gateway: country === "BD" ? "sslcommerz" : "stripe",
       });
     } catch (err: any) {
       setError(err.message || "Signup failed");
@@ -59,6 +71,21 @@ export default function Signup({ navigation }: any) {
         value={organizationName}
         onChangeText={setOrganizationName}
         placeholder="e.g. Dhaka Coffee House"
+      />
+      <Text style={styles.fieldLabel}>Country</Text>
+      <InlinePicker
+        selectedValue={country}
+        onValueChange={setCountry}
+        items={COUNTRIES}
+        style={{ marginBottom: 14 }}
+      />
+      <FormField
+        label={`Phone number (${COUNTRY_CODES[country]?.dial || "country code"})`}
+        value={phone}
+        onChangeText={setPhone}
+        placeholder="e.g. 017XXXXXXXX"
+        keyboardType="phone-pad"
+        autoComplete="tel"
       />
 
       <View style={styles.row}>
@@ -106,3 +133,28 @@ export default function Signup({ navigation }: any) {
     </AuthShell>
   );
 }
+
+const COUNTRY_CODES: Record<string, { code: string; dial: string }> = {
+  BD: { code: "BD", dial: "+880" },
+  US: { code: "US", dial: "+1" },
+  GB: { code: "GB", dial: "+44" },
+  CA: { code: "CA", dial: "+1" },
+  AU: { code: "AU", dial: "+61" },
+  AE: { code: "AE", dial: "+971" },
+  IN: { code: "IN", dial: "+91" },
+  SG: { code: "SG", dial: "+65" },
+  MY: { code: "MY", dial: "+60" },
+};
+
+const COUNTRIES = [
+  { value: "", label: "Select store country" },
+  { value: "BD", label: "Bangladesh (+880) · SSLCommerz" },
+  { value: "US", label: "United States (+1) · Stripe" },
+  { value: "GB", label: "United Kingdom (+44) · Stripe" },
+  { value: "CA", label: "Canada (+1) · Stripe" },
+  { value: "AU", label: "Australia (+61) · Stripe" },
+  { value: "AE", label: "United Arab Emirates (+971) · Stripe" },
+  { value: "IN", label: "India (+91) · Stripe" },
+  { value: "SG", label: "Singapore (+65) · Stripe" },
+  { value: "MY", label: "Malaysia (+60) · Stripe" },
+];
