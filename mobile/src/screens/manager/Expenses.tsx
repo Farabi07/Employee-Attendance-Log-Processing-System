@@ -134,7 +134,7 @@ export default function Expenses() {
     try {
       await api.post(endpoints.expenseCreate(), {
         amount: numericValue, category, description, date,
-        ...(recipient.trim() ? { recipient: recipient.trim() } : {}),
+        ...(recipient.trim() ? { recipient_id: recipient.trim() } : {}),
       });
       toast.show("Expense added.");
       setShowForm(false); resetForm(); await load();
