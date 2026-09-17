@@ -89,6 +89,7 @@ export default function Chat() {
   const [tab, setTab] = useState("channels");
   const [channels, setChannels] = useState([]);
   const [conversations, setConversations] = useState([]);
+  const [teammates, setTeammates] = useState([]);
   const [loadingList, setLoadingList] = useState(true);
   const [selected, setSelected] = useState(null); // { type: "channel"|"dm", id, title }
 
@@ -111,16 +112,23 @@ export default function Chat() {
   const [downloadingId, setDownloadingId] = useState(null);
 
   const loadList = useCallback(async () => {
-    const [channelsRes, conversationsRes] = await Promise.all([
+    const [channelsRes, conversationsRes, teammatesRes] = await Promise.all([
       api.get(endpoints.channelsMine("?size=100")),
       api.get(endpoints.conversationsMine("?size=100")),
+      api.get(endpoints.teammatesAll()),
     ]);
     setChannels(channelsRes.channels || []);
     setConversations(conversationsRes.conversations || []);
+    setTeammates(teammatesRes.employees || []);
   }, []);
 
   useEffect(() => {
     loadList().finally(() => setLoadingList(false));
+  }, [loadList]);
+
+  useEffect(() => {
+    const refresh = setInterval(loadList, 60000);
+    return () => clearInterval(refresh);
   }, [loadList]);
 
   useEffect(() => {
@@ -343,6 +351,11 @@ export default function Chat() {
   };
 
   const listItems = tab === "channels" ? channels : conversations;
+  const conversationsByPerson = new Map(conversations.map((conversation) => [conversation.other_participant?.id, conversation]));
+  const directMembers = teammates.map((person) => ({
+    person,
+    conversation: conversationsByPerson.get(person.id) || null,
+  }));
   const showListPane = !isMobile || !selected;
   const showThreadPane = !isMobile || !!selected;
 
@@ -383,6 +396,44 @@ export default function Chat() {
           <div style={{ overflowY: "auto", flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
             {loadingList ? (
               <p style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted, padding: "8px 4px" }}>Loading…</p>
+            ) : tab === "direct" ? (
+              directMembers.map(({ person, conversation }) => {
+                const other = conversation?.other_participant || person;
+                const unread = conversation?.unread_count > 0;
+                const isActive = conversation && selected?.type === "dm" && selected?.id === conversation.id;
+                return (
+                  <Card key={person.id} style={{ padding: 0, border: isActive ? `1px solid ${T.teal}` : `1px solid ${T.line}` }}>
+                    <button
+                      onClick={async () => {
+                        if (conversation) return openConversation(conversation);
+                        try {
+                          const created = await api.post(endpoints.conversationStart(), { user_id: person.id });
+                          openConversation(created);
+                          loadList();
+                        } catch (error) {
+                          window.alert(error.message || "Could not start conversation");
+                        }
+                      }}
+                      style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: 11, border: "none", background: "transparent", cursor: "pointer", textAlign: "left" }}
+                    >
+                      <Avatar initials={initialsOf(other)} size={36} src={mediaUrl(other?.image)} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 6 }}>
+                          <p style={{ fontFamily: fontBody, fontSize: 13, fontWeight: 600, color: T.ink, margin: 0, display: "flex", alignItems: "center", gap: 5 }}>
+                            <span style={{ width: 7, height: 7, borderRadius: "50%", background: isOnline(other) ? T.teal : T.faint, flexShrink: 0 }} />
+                            {other.first_name} {other.last_name}
+                          </p>
+                          <span style={{ fontFamily: fontBody, fontSize: 10.5, color: isOnline(other) ? T.tealDeep : T.faint, flexShrink: 0 }}>{isOnline(other) ? "Active now" : "Offline"}</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 6, marginTop: 2 }}>
+                          <span style={{ fontFamily: fontBody, fontSize: 11.5, color: T.muted }}>{other.org_role || "employee"}{conversation ? ` · ${previewOf(conversation.last_message)}` : " · Start a conversation"}</span>
+                          {unread && <span style={{ minWidth: 16, height: 16, padding: "0 4px", borderRadius: 8, background: T.coral, color: T.onAccent, fontFamily: fontBody, fontSize: 10, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center" }}>{conversation.unread_count > 9 ? "9+" : conversation.unread_count}</span>}
+                        </div>
+                      </div>
+                    </button>
+                  </Card>
+                );
+              })
             ) : listItems.length === 0 ? (
               <p style={{ fontFamily: fontBody, fontSize: 12.5, color: T.muted, padding: "8px 4px" }}>
                 {tab === "channels" ? (isManagerOrModerator ? "No channels yet — create one." : "Your manager hasn't added you to a channel yet.") : "No conversations yet."}

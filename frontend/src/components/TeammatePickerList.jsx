@@ -8,6 +8,10 @@ function initialsOf(person) {
   return `${(person?.first_name || "?")[0]}${(person?.last_name || "?")[0]}`.toUpperCase();
 }
 
+function isOnline(person) {
+  return person?.is_online === true || (person?.last_seen_at && Date.now() - new Date(person.last_seen_at).getTime() < 5 * 60 * 1000);
+}
+
 // Shared by CreateChannelModal (multi-select members), ChannelMembersModal
 // (multi-select to add) and NewDirectMessageModal (single-select) — same
 // search-then-click list in all three, mirroring mobile's
@@ -56,7 +60,8 @@ export default function TeammatePickerList({ employees, selectedIds, onToggle, m
                   {emp.first_name} {emp.last_name}
                 </p>
                 <p style={{ fontFamily: fontBody, fontSize: 11.5, color: T.faint, margin: "1px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {emp.email}
+                  <span style={{ color: isOnline(emp) ? T.tealDeep : T.faint }}>{isOnline(emp) ? "Active now" : "Offline"}</span>
+                  {" · "}{emp.org_role || "employee"}{" · "}{emp.email}
                 </p>
               </div>
               {multi && (
