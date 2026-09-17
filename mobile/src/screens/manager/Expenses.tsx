@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, TextInput, ScrollView, Pressable, StyleSheet, RefreshControl, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, TextInput, ScrollView, Pressable, StyleSheet, RefreshControl, KeyboardAvoidingView, Platform, Alert } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { CalendarDays, Camera, FileSpreadsheet, Plus, Receipt, Wallet } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -101,11 +102,12 @@ export default function Expenses() {
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
   const [receiptScanning, setReceiptScanning] = useState(false);
-  const [incomeImporting, setIncomeImporting] = useState(false);
   const [formType, setFormType] = useState<"expense" | "income">("expense");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
+  const [customCategories, setCustomCategories] = useState(CATEGORIES);
+  const [newCategory, setNewCategory] = useState("");
   const [error, setError] = useState("");
   const [date, setDate] = useState(todayISO());
   const [category, setCategory] = useState("supplies");
@@ -167,21 +169,6 @@ export default function Expenses() {
     } catch (err: any) { setError(err.message || "Could not add expense."); } finally { setSaving(false); }
   };
 
-  const uploadIncomeExcel = async () => {
-    const picked = await DocumentPicker.getDocumentAsync({ type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel", copyToCacheDirectory: true });
-    if (picked.canceled) return;
-    setIncomeImporting(true);
-    try {
-      const file = picked.assets[0];
-      const token = await getToken();
-      const result = await FileSystem.uploadAsync(`${BASE_URL}${endpoints.incomeImportExcel()}`, file.uri, { httpMethod: "POST", uploadType: FileSystem.FileSystemUploadType.MULTIPART, fieldName: "file", mimeType: file.mimeType || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers: token ? { Authorization: `Bearer ${token}` } : undefined });
-      const payload = JSON.parse(result.body || "{}");
-      if (result.status < 200 || result.status >= 300) throw new Error(payload.detail || "Could not import income spreadsheet.");
-      toast.show(`${payload.created || 0} income records imported.`);
-      await load();
-    } catch (err: any) { toast.show(err.message || "Could not import income spreadsheet.", "error"); } finally { setIncomeImporting(false); }
-  };
-
   const scanRecipient = (code: string) => {
     setRecipient(getRecipientCode(code));
     setShowScanner(false);
@@ -212,21 +199,15 @@ export default function Expenses() {
     } catch (err: any) { toast.show(err.message || "Could not import spreadsheet.", "error"); } finally { setImporting(false); }
   };
 
-  const scanReceipt = async () => {
-    const picked = await DocumentPicker.getDocumentAsync({
-      type: "image/*",
-      copyToCacheDirectory: true,
-    });
-    if (picked.canceled) return;
+  const extractReceipt = async (uri: string, mimeType = "image/jpeg") => {
     setReceiptScanning(true);
     try {
-      const file = picked.assets[0];
       const token = await getToken();
-      const result = await FileSystem.uploadAsync(`${BASE_URL}${endpoints.expenseReceiptExtract()}`, file.uri, {
+      const result = await FileSystem.uploadAsync(`${BASE_URL}${endpoints.expenseReceiptExtract()}`, uri, {
         httpMethod: "POST",
         uploadType: FileSystem.FileSystemUploadType.MULTIPART,
         fieldName: "file",
-        mimeType: file.mimeType || "image/jpeg",
+        mimeType,
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
       const extracted = JSON.parse(result.body || "{}");
@@ -236,13 +217,49 @@ export default function Expenses() {
       setDate(extracted.date || todayISO());
       setDescription(extracted.description || "Receipt expense");
       setVendorName(extracted.vendor_name || "");
-      setReceiptUri(file.uri);
+      setReceiptUri(uri);
       setShowForm(true);
       toast.show("Receipt text extracted. Review before saving.");
     } catch (err: any) {
       toast.show(err.message || "Could not read receipt.", "error");
     } finally {
       setReceiptScanning(false);
+    }
+  };
+
+  const uploadReceipt = async () => {
+    const picked = await DocumentPicker.getDocumentAsync({ type: "image/*", copyToCacheDirectory: true });
+    if (!picked.canceled) await extractReceipt(picked.assets[0].uri, picked.assets[0].mimeType || "image/jpeg");
+  };
+
+  const captureReceipt = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      toast.show("Camera permission is required to scan a receipt.", "error");
+      return;
+    }
+    const captured = await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 0.85 });
+    if (!captured.canceled) await extractReceipt(captured.assets[0].uri, captured.assets[0].mimeType || "image/jpeg");
+  };
+
+  const chooseReceiptAction = () => Alert.alert("Receipt", "Choose how to add the receipt", [
+    { text: "Upload receipt", onPress: uploadReceipt },
+    { text: "Scan with camera", onPress: captureReceipt },
+    { text: "Cancel", style: "cancel" },
+  ]);
+
+  const addCategory = async () => {
+    const name = newCategory.trim();
+    if (!name) return;
+    try {
+      const created = await api.post(endpoints.expenseCategories(), { name });
+      const option = { value: name.toLowerCase().replace(/\s+/g, "_"), label: created?.name || name };
+      setCustomCategories((items) => [...items, option]);
+      setCategory(option.value);
+      setNewCategory("");
+      toast.show("Category added.");
+    } catch (err: any) {
+      toast.show(err.message || "Could not add category.", "error");
     }
   };
 
@@ -279,9 +296,8 @@ export default function Expenses() {
             <Pressable style={styles.action} onPress={() => { setFormType("expense"); resetForm(); setShowForm(true); }}><Plus size={14} color={T.navyDeep} /><Text style={styles.actionText}>Add expense</Text></Pressable>
             <Pressable style={styles.action} onPress={() => { setFormType("income"); resetForm(); setCategory("sales"); setShowForm(true); }}><Plus size={14} color={T.navyDeep} /><Text style={styles.actionText}>Add income</Text></Pressable>
             <Pressable style={styles.action} onPress={() => setShowScanner(true)}><Camera size={14} color={T.navyDeep} /><Text style={styles.actionText}>Scan recipient</Text></Pressable>
-            <Pressable style={styles.action} onPress={scanReceipt} disabled={receiptScanning}><Receipt size={14} color={T.navyDeep} /><Text style={styles.actionText}>{receiptScanning ? "Reading receipt..." : "Scan receipt"}</Text></Pressable>
+            <Pressable style={styles.action} onPress={chooseReceiptAction} disabled={receiptScanning}><Receipt size={14} color={T.navyDeep} /><Text style={styles.actionText}>{receiptScanning ? "Reading receipt..." : "Receipt"}</Text></Pressable>
             <Pressable style={styles.action} onPress={uploadExcel} disabled={importing}><FileSpreadsheet size={14} color={T.navyDeep} /><Text style={styles.actionText}>{importing ? "Importing…" : "Upload Excel"}</Text></Pressable>
-            <Pressable style={styles.action} onPress={uploadIncomeExcel} disabled={incomeImporting}><FileSpreadsheet size={14} color={T.navyDeep} /><Text style={styles.actionText}>{incomeImporting ? "Importing…" : "Income Excel"}</Text></Pressable>
           </View>
         </Card>
 
@@ -305,7 +321,8 @@ export default function Expenses() {
               <View style={styles.formHalf}><DateField label="Date" value={date} onChange={setDate} /></View>
             </View>
             <Text style={styles.muted}>Category</Text>
-            <InlinePicker selectedValue={category} onValueChange={setCategory} items={formType === "income" ? INCOME_CATEGORIES : CATEGORIES} style={{ marginBottom: 14 }} />
+            <InlinePicker selectedValue={category} onValueChange={setCategory} items={formType === "income" ? INCOME_CATEGORIES : customCategories} style={{ marginBottom: 14 }} />
+            {formType === "expense" && <View style={styles.recipientRow}><TextInput value={newCategory} onChangeText={setNewCategory} placeholder="New category name" placeholderTextColor={T.faint} style={styles.recipientInput} /><Pressable style={styles.scanButton} onPress={addCategory}><Text style={styles.actionText}>Add</Text></Pressable></View>}
             {formType === "expense" && <View style={styles.recipientBox}>
               <Text style={styles.recipientLabel}>Recipient (optional)</Text>
               <View style={styles.recipientRow}>
