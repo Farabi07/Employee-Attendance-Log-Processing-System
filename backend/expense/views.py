@@ -186,8 +186,8 @@ def expense_import_excel(request):
                     continue
                 amount = row[headers["amount"]]
                 category = str(row[headers["category"]]).strip().lower()
-                if not amount or category not in Expense.Category.values:
-                    raise ValueError(f"Row {line_number}: amount and a valid category are required.")
+                if not amount or not category:
+                    raise ValueError(f"Row {line_number}: amount and category are required.")
                 recipient_id = row[headers["recipient_id"]] if "recipient_id" in headers else None
                 if recipient_id and not Employee.objects.filter(pk=recipient_id, organization=request.user.organization).exists():
                     raise ValueError(f"Row {line_number}: recipient is not in this store.")

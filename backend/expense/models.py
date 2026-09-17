@@ -50,7 +50,7 @@ class Expense(models.Model):
     recipient = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, blank=True, related_name="received_expenses")
     category_ref = models.ForeignKey(ExpenseCategory, on_delete=models.SET_NULL, null=True, blank=True, related_name="expenses")
     amount = models.DecimalField(max_digits=12, decimal_places=2)
-    category = models.CharField(max_length=30, choices=Category.choices, default=Category.OTHER)
+    category = models.CharField(max_length=80, default=Category.OTHER)
     description = models.CharField(max_length=255, blank=True)
     vendor_name = models.CharField(max_length=160, blank=True)
     uploaded_receipt = models.ImageField(upload_to="expense-receipts/%Y/%m/", blank=True, null=True)
