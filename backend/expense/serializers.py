@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from authentication.models import Employee
-from .models import Expense, Income
+from .models import Expense, ExpenseCategory, Income
 
 
 class RecipientSerializer(serializers.ModelSerializer):
@@ -10,13 +10,22 @@ class RecipientSerializer(serializers.ModelSerializer):
         fields = ("id", "first_name", "last_name", "email")
 
 
+class ExpenseCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExpenseCategory
+        fields = ("id", "name", "is_active", "created_at")
+        read_only_fields = ("id", "created_at")
+
+
 class ExpenseSerializer(serializers.ModelSerializer):
     recipient = RecipientSerializer(read_only=True)
     recipient_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
+    category_id = serializers.PrimaryKeyRelatedField(source="category_ref", queryset=ExpenseCategory.objects.none(), write_only=True, required=False, allow_null=True)
+    category_name = serializers.CharField(source="category_ref.name", read_only=True)
 
     class Meta:
         model = Expense
-        fields = ("id", "amount", "category", "description", "date", "source", "recipient", "recipient_id", "branch", "created_at")
+        fields = ("id", "amount", "category", "category_id", "category_name", "description", "vendor_name", "uploaded_receipt", "payment_method", "date", "source", "recipient", "recipient_id", "branch", "created_at")
         read_only_fields = ("id", "source", "branch", "created_at")
 
     def validate_recipient_id(self, value):
@@ -26,6 +35,12 @@ class ExpenseSerializer(serializers.ModelSerializer):
         if not Employee.objects.filter(pk=value, organization=request.user.organization).exists():
             raise serializers.ValidationError("Recipient is not a member of this store.")
         return value
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        if request and getattr(request.user, "organization_id", None):
+            self.fields["category_id"].queryset = ExpenseCategory.objects.filter(organization=request.user.organization, is_active=True)
 
 
 class IncomeSerializer(serializers.ModelSerializer):

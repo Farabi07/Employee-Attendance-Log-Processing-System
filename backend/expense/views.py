@@ -1,5 +1,7 @@
 from datetime import date, timedelta
 from decimal import Decimal
+import csv
+import io
 import os
 import re
 
@@ -16,8 +18,8 @@ from rest_framework.response import Response
 from authentication.models import Employee
 from authentication.permissions import HasActiveSubscription, IsManagerOrModerator
 from attendance.models import Attendance
-from .models import Expense, Income
-from .serializers import ExpenseSerializer, IncomeSerializer
+from .models import Expense, ExpenseCategory, Income
+from .serializers import ExpenseCategorySerializer, ExpenseSerializer, IncomeSerializer
 
 
 def _period_bounds(period):
@@ -33,6 +35,21 @@ def _base_queryset(request):
     return Expense.objects.filter(organization=request.user.organization).select_related("recipient", "branch")
 
 
+def _filtered_expenses(request):
+    qs = _base_queryset(request)
+    period = request.query_params.get("period")
+    if period:
+        start, end = _period_bounds(period)
+        qs = qs.filter(date__range=(start, end))
+    if request.query_params.get("date_from"):
+        qs = qs.filter(date__gte=request.query_params["date_from"])
+    if request.query_params.get("date_to"):
+        qs = qs.filter(date__lte=request.query_params["date_to"])
+    if request.query_params.get("category"):
+        qs = qs.filter(category=request.query_params["category"])
+    return qs
+
+
 def _revenue(organization, start, end):
     attendance = Attendance.objects.filter(employee__organization=organization, date__range=(start, end)).aggregate(total=Sum("earnings"))["total"] or Decimal("0")
     income = Income.objects.filter(organization=organization, date__range=(start, end)).aggregate(total=Sum("amount"))["total"] or Decimal("0")
@@ -43,7 +60,7 @@ def _revenue(organization, start, end):
 @permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def expense_summary(request):
     start, end = _period_bounds(request.query_params.get("period", "monthly"))
-    qs = _base_queryset(request).filter(date__range=(start, end))
+    qs = _filtered_expenses(request).filter(date__range=(start, end))
     total = qs.aggregate(total=Sum("amount"))["total"] or Decimal("0")
     category_totals = qs.values("category").annotate(total=Sum("amount")).order_by("-total")
     revenue = _revenue(request.user.organization, start, end)
@@ -61,12 +78,12 @@ def expense_summary(request):
 @api_view(["GET"])
 @permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def expense_list(request):
-    start, end = _period_bounds(request.query_params.get("period", "monthly"))
-    expenses = _base_queryset(request).filter(date__range=(start, end))
+    expenses = _filtered_expenses(request)
     return Response({"expenses": ExpenseSerializer(expenses[:500], many=True).data})
 
 
 @api_view(["POST"])
+@parser_classes([MultiPartParser, JSONParser])
 @permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def expense_create(request):
     serializer = ExpenseSerializer(data=request.data, context={"request": request})
@@ -80,6 +97,52 @@ def expense_create(request):
     return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
+@api_view(["GET", "PATCH", "DELETE"])
+@parser_classes([MultiPartParser, JSONParser])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
+def expense_detail(request, pk):
+    expense = _base_queryset(request).filter(pk=pk).first()
+    if not expense:
+        return Response({"detail": "Expense not found."}, status=status.HTTP_404_NOT_FOUND)
+    if request.method == "GET":
+        return Response(ExpenseSerializer(expense, context={"request": request}).data)
+    if request.method == "DELETE":
+        expense.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    serializer = ExpenseSerializer(expense, data=request.data, partial=True, context={"request": request})
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+    return Response(serializer.data)
+
+
+@api_view(["GET", "POST"])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
+def expense_categories(request):
+    qs = ExpenseCategory.objects.filter(organization=request.user.organization)
+    if request.method == "GET":
+        return Response(ExpenseCategorySerializer(qs, many=True).data)
+    serializer = ExpenseCategorySerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    serializer.save(organization=request.user.organization)
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(["PATCH", "DELETE"])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
+def expense_category_detail(request, pk):
+    category = ExpenseCategory.objects.filter(pk=pk, organization=request.user.organization).first()
+    if not category:
+        return Response({"detail": "Category not found."}, status=status.HTTP_404_NOT_FOUND)
+    if request.method == "DELETE":
+        category.is_active = False
+        category.save(update_fields=("is_active",))
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    serializer = ExpenseCategorySerializer(category, data=request.data, partial=True)
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+    return Response(serializer.data)
+
+
 @api_view(["POST"])
 @parser_classes([MultiPartParser])
 @permission_classes([IsManagerOrModerator, HasActiveSubscription])
@@ -88,9 +151,11 @@ def expense_import_excel(request):
     if not upload:
         return Response({"detail": "Attach an Excel file in the file field."}, status=status.HTTP_400_BAD_REQUEST)
     try:
-        workbook = load_workbook(upload, read_only=True, data_only=True)
-        sheet = workbook.active
-        rows = list(sheet.iter_rows(values_only=True))
+        if upload.name.lower().endswith(".csv"):
+            rows = list(csv.reader(io.TextIOWrapper(upload.file, encoding="utf-8-sig")))
+        else:
+            workbook = load_workbook(upload, read_only=True, data_only=True)
+            rows = list(workbook.active.iter_rows(values_only=True))
         if not rows:
             return Response({"detail": "The spreadsheet is empty."}, status=status.HTTP_400_BAD_REQUEST)
         headers = {str(value).strip().lower(): index for index, value in enumerate(rows[0]) if value is not None}
@@ -243,6 +308,7 @@ def expense_receipt_extract(request):
             "amount": _receipt_amount(lines),
             "date": _receipt_date(lines),
             "category": _receipt_category(text),
+            "vendor_name": lines[0][:160] if lines else "",
             "description": next((line[:255] for line in lines if len(line) > 3), "Receipt expense"),
             "text": "\n".join(lines),
         })
