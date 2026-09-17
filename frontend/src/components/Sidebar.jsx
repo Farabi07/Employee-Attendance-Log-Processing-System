@@ -1,5 +1,5 @@
 import React from "react";
-import { Clock, CalendarDays, FileText, LayoutGrid, MessageCircle, TrendingUp, Users, Wallet } from "lucide-react";
+import { Clock, CalendarDays, FileText, LayoutGrid, MessageCircle, TrendingUp, Users, Wallet, Receipt } from "lucide-react";
 import { T, fontDisplay, fontBody } from "../theme";
 import { useIsMobile } from "../lib/useMediaQuery";
 import { useChatUnreadCount } from "../lib/useChatUnread";
@@ -44,6 +44,7 @@ export const MGR_NAV = [
   { key: "approvals", label: "Approvals", icon: FileText },
   { key: "payroll", label: "Payroll & Wallets", icon: Wallet },
   { key: "reports", label: "Reports", icon: TrendingUp },
+  { key: "expenses", label: "Expenses", icon: Receipt },
   { key: "chat", label: "Chat", icon: MessageCircle },
 ];
 

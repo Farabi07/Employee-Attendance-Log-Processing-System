@@ -27,6 +27,7 @@ import ManagerRoster from "./pages/manager/Roster";
 import ManagerApprovals from "./pages/manager/Approvals";
 import ManagerPayroll from "./pages/manager/Payroll";
 import ManagerReports from "./pages/manager/Reports";
+import ManagerExpenses from "./pages/manager/Expenses";
 
 import Chat from "./pages/Chat";
 
@@ -121,6 +122,7 @@ function Shell() {
             {role === "manager" && active === "approvals" && <ManagerApprovals />}
             {role === "manager" && active === "payroll" && <ManagerPayroll />}
             {role === "manager" && active === "reports" && <ManagerReports />}
+            {role === "manager" && active === "expenses" && <ManagerExpenses />}
 
             {active === "chat" && <Chat />}
           </div>
