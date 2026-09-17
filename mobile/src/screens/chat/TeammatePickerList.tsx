@@ -11,6 +11,10 @@ function initialsOf(person: any) {
   return `${(person?.first_name || "?")[0]}${(person?.last_name || "?")[0]}`.toUpperCase();
 }
 
+function isOnline(person: any) {
+  return person?.is_online === true || (!!person?.last_seen_at && Date.now() - new Date(person.last_seen_at).getTime() < 5 * 60 * 1000);
+}
+
 // Shared by CreateChannelScreen (multi-select members), ChannelMembersScreen
 // (multi-select to add) and NewDirectMessageScreen (single-select) — same
 // search-then-tap-a-row list in all three, just with/without a checkbox.
@@ -86,8 +90,8 @@ export default function TeammatePickerList({
                   <Text style={styles.rowName}>
                     {item.first_name} {item.last_name}
                   </Text>
-                  <Text style={styles.rowEmail} numberOfLines={1}>
-                    {item.email}
+                  <Text style={[styles.rowEmail, isOnline(item) && { color: T.tealDeep }]} numberOfLines={1}>
+                    {isOnline(item) ? "Active now" : "Offline"} · {item.org_role || "employee"} · {item.email}
                   </Text>
                 </View>
                 {multi ? (

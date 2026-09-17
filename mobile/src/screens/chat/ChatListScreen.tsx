@@ -13,6 +13,7 @@ import IconChip from "../../components/IconChip";
 import Avatar from "../../components/Avatar";
 import Skeleton from "../../components/Skeleton";
 import EmptyState from "../../components/EmptyState";
+import { useToast } from "../../components/Toast";
 import { tapLight } from "../../lib/haptics";
 import ThreadScreen from "./ThreadScreen";
 import CreateChannelScreen from "./CreateChannelScreen";
@@ -56,6 +57,7 @@ type Selected = { type: "channel" | "dm"; id: number; title: string } | null;
 export default function ChatListScreen() {
   const T = useTheme();
   const { isManagerOrModerator } = useAuth();
+  const toast = useToast();
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -96,6 +98,7 @@ export default function ChatListScreen() {
   const [tab, setTab] = useState<Tab>("channels");
   const [channels, setChannels] = useState<any[]>([]);
   const [conversations, setConversations] = useState<any[]>([]);
+  const [teammates, setTeammates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selected, setSelected] = useState<Selected>(null);
@@ -103,16 +106,23 @@ export default function ChatListScreen() {
   const [showNewDM, setShowNewDM] = useState(false);
 
   const load = useCallback(async () => {
-    const [channelsRes, conversationsRes] = await Promise.all([
+    const [channelsRes, conversationsRes, teammatesRes] = await Promise.all([
       api.get(endpoints.channelsMine("?size=100")),
       api.get(endpoints.conversationsMine("?size=100")),
+      api.get(endpoints.teammatesAll()),
     ]);
     setChannels(channelsRes.channels || []);
     setConversations(conversationsRes.conversations || []);
+    setTeammates(teammatesRes.employees || []);
   }, []);
 
   useEffect(() => {
     load().finally(() => setLoading(false));
+  }, [load]);
+
+  useEffect(() => {
+    const refresh = setInterval(load, 60000);
+    return () => clearInterval(refresh);
   }, [load]);
 
   // Real-time delivery: a socket connection is shared across every screen
@@ -236,22 +246,31 @@ export default function ChatListScreen() {
             }}
           />
         )
-      ) : conversations.length === 0 ? (
-        <View style={styles.emptyWrap}>
-          <EmptyState icon={Users} title="No conversations yet" subtitle="Start a direct message with a teammate." />
-        </View>
       ) : (
         <FlatList
-          data={conversations}
-          keyExtractor={(c) => String(c.id)}
+          data={teammates}
+          keyExtractor={(person) => String(person.id)}
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={T.teal} colors={[T.teal]} />}
-          renderItem={({ item }) => {
-            const other = item.other_participant;
-            const unread = item.unread_count > 0;
+          renderItem={({ item: person }) => {
+            const conversation = conversations.find((candidate) => candidate.other_participant?.id === person.id);
+            const other = conversation?.other_participant || person;
+            const unread = conversation?.unread_count > 0;
             return (
               <Card style={{ padding: 0 }}>
-                <Pressable onPress={() => openConversation(item)} style={styles.row}>
+                <Pressable
+                  onPress={async () => {
+                    if (conversation) return openConversation(conversation);
+                    try {
+                      const created = await api.post(endpoints.conversationStart(), { user_id: person.id });
+                      openConversation(created);
+                      load();
+                    } catch (err: any) {
+                      toast.show(err.message || "Could not start conversation", "error");
+                    }
+                  }}
+                  style={styles.row}
+                >
                   <Avatar initials={initialsOf(other)} size={40} src={mediaUrl(other?.image)} />
                   <View style={styles.rowText}>
                     <View style={styles.rowNameLine}>
@@ -262,15 +281,15 @@ export default function ChatListScreen() {
                         </Text>
                       </View>
                       <Text style={styles.presenceText}>{isOnline(other) ? "Active now" : "Offline"}</Text>
-                      <Text style={styles.rowTime}>{timeAgo(item.last_message?.created_at || item.created_at)}</Text>
+                      <Text style={styles.rowTime}>{conversation ? timeAgo(conversation.last_message?.created_at || conversation.created_at) : ""}</Text>
                     </View>
                     <View style={styles.rowPreviewLine}>
                       <Text style={[styles.rowPreview, unread && styles.rowPreviewUnread]} numberOfLines={1}>
-                        {previewOf(item.last_message)}
+                        {conversation ? previewOf(conversation.last_message) : `${other.org_role || "employee"} · Start a conversation`}
                       </Text>
                       {unread && (
                         <View style={styles.unreadBadge}>
-                          <Text style={styles.unreadBadgeText}>{item.unread_count > 9 ? "9+" : item.unread_count}</Text>
+                          <Text style={styles.unreadBadgeText}>{conversation.unread_count > 9 ? "9+" : conversation.unread_count}</Text>
                         </View>
                       )}
                     </View>
