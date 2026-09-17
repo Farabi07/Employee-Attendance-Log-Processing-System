@@ -33,6 +33,6 @@ export const MGR_NAV = [
   { key: "Roster", label: "Roster", icon: CalendarDays, component: Roster },
   { key: "Payroll", label: "Payroll & Wallets", icon: Wallet, component: Payroll },
   { key: "Reports", label: "Reports", icon: TrendingUp, component: Reports },
-  { key: "Expenses", label: "Expenses", icon: Receipt, component: Expenses },
+  { key: "Expenses", label: "Business Finance", icon: Receipt, component: Expenses },
   { key: "Chat", label: "Chat", icon: MessageCircle, component: ChatListScreen },
 ];

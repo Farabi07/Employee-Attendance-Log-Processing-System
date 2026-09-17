@@ -259,7 +259,7 @@ export default function Expenses() {
     <SafeAreaView style={styles.safe} edges={["left", "right", "bottom"]}>
       <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}>
         <Card style={styles.card}>
-          <View style={styles.titleRow}><Wallet size={18} color={T.navy} /><Text style={styles.title}>Expense & profit</Text></View>
+          <View style={styles.titleRow}><Wallet size={18} color={T.navy} /><Text style={styles.title}>Business Finance</Text></View>
           <Text style={styles.muted}>Track store spending, revenue and net profit.</Text>
           <View style={styles.periodRow}>
             {(["daily", "monthly", "yearly"] as Period[]).map((item) => (
