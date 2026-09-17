@@ -278,6 +278,7 @@ class Organization(models.Model):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='owned_organizations')
 
     currency = models.CharField(max_length=10, choices=CURRENCY_CHOICES, default='usd')
+    payment_gateway = models.CharField(max_length=20, default='stripe')
 
     # Manager-controlled toggles — Moderators are restricted by default
     # (per the original role spec), but the Manager can grant either of
@@ -425,6 +426,7 @@ class User(AbstractBaseUser):
     # mobile's lib/shiftReminder.js). Checked in attendance/push.py when
     # building the Expo push payload's `sound` field.
     silent_mode = models.BooleanField(default=False)
+    last_seen_at = models.DateTimeField(null=True, blank=True)
 
     user_type = models.CharField(max_length=255, null=True, blank=True)
 

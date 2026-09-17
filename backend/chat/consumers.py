@@ -1,5 +1,6 @@
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
+from django.utils import timezone
 
 from chat.models import ChannelMembership, ConversationParticipant
 
@@ -12,6 +13,12 @@ def _channel_ids(user):
 @database_sync_to_async
 def _conversation_ids(user):
 	return list(ConversationParticipant.objects.filter(user=user).values_list('conversation_id', flat=True))
+
+
+@database_sync_to_async
+def _touch_presence(user):
+	user.last_seen_at = timezone.now()
+	user.save(update_fields=['last_seen_at'])
 
 
 class ChatConsumer(AsyncJsonWebsocketConsumer):
@@ -40,6 +47,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 			# mobile/web chatSocket.js) — close() is still attempted after,
 			# as a no-op fallback for environments where it does work.
 			await self.accept()
+			await _touch_presence(self.user)
 			await self.send_json({'type': 'auth_error', 'reason': 'invalid_or_missing_token'})
 			await self.close(code=4001)
 			return
@@ -54,8 +62,14 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 			await self.channel_layer.group_add(group, self.channel_name)
 
 	async def disconnect(self, code):
+		if getattr(self, 'user', None) and not self.user.is_anonymous:
+			await _touch_presence(self.user)
 		for group in getattr(self, 'groups_joined', []):
 			await self.channel_layer.group_discard(group, self.channel_name)
+
+	async def receive_json(self, content, **kwargs):
+		if content.get('type') == 'presence.heartbeat':
+			await _touch_presence(self.user)
 
 	# Dispatch targets for channel_layer.group_send({'type': '...'}) calls
 	# made from chat/realtime.py — Channels routes '.'-typed events to a

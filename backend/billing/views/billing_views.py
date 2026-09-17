@@ -46,6 +46,7 @@ def billingStatus(request):
 			'organization_id': org.id,
 			'organization_name': org.name,
 			'currency': org.currency,
+			'payment_gateway': org.payment_gateway,
 			'subscription_status': org.subscription_status,
 			'plan': org.plan,
 			'trial_ends_at': org.trial_ends_at,

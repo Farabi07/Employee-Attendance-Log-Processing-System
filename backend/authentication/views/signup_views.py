@@ -8,7 +8,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from drf_spectacular.utils import extend_schema
 
-from authentication.models import Organization, Employee, User, Role
+from authentication.models import Organization, Employee, User, Role, Country
 from authentication.permissions import IsPlatformOwner
 
 
@@ -25,17 +25,23 @@ def signupOrganization(request):
 	last_name = data.get('last_name', '').strip()
 	email = data.get('email', '').strip()
 	password = data.get('password', '')
+	country_code = str(data.get('country') or data.get('country_code') or '').strip().upper()
+	phone = str(data.get('phone') or '').strip()
 	gender = data.get('gender', Employee.Gender.MALE)
 
-	missing = [f for f, v in [('organization_name', organization_name), ('first_name', first_name), ('last_name', last_name), ('email', email), ('password', password)] if not v]
+	missing = [f for f, v in [('organization_name', organization_name), ('first_name', first_name), ('last_name', last_name), ('email', email), ('password', password), ('country', country_code), ('phone', phone)] if not v]
 	if missing:
 		return Response({'detail': f"Missing required field(s): {', '.join(missing)}"}, status=status.HTTP_400_BAD_REQUEST)
+	country = Country.objects.filter(country_code2__iexact=country_code).first()
+	if country is None:
+		return Response({'detail': 'Select a valid country.'}, status=status.HTTP_400_BAD_REQUEST)
 
 	if User.objects.filter(email__iexact=email).exists():
 		return Response({'detail': 'An account with this email already exists — sign in instead, or use a different email to start a new trial.'}, status=status.HTTP_400_BAD_REQUEST)
 
 	with transaction.atomic():
-		organization = Organization.objects.create(name=organization_name, trial_ends_at=None)
+		gateway = 'sslcommerz' if country_code == 'BD' else 'stripe'
+		organization = Organization.objects.create(name=organization_name, trial_ends_at=None, payment_gateway=gateway)
 
 		owner = Employee(
 			first_name=first_name,
@@ -43,6 +49,8 @@ def signupOrganization(request):
 			email=email.lower(),
 			gender=gender,
 			organization=organization,
+			primary_phone=phone,
+			country=country,
 			role=Role.objects.get(name='MANAGER'),
 		)
 		owner.set_password(password)

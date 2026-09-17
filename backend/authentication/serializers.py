@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.conf import settings
+from django.utils import timezone
 
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -576,9 +577,14 @@ class EmployeeListSerializer(serializers.ModelSerializer):
 
 
 class EmployeeMinimalListSerializer(serializers.ModelSerializer):
+	is_online = serializers.SerializerMethodField()
+
 	class Meta:
 		model = Employee
-		fields = ['id', 'email', 'first_name', 'last_name', 'username', 'image']
+		fields = ['id', 'email', 'first_name', 'last_name', 'username', 'image', 'is_online', 'last_seen_at']
+
+	def get_is_online(self, obj):
+		return bool(obj.last_seen_at and (timezone.now() - obj.last_seen_at).total_seconds() < 300)
 
 
 
@@ -885,8 +891,6 @@ class LoginHistorySerializer(serializers.ModelSerializer):
 class PasswordChangeSerializer(serializers.Serializer):
 	password = serializers.CharField(max_length=64)
 	confirm_password = serializers.CharField(max_length=64)
-
-
 
 
 
