@@ -124,6 +124,7 @@ export const endpoints = {
   expenseCreate: () => `/expense/api/v1/expense/create/`,
   expensesImportExcel: () => `/expense/api/v1/expense/import/excel/`,
   expensesTemplate: () => `/expense/api/v1/expense/template/`,
+  expenseReceiptExtract: () => `/expense/api/v1/expense/receipt/extract/`,
   payoutReview: (pk) => `/wallet/api/v1/payout/${pk}/review/`,
   payoutConfirm: () => `/wallet/api/v1/payout/confirm/`,
   payoutConfirmCash: (pk) => `/wallet/api/v1/payout/${pk}/confirm_cash/`,

@@ -29,6 +29,7 @@ export default function ManagerExpenses() {
   const [formOpen, setFormOpen] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [receiptScanning, setReceiptScanning] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ amount: "", category: "supplies", date: new Date().toISOString().slice(0, 10), description: "", recipient_id: "" });
 
@@ -87,6 +88,31 @@ export default function ManagerExpenses() {
     }
   };
 
+  const scanReceipt = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setReceiptScanning(true);
+    try {
+      const data = new FormData();
+      data.append("file", file);
+      const extracted = await api.post(endpoints.expenseReceiptExtract(), data);
+      setForm((current) => ({
+        ...current,
+        amount: extracted.amount || current.amount,
+        category: extracted.category || current.category,
+        date: extracted.date || current.date,
+        description: extracted.description || current.description,
+      }));
+      setFormOpen(true);
+      window.alert("Receipt text extracted. Review the fields before saving.");
+    } catch (error) {
+      window.alert(error.message || "Could not read receipt");
+    } finally {
+      setReceiptScanning(false);
+    }
+  };
+
   const categories = Array.isArray(summary.categories) ? summary.categories : [];
   const maxCategory = Math.max(...categories.map((item) => Number(item.total || 0)), 1);
   const metrics = [
@@ -139,6 +165,7 @@ export default function ManagerExpenses() {
           <div style={styles.actions}>
             <button style={styles.action} onClick={() => setFormOpen(true)}><Plus size={14} /> Add expense</button>
             <button style={styles.action} onClick={() => setScannerOpen(true)}><Camera size={14} /> Scan recipient</button>
+            <label style={styles.action}><Receipt size={14} /> {receiptScanning ? "Reading receipt..." : "Scan receipt"}<input type="file" accept="image/*" onChange={scanReceipt} hidden /></label>
             <label style={styles.action}><FileSpreadsheet size={14} /> {importing ? "Importing…" : "Upload Excel"}<input type="file" accept=".xlsx,.xls" onChange={uploadExcel} hidden /></label>
           </div>
         </Card>
