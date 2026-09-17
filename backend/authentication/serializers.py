@@ -578,10 +578,14 @@ class EmployeeListSerializer(serializers.ModelSerializer):
 
 class EmployeeMinimalListSerializer(serializers.ModelSerializer):
 	is_online = serializers.SerializerMethodField()
+	org_role = serializers.SerializerMethodField()
 
 	class Meta:
 		model = Employee
-		fields = ['id', 'email', 'first_name', 'last_name', 'username', 'image', 'is_online', 'last_seen_at']
+		fields = ['id', 'email', 'first_name', 'last_name', 'username', 'image', 'org_role', 'is_online', 'last_seen_at']
+
+	def get_org_role(self, obj):
+		return obj.org_role_name()
 
 	def get_is_online(self, obj):
 		return bool(obj.last_seen_at and (timezone.now() - obj.last_seen_at).total_seconds() < 300)
@@ -891,7 +895,6 @@ class LoginHistorySerializer(serializers.ModelSerializer):
 class PasswordChangeSerializer(serializers.Serializer):
 	password = serializers.CharField(max_length=64)
 	confirm_password = serializers.CharField(max_length=64)
-
 
 
 
