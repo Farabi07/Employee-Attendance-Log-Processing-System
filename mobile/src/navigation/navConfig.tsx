@@ -1,5 +1,5 @@
 import React from "react";
-import { Clock, CalendarDays, FileText, LayoutGrid, MessageCircle, TrendingUp, Users, Wallet } from "lucide-react-native";
+import { Clock, CalendarDays, FileText, LayoutGrid, MessageCircle, TrendingUp, Users, Wallet, Receipt } from "lucide-react-native";
 
 import Today from "../screens/employee/Today";
 import Shifts from "../screens/employee/Shifts";
@@ -9,6 +9,7 @@ import Overview from "../screens/manager/Overview";
 import Roster from "../screens/manager/Roster";
 import Payroll from "../screens/manager/Payroll";
 import Reports from "../screens/manager/Reports";
+import Expenses from "../screens/manager/Expenses";
 import ChatListScreen from "../screens/chat/ChatListScreen";
 
 // Ported from frontend/src/components/Sidebar.jsx's EMP_NAV/MGR_NAV — same
@@ -32,5 +33,6 @@ export const MGR_NAV = [
   { key: "Roster", label: "Roster", icon: CalendarDays, component: Roster },
   { key: "Payroll", label: "Payroll & Wallets", icon: Wallet, component: Payroll },
   { key: "Reports", label: "Reports", icon: TrendingUp, component: Reports },
+  { key: "Expenses", label: "Expenses", icon: Receipt, component: Expenses },
   { key: "Chat", label: "Chat", icon: MessageCircle, component: ChatListScreen },
 ];
