@@ -199,7 +199,7 @@ export default function ManagerExpenses() {
     <div>
       <div style={styles.grid}>
         <Card style={styles.card}>
-          <div style={styles.titleRow}><Wallet size={18} color={T.navy} /><h2 style={styles.title}>Expense & profit</h2></div>
+          <div style={styles.titleRow}><Wallet size={18} color={T.navy} /><h2 style={styles.title}>Business Finance</h2></div>
           <p style={styles.muted}>Track store spending, revenue and net profit.</p>
           <div style={styles.tabs}>{periods.map((value) => <button key={value} onClick={() => setPeriod(value)} style={{ ...styles.tab, ...(period === value ? styles.tabActive : {}) }}>{value[0].toUpperCase() + value.slice(1)}</button>)}</div>
           <div style={styles.actions}>

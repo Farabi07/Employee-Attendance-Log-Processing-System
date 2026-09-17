@@ -44,7 +44,7 @@ export const MGR_NAV = [
   { key: "approvals", label: "Approvals", icon: FileText },
   { key: "payroll", label: "Payroll & Wallets", icon: Wallet },
   { key: "reports", label: "Reports", icon: TrendingUp },
-  { key: "expenses", label: "Expenses", icon: Receipt },
+  { key: "expenses", label: "Business Finance", icon: Receipt },
   { key: "chat", label: "Chat", icon: MessageCircle },
 ];
 
