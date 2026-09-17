@@ -123,6 +123,7 @@ export const endpoints = {
   expensesAll: (params = "") => `/expense/api/v1/expense/all/${params}`,
   expenseCreate: () => `/expense/api/v1/expense/create/`,
   expensesImportExcel: () => `/expense/api/v1/expense/import/excel/`,
+  financeWorkbookImport: () => `/expense/api/v1/expense/import/workbook/`,
   expensesTemplate: () => `/expense/api/v1/expense/template/`,
   expenseReceiptExtract: () => `/expense/api/v1/expense/receipt/extract/`,
   expenseCategories: () => `/expense/api/v1/expense/categories/`,
