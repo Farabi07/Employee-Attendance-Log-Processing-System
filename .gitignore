@@ -3,3 +3,6 @@
 
 # Backend lives on its own "backend" branch, not here
 /backend
+
+# Frontend lives on its own "frontend" branch, not here
+/frontend
