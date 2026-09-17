@@ -64,6 +64,7 @@ INSTALLED_APPS = [
 	'attendance.apps.AttendanceConfig',
 	'billing.apps.BillingConfig',
 	'wallet.apps.WalletConfig',
+	"expense.apps.ExpenseConfig",
 	'chat.apps.ChatConfig',
 ]
 
