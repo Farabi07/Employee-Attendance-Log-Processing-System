@@ -1,5 +1,7 @@
 from datetime import date, timedelta
 from decimal import Decimal
+import os
+import re
 
 from django.db import transaction
 from django.db.models import Sum
@@ -134,3 +136,71 @@ def expense_template(request):
     response["Content-Disposition"] = 'attachment; filename="expense-template.xlsx"'
     workbook.save(response)
     return response
+
+
+def _receipt_amount(lines):
+    candidates = []
+    for line in lines:
+        match = re.search(r"(?:total|grand total|amount due|net total)\D{0,12}(\d+[,.]?\d{0,2})", line, re.I)
+        if match:
+            candidates.append(match.group(1).replace(",", ""))
+    if candidates:
+        return candidates[-1]
+    values = re.findall(r"(?<!\d)(\d{1,7}[.]\d{2})(?!\d)", " ".join(lines))
+    return values[-1] if values else ""
+
+
+def _receipt_date(lines):
+    for line in lines:
+        match = re.search(r"(\d{4})[-/]([01]?\d)[-/]([0-3]?\d)|(\d{1,2})[-/]([01]?\d)[-/](\d{2,4})", line)
+        if not match:
+            continue
+        groups = match.groups()
+        if groups[0]:
+            return f"{int(groups[0]):04d}-{int(groups[1]):02d}-{int(groups[2]):02d}"
+        year = int(groups[5])
+        year += 2000 if year < 100 else 0
+        return f"{year:04d}-{int(groups[4]):02d}-{int(groups[3]):02d}"
+    return str(timezone.localdate())
+
+
+def _receipt_category(text):
+    lowered = text.lower()
+    for keyword, category in (
+        ("rent", "rent"), ("utility", "utilities"), ("electric", "utilities"),
+        ("transport", "transport"), ("fuel", "transport"), ("market", "supplies"),
+        ("supply", "supplies"), ("salary", "salary"), ("wage", "salary"),
+        ("advert", "marketing"),
+    ):
+        if keyword in lowered:
+            return category
+    return "other"
+
+
+@api_view(["POST"])
+@parser_classes([MultiPartParser])
+@permission_classes([IsManagerOrModerator, HasActiveSubscription])
+def expense_receipt_extract(request):
+    upload = request.FILES.get("file")
+    if not upload:
+        return Response({"detail": "Attach a receipt image in the file field."}, status=status.HTTP_400_BAD_REQUEST)
+    if not os.environ.get("AWS_ACCESS_KEY_ID") or not os.environ.get("AWS_SECRET_ACCESS_KEY"):
+        return Response({"detail": "Receipt OCR is not configured. Set AWS Textract credentials on the backend."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+    try:
+        import boto3
+
+        client = boto3.client("textract", region_name=os.environ.get("AWS_REGION", "us-east-1"))
+        result = client.detect_document_text(Document={"Bytes": upload.read()})
+        lines = [block["Text"] for block in result.get("Blocks", []) if block.get("BlockType") == "LINE"]
+        if not lines:
+            return Response({"detail": "No text was detected in the receipt."}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+        text = " ".join(lines)
+        return Response({
+            "amount": _receipt_amount(lines),
+            "date": _receipt_date(lines),
+            "category": _receipt_category(text),
+            "description": next((line[:255] for line in lines if len(line) > 3), "Receipt expense"),
+            "text": "\n".join(lines),
+        })
+    except Exception as exc:
+        return Response({"detail": f"Receipt OCR failed: {exc}"}, status=status.HTTP_502_BAD_GATEWAY)
