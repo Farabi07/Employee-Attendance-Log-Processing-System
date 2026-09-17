@@ -29,6 +29,10 @@ const CATEGORIES = [
   { value: "salary", label: "Salary" },
   { value: "other", label: "Other" },
 ];
+const INCOME_CATEGORIES = [
+  { value: "sales", label: "Sales" }, { value: "services", label: "Services" },
+  { value: "subscription", label: "Subscription" }, { value: "commission", label: "Commission" }, { value: "other", label: "Other" },
+];
 
 function amount(value: any) {
   return Number(value || 0);
@@ -97,6 +101,8 @@ export default function Expenses() {
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
   const [receiptScanning, setReceiptScanning] = useState(false);
+  const [incomeImporting, setIncomeImporting] = useState(false);
+  const [formType, setFormType] = useState<"expense" | "income">("expense");
   const [error, setError] = useState("");
   const [date, setDate] = useState(todayISO());
   const [category, setCategory] = useState("supplies");
@@ -133,13 +139,28 @@ export default function Expenses() {
     if (numericValue <= 0) { setError("Enter an expense amount greater than zero."); return; }
     setSaving(true); setError("");
     try {
-      await api.post(endpoints.expenseCreate(), {
+      await api.post(formType === "income" ? endpoints.incomeCreate() : endpoints.expenseCreate(), {
         amount: numericValue, category, description, date,
         ...(recipient.trim() ? { recipient_id: recipient.trim() } : {}),
       });
       toast.show("Expense added.");
       setShowForm(false); resetForm(); await load();
     } catch (err: any) { setError(err.message || "Could not add expense."); } finally { setSaving(false); }
+  };
+
+  const uploadIncomeExcel = async () => {
+    const picked = await DocumentPicker.getDocumentAsync({ type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel", copyToCacheDirectory: true });
+    if (picked.canceled) return;
+    setIncomeImporting(true);
+    try {
+      const file = picked.assets[0];
+      const token = await getToken();
+      const result = await FileSystem.uploadAsync(`${BASE_URL}${endpoints.incomeImportExcel()}`, file.uri, { httpMethod: "POST", uploadType: FileSystem.FileSystemUploadType.MULTIPART, fieldName: "file", mimeType: file.mimeType || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+      const payload = JSON.parse(result.body || "{}");
+      if (result.status < 200 || result.status >= 300) throw new Error(payload.detail || "Could not import income spreadsheet.");
+      toast.show(`${payload.created || 0} income records imported.`);
+      await load();
+    } catch (err: any) { toast.show(err.message || "Could not import income spreadsheet.", "error"); } finally { setIncomeImporting(false); }
   };
 
   const scanRecipient = (code: string) => {
@@ -232,10 +253,12 @@ export default function Expenses() {
             <Card style={styles.metric}><Text style={styles.metricLabel}>Net profit</Text><Text style={[styles.metricValue, { color: profit >= 0 ? T.tealDeep : T.coral }]}>{formatMoney(profit, "bdt")}</Text></Card>
           </View>
           <View style={styles.actionRow}>
-            <Pressable style={styles.action} onPress={() => { resetForm(); setShowForm(true); }}><Plus size={14} color={T.navyDeep} /><Text style={styles.actionText}>Add expense</Text></Pressable>
+            <Pressable style={styles.action} onPress={() => { setFormType("expense"); resetForm(); setShowForm(true); }}><Plus size={14} color={T.navyDeep} /><Text style={styles.actionText}>Add expense</Text></Pressable>
+            <Pressable style={styles.action} onPress={() => { setFormType("income"); resetForm(); setCategory("sales"); setShowForm(true); }}><Plus size={14} color={T.navyDeep} /><Text style={styles.actionText}>Add income</Text></Pressable>
             <Pressable style={styles.action} onPress={() => setShowScanner(true)}><Camera size={14} color={T.navyDeep} /><Text style={styles.actionText}>Scan recipient</Text></Pressable>
             <Pressable style={styles.action} onPress={scanReceipt} disabled={receiptScanning}><Receipt size={14} color={T.navyDeep} /><Text style={styles.actionText}>{receiptScanning ? "Reading receipt..." : "Scan receipt"}</Text></Pressable>
             <Pressable style={styles.action} onPress={uploadExcel} disabled={importing}><FileSpreadsheet size={14} color={T.navyDeep} /><Text style={styles.actionText}>{importing ? "Importing…" : "Upload Excel"}</Text></Pressable>
+            <Pressable style={styles.action} onPress={uploadIncomeExcel} disabled={incomeImporting}><FileSpreadsheet size={14} color={T.navyDeep} /><Text style={styles.actionText}>{incomeImporting ? "Importing…" : "Income Excel"}</Text></Pressable>
           </View>
         </Card>
 
@@ -253,20 +276,20 @@ export default function Expenses() {
 
         {showForm && <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <Card style={styles.card}>
-            <View style={styles.titleRow}><Plus size={17} color={T.navy} /><Text style={styles.sectionTitle}>Add expense</Text></View>
+            <View style={styles.titleRow}><Plus size={17} color={T.navy} /><Text style={styles.sectionTitle}>Add {formType}</Text></View>
             <View style={styles.formRow}>
               <View style={styles.formHalf}><FormField label="Amount" value={value} onChangeText={setValue} keyboardType="decimal-pad" placeholder="0.00" /></View>
               <View style={styles.formHalf}><DateField label="Date" value={date} onChange={setDate} /></View>
             </View>
             <Text style={styles.muted}>Category</Text>
-            <InlinePicker selectedValue={category} onValueChange={setCategory} items={CATEGORIES} style={{ marginBottom: 14 }} />
-            <View style={styles.recipientBox}>
+            <InlinePicker selectedValue={category} onValueChange={setCategory} items={formType === "income" ? INCOME_CATEGORIES : CATEGORIES} style={{ marginBottom: 14 }} />
+            {formType === "expense" && <View style={styles.recipientBox}>
               <Text style={styles.recipientLabel}>Recipient (optional)</Text>
               <View style={styles.recipientRow}>
                 <TextInput value={recipient} onChangeText={setRecipient} placeholder="Employee or supplier ID" placeholderTextColor={T.faint} style={styles.recipientInput} />
                 <Pressable style={styles.scanButton} onPress={() => setShowScanner(true)}><Camera size={17} color={T.navyDeep} /></Pressable>
               </View>
-            </View>
+            </View>}
             <FormField label="Description" value={description} onChangeText={setDescription} placeholder="What was this expense for?" multiline style={styles.noteInput} />
             {!!error && <Text style={styles.error}>{error}</Text>}
             <View style={styles.actionRow}><PrimaryButton title={saving ? "Saving…" : "Save expense"} onPress={saveExpense} loading={saving} /><Pressable onPress={() => { setShowForm(false); resetForm(); }}><Text style={[styles.actionText, { color: T.muted, padding: 10 }]}>Cancel</Text></Pressable></View>
