@@ -96,6 +96,7 @@ export default function Expenses() {
   const [showScanner, setShowScanner] = useState(false);
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [receiptScanning, setReceiptScanning] = useState(false);
   const [error, setError] = useState("");
   const [date, setDate] = useState(todayISO());
   const [category, setCategory] = useState("supplies");
@@ -171,6 +172,38 @@ export default function Expenses() {
     } catch (err: any) { toast.show(err.message || "Could not import spreadsheet.", "error"); } finally { setImporting(false); }
   };
 
+  const scanReceipt = async () => {
+    const picked = await DocumentPicker.getDocumentAsync({
+      type: "image/*",
+      copyToCacheDirectory: true,
+    });
+    if (picked.canceled) return;
+    setReceiptScanning(true);
+    try {
+      const file = picked.assets[0];
+      const token = await getToken();
+      const result = await FileSystem.uploadAsync(`${BASE_URL}${endpoints.expenseReceiptExtract()}`, file.uri, {
+        httpMethod: "POST",
+        uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+        fieldName: "file",
+        mimeType: file.mimeType || "image/jpeg",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      const extracted = JSON.parse(result.body || "{}");
+      if (result.status < 200 || result.status >= 300) throw new Error(extracted.detail || "Could not read receipt.");
+      setValue(extracted.amount || "");
+      setCategory(extracted.category || "other");
+      setDate(extracted.date || todayISO());
+      setDescription(extracted.description || "Receipt expense");
+      setShowForm(true);
+      toast.show("Receipt text extracted. Review before saving.");
+    } catch (err: any) {
+      toast.show(err.message || "Could not read receipt.", "error");
+    } finally {
+      setReceiptScanning(false);
+    }
+  };
+
   const categories = summary.categories || summary.by_category || [];
   const categoryRows = Array.isArray(categories)
     ? categories
@@ -201,6 +234,7 @@ export default function Expenses() {
           <View style={styles.actionRow}>
             <Pressable style={styles.action} onPress={() => { resetForm(); setShowForm(true); }}><Plus size={14} color={T.navyDeep} /><Text style={styles.actionText}>Add expense</Text></Pressable>
             <Pressable style={styles.action} onPress={() => setShowScanner(true)}><Camera size={14} color={T.navyDeep} /><Text style={styles.actionText}>Scan recipient</Text></Pressable>
+            <Pressable style={styles.action} onPress={scanReceipt} disabled={receiptScanning}><Receipt size={14} color={T.navyDeep} /><Text style={styles.actionText}>{receiptScanning ? "Reading receipt..." : "Scan receipt"}</Text></Pressable>
             <Pressable style={styles.action} onPress={uploadExcel} disabled={importing}><FileSpreadsheet size={14} color={T.navyDeep} /><Text style={styles.actionText}>{importing ? "Importing…" : "Upload Excel"}</Text></Pressable>
           </View>
         </Card>

@@ -127,6 +127,7 @@ export const endpoints = {
   expensesAll: (params = "") => `/expense/api/v1/expense/all/${params}`,
   expenseCreate: () => `/expense/api/v1/expense/create/`,
   expensesImportExcel: () => `/expense/api/v1/expense/import/excel/`,
+  expenseReceiptExtract: () => `/expense/api/v1/expense/receipt/extract/`,
   payoutReview: (pk) => `/wallet/api/v1/payout/${pk}/review/`,
   payoutConfirm: () => `/wallet/api/v1/payout/confirm/`,
   payoutConfirmCash: (pk) => `/wallet/api/v1/payout/${pk}/confirm_cash/`,
