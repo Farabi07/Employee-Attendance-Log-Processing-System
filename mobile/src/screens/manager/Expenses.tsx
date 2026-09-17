@@ -103,22 +103,32 @@ export default function Expenses() {
   const [receiptScanning, setReceiptScanning] = useState(false);
   const [incomeImporting, setIncomeImporting] = useState(false);
   const [formType, setFormType] = useState<"expense" | "income">("expense");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [error, setError] = useState("");
   const [date, setDate] = useState(todayISO());
   const [category, setCategory] = useState("supplies");
   const [value, setValue] = useState("");
   const [description, setDescription] = useState("");
   const [recipient, setRecipient] = useState("");
+  const [vendorName, setVendorName] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [receiptUri, setReceiptUri] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const query = `?period=${period}`;
+    const filters = new URLSearchParams({ period });
+    if (dateFrom) filters.set("date_from", dateFrom);
+    if (dateTo) filters.set("date_to", dateTo);
+    if (categoryFilter) filters.set("category", categoryFilter);
+    const query = `?${filters.toString()}`;
     const [summaryRes, listRes] = await Promise.all([
       api.get(endpoints.expensesSummary(query)),
       api.get(endpoints.expensesAll(`${query}&size=50`)),
     ]);
     setSummary(summaryRes || {});
     setExpenses(listRes?.expenses || listRes?.results || []);
-  }, [period]);
+  }, [period, dateFrom, dateTo, categoryFilter]);
 
   useEffect(() => {
     setLoading(true);
@@ -139,10 +149,19 @@ export default function Expenses() {
     if (numericValue <= 0) { setError("Enter an expense amount greater than zero."); return; }
     setSaving(true); setError("");
     try {
-      await api.post(formType === "income" ? endpoints.incomeCreate() : endpoints.expenseCreate(), {
+      const payload = {
         amount: numericValue, category, description, date,
+        ...(formType === "expense" ? { vendor_name: vendorName, payment_method: paymentMethod } : {}),
         ...(recipient.trim() ? { recipient_id: recipient.trim() } : {}),
-      });
+      };
+      if (formType === "expense" && receiptUri) {
+        const multipart = new FormData();
+        Object.entries(payload).forEach(([key, item]) => multipart.append(key, String(item)));
+        multipart.append("uploaded_receipt", { uri: receiptUri, name: "receipt.jpg", type: "image/jpeg" } as any);
+        await api.post(endpoints.expenseCreate(), multipart);
+      } else {
+        await api.post(formType === "income" ? endpoints.incomeCreate() : endpoints.expenseCreate(), payload);
+      }
       toast.show("Expense added.");
       setShowForm(false); resetForm(); await load();
     } catch (err: any) { setError(err.message || "Could not add expense."); } finally { setSaving(false); }
@@ -216,6 +235,8 @@ export default function Expenses() {
       setCategory(extracted.category || "other");
       setDate(extracted.date || todayISO());
       setDescription(extracted.description || "Receipt expense");
+      setVendorName(extracted.vendor_name || "");
+      setReceiptUri(file.uri);
       setShowForm(true);
       toast.show("Receipt text extracted. Review before saving.");
     } catch (err: any) {
@@ -247,6 +268,8 @@ export default function Expenses() {
               </Pressable>
             ))}
           </View>
+          <View style={styles.formRow}><View style={styles.formHalf}><DateField label="From" value={dateFrom} onChange={setDateFrom} /></View><View style={styles.formHalf}><DateField label="To" value={dateTo} onChange={setDateTo} /></View></View>
+          <InlinePicker selectedValue={categoryFilter} onValueChange={setCategoryFilter} items={[{ value: "", label: "All categories" }, ...CATEGORIES]} style={{ marginTop: 10 }} />
           <View style={styles.metrics}>
             <Card style={styles.metric}><Text style={styles.metricLabel}>Revenue</Text><Text style={styles.metricValue}>{formatMoney(revenue, "bdt")}</Text></Card>
             <Card style={styles.metric}><Text style={styles.metricLabel}>Expenses</Text><Text style={[styles.metricValue, { color: T.coral }]}>{formatMoney(totalExpense, "bdt")}</Text></Card>
@@ -291,6 +314,8 @@ export default function Expenses() {
               </View>
             </View>}
             <FormField label="Description" value={description} onChangeText={setDescription} placeholder="What was this expense for?" multiline style={styles.noteInput} />
+            {formType === "expense" && <FormField label="Vendor" value={vendorName} onChangeText={setVendorName} placeholder="Vendor name" />}
+            {formType === "expense" && <InlinePicker selectedValue={paymentMethod} onValueChange={setPaymentMethod} items={[{ value: "cash", label: "Cash" }, { value: "card", label: "Card" }, { value: "bank_transfer", label: "Bank transfer" }, { value: "mobile_wallet", label: "Mobile wallet" }, { value: "other", label: "Other" }]} style={{ marginBottom: 14 }} />}
             {!!error && <Text style={styles.error}>{error}</Text>}
             <View style={styles.actionRow}><PrimaryButton title={saving ? "Saving…" : "Save expense"} onPress={saveExpense} loading={saving} /><Pressable onPress={() => { setShowForm(false); resetForm(); }}><Text style={[styles.actionText, { color: T.muted, padding: 10 }]}>Cancel</Text></Pressable></View>
           </Card>
