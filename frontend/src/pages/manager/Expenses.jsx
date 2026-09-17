@@ -32,7 +32,8 @@ export default function ManagerExpenses() {
   const [importing, setImporting] = useState(false);
   const [receiptScanning, setReceiptScanning] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [incomeImporting, setIncomeImporting] = useState(false);
+  const [receiptOptionsOpen, setReceiptOptionsOpen] = useState(false);
+  const [newCategory, setNewCategory] = useState("");
   const [formType, setFormType] = useState("expense");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -79,26 +80,6 @@ export default function ManagerExpenses() {
       window.alert(error.message || "Could not add expense");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const uploadIncomeExcel = async (event) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    setIncomeImporting(true);
-    try {
-      const data = new FormData();
-      data.append("file", file);
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}${endpoints.incomeImportExcel()}`, { method: "POST", headers: { Authorization: `Bearer ${getToken()}` }, body: data });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.detail || "Could not import income spreadsheet");
-      window.alert(`${payload.created || 0} income records imported.`);
-      await load();
-    } catch (error) {
-      window.alert(error.message || "Could not import income spreadsheet");
-    } finally {
-      setIncomeImporting(false);
     }
   };
 
@@ -150,6 +131,18 @@ export default function ManagerExpenses() {
       window.alert(error.message || "Could not read receipt");
     } finally {
       setReceiptScanning(false);
+    }
+  };
+
+  const addCategory = async () => {
+    const name = newCategory.trim();
+    if (!name) return;
+    try {
+      await api.post(endpoints.expenseCategories(), { name });
+      setNewCategory("");
+      window.alert("Category added. You can use it after the category list refreshes.");
+    } catch (error) {
+      window.alert(error.message || "Could not add category");
     }
   };
 
@@ -211,9 +204,9 @@ export default function ManagerExpenses() {
             <button style={styles.action} onClick={() => { setFormType("expense"); setFormOpen(true); }}><Plus size={14} /> Add expense</button>
             <button style={styles.action} onClick={() => { setFormType("income"); update("category", "sales"); setFormOpen(true); }}><Plus size={14} /> Add income</button>
             <button style={styles.action} onClick={() => setScannerOpen(true)}><Camera size={14} /> Scan recipient</button>
-            <label style={styles.action}><Receipt size={14} /> {receiptScanning ? "Reading receipt..." : "Scan receipt"}<input type="file" accept="image/*" onChange={scanReceipt} hidden /></label>
+            <button style={styles.action} onClick={() => setReceiptOptionsOpen((open) => !open)}><Receipt size={14} /> {receiptScanning ? "Reading receipt..." : "Receipt"}</button>
+            {receiptOptionsOpen && <div style={styles.actions}><label style={styles.action}>Upload receipt<input type="file" accept="image/*" onChange={scanReceipt} hidden /></label><label style={styles.action}>Scan with camera<input type="file" accept="image/*" capture="environment" onChange={scanReceipt} hidden /></label></div>}
             <label style={styles.action}><FileSpreadsheet size={14} /> {importing ? "Importing…" : "Upload Excel"}<input type="file" accept=".xlsx,.xls" onChange={uploadExcel} hidden /></label>
-            <label style={styles.action}><FileSpreadsheet size={14} /> {incomeImporting ? "Importing…" : "Income Excel"}<input type="file" accept=".xlsx,.xls" onChange={uploadIncomeExcel} hidden /></label>
           </div>
         </Card>
         {metrics.map(([label, value, color]) => <Card key={label} style={styles.metric}><p style={styles.metricLabel}>{label}</p><p style={{ ...styles.metricValue, color }}>{money(value)}</p></Card>)}
@@ -229,6 +222,7 @@ export default function ManagerExpenses() {
           <label style={{ ...styles.field, ...styles.fieldFull }}><span style={styles.label}>Description</span><input style={styles.input} value={form.description} onChange={(e) => update("description", e.target.value)} placeholder="What was this expense for?" /></label>
           {formType === "expense" && <label style={styles.field}><span style={styles.label}>Vendor</span><input style={styles.input} value={form.vendor_name} onChange={(e) => update("vendor_name", e.target.value)} placeholder="Vendor name" /></label>}
           {formType === "expense" && <label style={styles.field}><span style={styles.label}>Payment method</span><select style={styles.input} value={form.payment_method} onChange={(e) => update("payment_method", e.target.value)}><option value="cash">Cash</option><option value="card">Card</option><option value="bank_transfer">Bank transfer</option><option value="mobile_wallet">Mobile wallet</option><option value="other">Other</option></select></label>}
+          {formType === "expense" && <div style={{ ...styles.field, ...styles.fieldFull, display: "flex", flexDirection: "row" }}><input style={{ ...styles.input, flex: 1 }} value={newCategory} onChange={(e) => setNewCategory(e.target.value)} placeholder="New category name" /><button type="button" style={styles.action} onClick={addCategory}>Add category</button></div>}
           <div style={{ ...styles.fieldFull, display: "flex", gap: 8, flexDirection: "row" }}><button style={styles.submit} disabled={saving}>{saving ? "Saving…" : "Save expense"}</button><button type="button" style={styles.cancel} onClick={() => setFormOpen(false)}>Cancel</button></div>
         </form>
       </Card>}
