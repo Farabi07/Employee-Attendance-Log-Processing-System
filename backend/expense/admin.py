@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Expense, ExpenseCategory, FinanceAuditLog
+from .models import Expense, ExpenseCategory, FinanceAuditLog, Income
 
 
 @admin.register(FinanceAuditLog)
@@ -20,3 +20,10 @@ class ExpenseCategoryAdmin(admin.ModelAdmin):
 class ExpenseAdmin(admin.ModelAdmin):
     list_display = ("date", "category", "amount", "organization", "recipient", "source")
     list_filter = ("category", "source", "date")
+
+
+@admin.register(Income)
+class IncomeAdmin(admin.ModelAdmin):
+    list_display = ("date", "category", "amount", "organization", "source", "created_by")
+    list_filter = ("category", "source", "date")
+    search_fields = ("description",)

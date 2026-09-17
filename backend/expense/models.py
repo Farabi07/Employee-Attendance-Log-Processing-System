@@ -27,6 +27,8 @@ class ExpenseCategory(models.Model):
 
     class Meta:
         ordering = ("name",)
+        verbose_name = "Expense category"
+        verbose_name_plural = "Expense categories"
         constraints = [models.UniqueConstraint(fields=("organization", "name"), name="expense_category_org_name_uniq")]
 
     def __str__(self):
