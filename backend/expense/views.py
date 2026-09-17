@@ -2,6 +2,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 import csv
 import io
+import json
 import os
 import re
 
@@ -18,7 +19,7 @@ from rest_framework.response import Response
 from authentication.models import Employee
 from authentication.permissions import HasActiveSubscription, IsManagerOrModerator
 from attendance.models import Attendance
-from .models import Expense, ExpenseCategory, Income
+from .models import Expense, ExpenseCategory, FinanceAuditLog, Income
 from .serializers import ExpenseCategorySerializer, ExpenseSerializer, IncomeSerializer
 
 
@@ -33,6 +34,17 @@ def _period_bounds(period):
 
 def _base_queryset(request):
     return Expense.objects.filter(organization=request.user.organization).select_related("recipient", "branch")
+
+
+def _audit(request, entity_type, entity_id, action, changes=None):
+    FinanceAuditLog.objects.create(
+        organization=request.user.organization,
+        actor=request.user,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        action=action,
+        changes=json.loads(json.dumps(changes or {}, default=str)),
+    )
 
 
 def _filtered_expenses(request):
@@ -94,6 +106,7 @@ def expense_create(request):
         created_by=request.user,
         source="direct",
     )
+    _audit(request, "expense", serializer.instance.pk, "create", serializer.validated_data)
     return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -107,11 +120,13 @@ def expense_detail(request, pk):
     if request.method == "GET":
         return Response(ExpenseSerializer(expense, context={"request": request}).data)
     if request.method == "DELETE":
+        _audit(request, "expense", expense.pk, "delete")
         expense.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
     serializer = ExpenseSerializer(expense, data=request.data, partial=True, context={"request": request})
     serializer.is_valid(raise_exception=True)
     serializer.save()
+    _audit(request, "expense", expense.pk, "update", serializer.validated_data)
     return Response(serializer.data)
 
 
@@ -124,6 +139,7 @@ def expense_categories(request):
     serializer = ExpenseCategorySerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     serializer.save(organization=request.user.organization)
+    _audit(request, "category", serializer.instance.pk, "create", serializer.validated_data)
     return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -211,6 +227,7 @@ def income_create(request):
     serializer = IncomeSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     serializer.save(organization=request.user.organization, branch=getattr(request.user, "branch", None), created_by=request.user, source="direct")
+    _audit(request, "income", serializer.instance.pk, "create", serializer.validated_data)
     return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 

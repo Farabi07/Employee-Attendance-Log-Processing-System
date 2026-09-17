@@ -5,6 +5,20 @@ from django.utils import timezone
 from authentication.models import Branch, Employee, Organization
 
 
+class FinanceAuditLog(models.Model):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="finance_audit_logs")
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="finance_audit_logs")
+    entity_type = models.CharField(max_length=30)
+    entity_id = models.PositiveBigIntegerField(null=True, blank=True)
+    action = models.CharField(max_length=20)
+    changes = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        indexes = [models.Index(fields=("organization", "created_at"))]
+
+
 class ExpenseCategory(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="expense_categories")
     name = models.CharField(max_length=80)

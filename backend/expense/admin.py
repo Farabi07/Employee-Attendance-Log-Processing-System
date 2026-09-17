@@ -1,6 +1,13 @@
 from django.contrib import admin
 
-from .models import Expense, ExpenseCategory
+from .models import Expense, ExpenseCategory, FinanceAuditLog
+
+
+@admin.register(FinanceAuditLog)
+class FinanceAuditLogAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "organization", "actor", "entity_type", "entity_id", "action")
+    list_filter = ("entity_type", "action", "created_at")
+    readonly_fields = ("created_at",)
 
 
 @admin.register(ExpenseCategory)
