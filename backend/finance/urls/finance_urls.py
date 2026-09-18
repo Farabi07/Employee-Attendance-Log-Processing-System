@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from finance.views import finance_views as views
 
 urlpatterns = [
     path("api/v1/expense/summary/", views.expense_summary),

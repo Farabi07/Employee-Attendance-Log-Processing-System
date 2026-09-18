@@ -20,6 +20,7 @@ from authentication.models import Employee
 from authentication.permissions import HasActiveSubscription, IsManagerOrModerator
 from .models import Expense, ExpenseCategory, FinanceAuditLog, Income
 from .serializers import ExpenseCategorySerializer, ExpenseSerializer, IncomeSerializer
+from ..filters import ExpenseFilter
 
 
 def _period_bounds(period):
@@ -57,6 +58,7 @@ def _ensure_category(organization, name):
 
 def _filtered_expenses(request):
     qs = _base_queryset(request)
+    qs = ExpenseFilter(request.query_params, queryset=qs).qs
     period = request.query_params.get("period")
     if period:
         start, end = _period_bounds(period)
@@ -102,7 +104,23 @@ def expense_summary(request):
 @permission_classes([IsManagerOrModerator, HasActiveSubscription])
 def expense_list(request):
     expenses = _filtered_expenses(request)
-    return Response({"expenses": ExpenseSerializer(expenses[:500], many=True).data})
+    total = expenses.count()
+    page = request.query_params.get("page")
+    size = request.query_params.get("size")
+    if page or size:
+        from commons.pagination import Pagination
+        pagination = Pagination()
+        pagination.page = page
+        pagination.size = size
+        expenses = pagination.paginate_data(expenses)
+        return Response({
+            "expenses": ExpenseSerializer(expenses, many=True).data,
+            "page": pagination.page,
+            "size": pagination.size,
+            "total_pages": pagination.total_pages,
+            "total_elements": total,
+        })
+    return Response({"expenses": ExpenseSerializer(expenses[:500], many=True).data, "total_elements": total})
 
 
 @api_view(["POST"])

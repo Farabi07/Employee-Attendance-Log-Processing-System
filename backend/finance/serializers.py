@@ -64,3 +64,4 @@ class IncomeSerializer(serializers.ModelSerializer):
         model = Income
         fields = ("id", "amount", "category", "description", "date", "source", "branch", "created_at")
         read_only_fields = ("id", "source", "branch", "created_at")
+

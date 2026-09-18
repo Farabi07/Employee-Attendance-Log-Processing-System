@@ -85,3 +85,4 @@ class Income(models.Model):
     class Meta:
         ordering = ("-date", "-id")
         indexes = [models.Index(fields=("organization", "date"))]
+
