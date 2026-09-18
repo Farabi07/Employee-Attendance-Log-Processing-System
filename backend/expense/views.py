@@ -18,7 +18,6 @@ from rest_framework.response import Response
 
 from authentication.models import Employee
 from authentication.permissions import HasActiveSubscription, IsManagerOrModerator
-from attendance.models import Attendance
 from .models import Expense, ExpenseCategory, FinanceAuditLog, Income
 from .serializers import ExpenseCategorySerializer, ExpenseSerializer, IncomeSerializer
 
@@ -47,6 +46,15 @@ def _audit(request, entity_type, entity_id, action, changes=None):
     )
 
 
+def _ensure_category(organization, name):
+    """Reuse a category case-insensitively, creating it when an import adds a new one."""
+    normalized = str(name).strip()
+    existing = ExpenseCategory.objects.filter(organization=organization, name__iexact=normalized).first()
+    if existing:
+        return existing
+    return ExpenseCategory.objects.create(organization=organization, name=normalized)
+
+
 def _filtered_expenses(request):
     qs = _base_queryset(request)
     period = request.query_params.get("period")
@@ -63,9 +71,7 @@ def _filtered_expenses(request):
 
 
 def _revenue(organization, start, end):
-    attendance = Attendance.objects.filter(employee__organization=organization, date__range=(start, end)).aggregate(total=Sum("earnings"))["total"] or Decimal("0")
-    income = Income.objects.filter(organization=organization, date__range=(start, end)).aggregate(total=Sum("amount"))["total"] or Decimal("0")
-    return attendance + income
+    return Income.objects.filter(organization=organization, date__range=(start, end)).aggregate(total=Sum("amount"))["total"] or Decimal("0")
 
 
 @api_view(["GET"])
@@ -75,6 +81,10 @@ def expense_summary(request):
     qs = _filtered_expenses(request).filter(date__range=(start, end))
     total = qs.aggregate(total=Sum("amount"))["total"] or Decimal("0")
     category_totals = qs.exclude(category="profit").values("category").annotate(total=Sum("amount")).order_by("-total")
+    sales_category_totals = Income.objects.filter(
+        organization=request.user.organization,
+        date__range=(start, end),
+    ).values("category").annotate(total=Sum("amount")).order_by("-total")
     revenue = _revenue(request.user.organization, start, end)
     return Response({
         "period": request.query_params.get("period", "monthly"),
@@ -84,6 +94,7 @@ def expense_summary(request):
         "total_expense": total,
         "profit": revenue - total,
         "categories": list(category_totals),
+        "sales_categories": list(sales_category_totals),
     })
 
 
@@ -190,6 +201,7 @@ def expense_import_excel(request):
                     raise ValueError(f"Row {line_number}: amount and category are required.")
                 if category == "profit":
                     raise ValueError(f"Row {line_number}: profit cannot be used as an expense category.")
+                category_ref = _ensure_category(request.user.organization, category)
                 recipient_id = row[headers["recipient_id"]] if "recipient_id" in headers else None
                 if recipient_id and not Employee.objects.filter(pk=recipient_id, organization=request.user.organization).exists():
                     raise ValueError(f"Row {line_number}: recipient is not in this store.")
@@ -199,6 +211,7 @@ def expense_import_excel(request):
                     recipient_id=recipient_id,
                     amount=amount,
                     category=category,
+                    category_ref=category_ref,
                     description=str(row[headers["description"]]).strip() if "description" in headers and row[headers["description"]] else "",
                     date=row[headers["date"]] if "date" in headers and row[headers["date"]] else timezone.localdate(),
                     source="excel",
@@ -243,51 +256,54 @@ def finance_workbook_import(request):
         expenses = []
         incomes = []
 
-        for line_number, row in enumerate(expense_rows, 2):
-            if not any(value is not None for value in row):
-                continue
-            amount = row[expense_headers["amount"]]
-            category = str(row[expense_headers["category"]]).strip().lower()
-            if not amount or not category:
-                raise ValueError(f"Expenses sheet row {line_number}: amount and category are required.")
-            if category == "profit":
-                raise ValueError(f"Expenses sheet row {line_number}: profit cannot be used as an expense category.")
-            recipient_id = row[expense_headers["recipient_id"]] if "recipient_id" in expense_headers else None
-            if recipient_id and not Employee.objects.filter(pk=recipient_id, organization=request.user.organization).exists():
-                raise ValueError(f"Expenses sheet row {line_number}: recipient is not in this store.")
-            expenses.append(Expense(
-                organization=request.user.organization,
-                branch=getattr(request.user, "branch", None),
-                recipient_id=recipient_id,
-                amount=amount,
-                category=category,
-                description=str(row[expense_headers["description"]]).strip() if "description" in expense_headers and row[expense_headers["description"]] else "",
-                vendor_name=str(row[expense_headers["vendor_name"]]).strip() if "vendor_name" in expense_headers and row[expense_headers["vendor_name"]] else "",
-                payment_method=str(row[expense_headers["payment_method"]]).strip() if "payment_method" in expense_headers and row[expense_headers["payment_method"]] else "cash",
-                date=row[expense_headers["date"]] if "date" in expense_headers and row[expense_headers["date"]] else timezone.localdate(),
-                source="excel",
-                created_by=request.user,
-            ))
-
-        for line_number, row in enumerate(sales_rows, 2):
-            if not any(value is not None for value in row):
-                continue
-            amount = row[sales_headers["amount"]]
-            category = str(row[sales_headers["category"]]).strip().lower()
-            if not amount or not category:
-                raise ValueError(f"Sales sheet row {line_number}: amount and category are required.")
-            incomes.append(Income(
-                organization=request.user.organization,
-                branch=getattr(request.user, "branch", None),
-                amount=amount,
-                category=category,
-                description=str(row[sales_headers["description"]]).strip() if "description" in sales_headers and row[sales_headers["description"]] else "",
-                date=row[sales_headers["date"]] if "date" in sales_headers and row[sales_headers["date"]] else timezone.localdate(),
-                source="excel",
-                created_by=request.user,
-            ))
-
         with transaction.atomic():
+            for line_number, row in enumerate(expense_rows, 2):
+                if not any(value is not None for value in row):
+                    continue
+                amount = row[expense_headers["amount"]]
+                category = str(row[expense_headers["category"]]).strip().lower()
+                if not amount or not category:
+                    raise ValueError(f"Expenses sheet row {line_number}: amount and category are required.")
+                if category == "profit":
+                    raise ValueError(f"Expenses sheet row {line_number}: profit cannot be used as an expense category.")
+                category_ref = _ensure_category(request.user.organization, category)
+                recipient_id = row[expense_headers["recipient_id"]] if "recipient_id" in expense_headers else None
+                if recipient_id and not Employee.objects.filter(pk=recipient_id, organization=request.user.organization).exists():
+                    raise ValueError(f"Expenses sheet row {line_number}: recipient is not in this store.")
+                expenses.append(Expense(
+                    organization=request.user.organization,
+                    branch=getattr(request.user, "branch", None),
+                    recipient_id=recipient_id,
+                    amount=amount,
+                    category=category,
+                    category_ref=category_ref,
+                    description=str(row[expense_headers["description"]]).strip() if "description" in expense_headers and row[expense_headers["description"]] else "",
+                    vendor_name=str(row[expense_headers["vendor_name"]]).strip() if "vendor_name" in expense_headers and row[expense_headers["vendor_name"]] else "",
+                    payment_method=str(row[expense_headers["payment_method"]]).strip() if "payment_method" in expense_headers and row[expense_headers["payment_method"]] else "cash",
+                    date=row[expense_headers["date"]] if "date" in expense_headers and row[expense_headers["date"]] else timezone.localdate(),
+                    source="excel",
+                    created_by=request.user,
+                ))
+
+            for line_number, row in enumerate(sales_rows, 2):
+                if not any(value is not None for value in row):
+                    continue
+                amount = row[sales_headers["amount"]]
+                category = str(row[sales_headers["category"]]).strip().lower()
+                if not amount or not category:
+                    raise ValueError(f"Sales sheet row {line_number}: amount and category are required.")
+                _ensure_category(request.user.organization, category)
+                incomes.append(Income(
+                    organization=request.user.organization,
+                    branch=getattr(request.user, "branch", None),
+                    amount=amount,
+                    category=category,
+                    description=str(row[sales_headers["description"]]).strip() if "description" in sales_headers and row[sales_headers["description"]] else "",
+                    date=row[sales_headers["date"]] if "date" in sales_headers and row[sales_headers["date"]] else timezone.localdate(),
+                    source="excel",
+                    created_by=request.user,
+                ))
+
             Expense.objects.bulk_create(expenses)
             Income.objects.bulk_create(incomes)
         return Response({"expenses_created": len(expenses), "sales_created": len(incomes)}, status=status.HTTP_201_CREATED)
@@ -323,6 +339,12 @@ def income_create(request):
 def income_list(request):
     start, end = _period_bounds(request.query_params.get("period", "monthly"))
     income = Income.objects.filter(organization=request.user.organization, date__range=(start, end))
+    if request.query_params.get("date_from"):
+        income = income.filter(date__gte=request.query_params["date_from"])
+    if request.query_params.get("date_to"):
+        income = income.filter(date__lte=request.query_params["date_to"])
+    if request.query_params.get("category"):
+        income = income.filter(category=request.query_params["category"])
     return Response({"income": IncomeSerializer(income[:500], many=True).data})
 
 
@@ -341,11 +363,16 @@ def income_import_excel(request):
         if missing:
             return Response({"detail": f"Missing columns: {', '.join(sorted(missing))}"}, status=status.HTTP_400_BAD_REQUEST)
         created = []
-        for row in rows[1:]:
-            if not any(value is not None for value in row):
-                continue
-            created.append(Income(organization=request.user.organization, branch=getattr(request.user, "branch", None), created_by=request.user, source="excel", amount=row[headers["amount"]], category=str(row[headers["category"]]).strip().lower(), description=str(row[headers["description"]]).strip() if "description" in headers and row[headers["description"]] else "", date=row[headers["date"]] if "date" in headers and row[headers["date"]] else timezone.localdate()))
-        Income.objects.bulk_create(created)
+        with transaction.atomic():
+            for row in rows[1:]:
+                if not any(value is not None for value in row):
+                    continue
+                category = str(row[headers["category"]]).strip().lower()
+                if not category:
+                    raise ValueError("Each sales row must include a category.")
+                _ensure_category(request.user.organization, category)
+                created.append(Income(organization=request.user.organization, branch=getattr(request.user, "branch", None), created_by=request.user, source="excel", amount=row[headers["amount"]], category=category, description=str(row[headers["description"]]).strip() if "description" in headers and row[headers["description"]] else "", date=row[headers["date"]] if "date" in headers and row[headers["date"]] else timezone.localdate()))
+            Income.objects.bulk_create(created)
         return Response({"created": len(created)}, status=status.HTTP_201_CREATED)
     except (ValueError, TypeError, KeyError) as exc:
         return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
