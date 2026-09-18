@@ -1,5 +1,5 @@
 import React from "react";
-import { BarChart3, ChevronRight, Receipt } from "lucide-react";
+import { BarChart3, ChevronRight, Receipt, ShoppingBag } from "lucide-react";
 import { T, fontBody, fontDisplay } from "../../theme";
 import Card from "../../components/Card";
 
@@ -7,6 +7,7 @@ export default function More({ onOpen }) {
   const items = [
     { key: "reports", title: "Reports", body: "Export attendance and timesheet data", icon: BarChart3 },
     { key: "expenses", title: "Business finance", body: "Track revenue, expenses and receipts", icon: Receipt },
+    { key: "products", title: "Products & catalog", body: "Manage menu items, prices, offers and availability", icon: ShoppingBag },
   ];
 
   return (

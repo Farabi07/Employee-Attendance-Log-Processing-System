@@ -128,6 +128,8 @@ export const endpoints = {
   expenseReceiptExtract: () => `/expense/api/v1/expense/receipt/extract/`,
   expenseCategories: () => `/expense/api/v1/expense/categories/`,
   expenseDetail: (id) => `/expense/api/v1/expense/${id}/`,
+  productsAll: () => `/expense/api/v1/business/products/`,
+  productDetail: (id) => `/expense/api/v1/business/products/${id}/`,
   incomeCreate: () => `/expense/api/v1/expense/income/create/`,
   incomeAll: (params = "") => `/expense/api/v1/expense/income/all/${params}`,
   incomeImportExcel: () => `/expense/api/v1/expense/income/import/excel/`,

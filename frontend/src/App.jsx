@@ -29,6 +29,7 @@ import ManagerPayroll from "./pages/manager/Payroll";
 import ManagerReports from "./pages/manager/Reports";
 import ManagerExpenses from "./pages/manager/Expenses";
 import ManagerMore from "./pages/manager/More";
+import ManagerProducts from "./pages/manager/Products";
 
 import Chat from "./pages/Chat";
 
@@ -124,6 +125,7 @@ function Shell() {
             {role === "manager" && active === "payroll" && <ManagerPayroll />}
             {role === "manager" && active === "reports" && <ManagerReports />}
             {role === "manager" && active === "expenses" && <ManagerExpenses />}
+            {role === "manager" && active === "products" && <ManagerProducts />}
             {role === "manager" && active === "more" && <ManagerMore onOpen={(key) => setActive(key)} />}
 
             {active === "chat" && <Chat />}
