@@ -5,10 +5,10 @@ from rest_framework.response import Response
 
 from commons.pagination import Pagination
 from finance.models import FinanceAuditLog
-from .filters import ProductFilter
-from .models import Product
-from .permissions import CanManageProducts
-from .serializers import ProductSerializer
+from ..filters import ProductFilter
+from ..models import Product
+from ..permissions import CanManageProducts
+from ..serializers import ProductSerializer
 
 
 def _audit(request, product_id, action, changes=None):

@@ -18,8 +18,8 @@ from rest_framework.response import Response
 
 from authentication.models import Employee
 from authentication.permissions import HasActiveSubscription, IsManagerOrModerator
-from .models import Expense, ExpenseCategory, FinanceAuditLog, Income
-from .serializers import ExpenseCategorySerializer, ExpenseSerializer, IncomeSerializer
+from ..models import Expense, ExpenseCategory, FinanceAuditLog, Income
+from ..serializers import ExpenseCategorySerializer, ExpenseSerializer, IncomeSerializer
 from ..filters import ExpenseFilter
 
 
