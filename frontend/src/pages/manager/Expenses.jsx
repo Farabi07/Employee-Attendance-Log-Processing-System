@@ -6,7 +6,8 @@ import { endpoints } from "../../lib/endpoints";
 import QrScannerModal from "../../components/QrScannerModal";
 import Card from "../../components/Card";
 
-const CATEGORIES = ["supplies", "rent", "utilities", "transport", "marketing", "salary", "other"];
+const CATEGORIES = ["raw_ingredients", "beverages", "packaging", "kitchen_supplies", "rent", "utilities", "employee_salary", "delivery_cost", "equipment_maintenance", "marketing", "other"];
+const SALES_CATEGORIES = ["food_menu", "coffee", "cold_beverages", "desserts", "combo_meal", "takeaway", "delivery_orders", "catering", "other"];
 const periods = ["daily", "monthly", "yearly"];
 
 function money(value) {
@@ -27,6 +28,8 @@ export default function ManagerExpenses() {
   const [summary, setSummary] = useState({});
   const [expenses, setExpenses] = useState([]);
   const [formOpen, setFormOpen] = useState(false);
+  const [formType, setFormType] = useState("expense");
+  const [categoryView, setCategoryView] = useState("expense");
   const [scannerOpen, setScannerOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [receiptScanning, setReceiptScanning] = useState(false);
@@ -36,21 +39,28 @@ export default function ManagerExpenses() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [customCategories, setCustomCategories] = useState([]);
-  const [form, setForm] = useState({ amount: "", category: "supplies", date: new Date().toISOString().slice(0, 10), description: "", vendor_name: "", payment_method: "cash", recipient_id: "", uploaded_receipt: null });
+  const [customSalesCategories, setCustomSalesCategories] = useState([]);
+  const [form, setForm] = useState({ amount: "", category: "raw_ingredients", date: new Date().toISOString().slice(0, 10), description: "", vendor_name: "", payment_method: "cash", recipient_id: "", uploaded_receipt: null });
 
   const load = useCallback(async () => {
     const filters = new URLSearchParams({ period });
     if (dateFrom) filters.set("date_from", dateFrom);
     if (dateTo) filters.set("date_to", dateTo);
     const query = `?${filters.toString()}`;
-    const [summaryResponse, listResponse, categoryResponse] = await Promise.all([
+    const [summaryResponse, listResponse, incomeResponse, categoryResponse] = await Promise.all([
       api.get(endpoints.expensesSummary(query)),
       api.get(endpoints.expensesAll(`${query}&size=500`)),
+      api.get(endpoints.incomeAll(query)),
       api.get(endpoints.expenseCategories()),
     ]);
     setSummary(summaryResponse || {});
-    setExpenses(listResponse?.expenses || []);
-    setCustomCategories((categoryResponse || []).filter((item) => item.name?.toLowerCase() !== "profit"));
+    setExpenses([
+      ...(listResponse?.expenses || []).map((item) => ({ ...item, entryType: "expense" })),
+      ...(incomeResponse?.income || []).map((item) => ({ ...item, entryType: "sales" })),
+    ].sort((a, b) => String(b.date).localeCompare(String(a.date))));
+    const categories = (categoryResponse || []).filter((item) => item.name?.toLowerCase() !== "profit");
+    setCustomCategories(categories);
+    setCustomSalesCategories(categories);
   }, [period, dateFrom, dateTo]);
 
   useEffect(() => {
@@ -64,15 +74,15 @@ export default function ManagerExpenses() {
     setSaving(true);
     try {
       const payload = { ...form, amount: Number(form.amount), recipient_id: form.recipient_id || null };
-      if (form.uploaded_receipt) {
+      if (formType === "expense" && form.uploaded_receipt) {
         const multipart = new FormData();
         Object.entries(payload).forEach(([key, value]) => { if (value !== undefined && value !== null) multipart.append(key, String(value)); });
         multipart.append("uploaded_receipt", form.uploaded_receipt);
-        await api.post(endpoints.expenseCreate(), multipart);
+        await api.post(formType === "sales" ? endpoints.incomeCreate() : endpoints.expenseCreate(), payload);
       } else {
-        await api.post(endpoints.expenseCreate(), payload);
+        await api.post(formType === "sales" ? endpoints.incomeCreate() : endpoints.expenseCreate(), payload);
       }
-      setForm({ amount: "", category: "supplies", date: new Date().toISOString().slice(0, 10), description: "", vendor_name: "", payment_method: "cash", recipient_id: "", uploaded_receipt: null });
+      setForm({ amount: "", category: formType === "sales" ? "food_menu" : "raw_ingredients", date: new Date().toISOString().slice(0, 10), description: "", vendor_name: "", payment_method: "cash", recipient_id: "", uploaded_receipt: null });
       setFormOpen(false);
       await load();
     } catch (error) {
@@ -137,10 +147,12 @@ export default function ManagerExpenses() {
     const name = newCategory.trim();
     if (!name) return;
     try {
-      await api.post(endpoints.expenseCategories(), { name });
+      await api.post(endpoints.expenseCategories(), { name, type: formType });
       const normalized = name.toLowerCase().replace(/\s+/g, "_");
       setNewCategory("");
-      setCustomCategories((current) => [...current, { id: `new-${normalized}`, name: normalized }]);
+      const next = { id: `new-${normalized}`, name: normalized };
+      if (formType === "sales") setCustomSalesCategories((current) => [...current, next]);
+      else setCustomCategories((current) => [...current, next]);
       update("category", normalized);
       window.alert("Category added. It is now selected for this expense.");
     } catch (error) {
@@ -153,7 +165,9 @@ export default function ManagerExpenses() {
     ...CATEGORIES,
     ...customCategories.map((item) => item.name?.toLowerCase()).filter((name) => name && name !== "profit"),
   ])];
-  const maxCategory = Math.max(...categories.map((item) => Number(item.total || 0)), 1);
+  const salesCategories = [...new Set([...SALES_CATEGORIES, ...customSalesCategories.map((item) => item.name?.toLowerCase()).filter(Boolean)])];
+  const categoryRows = categoryView === "sales" ? (Array.isArray(summary.sales_categories) ? summary.sales_categories : []) : categories;
+  const maxCategory = Math.max(...categoryRows.map((item) => Number(item.total || 0)), 1);
   const totalCategoryExpense = Number(summary.total_expense || 0);
   const metrics = [
     ["Revenue", summary.revenue, T.navy],
@@ -207,7 +221,8 @@ export default function ManagerExpenses() {
             <input style={styles.input} type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} aria-label="To date" />
           </div>
           <div style={styles.actions}>
-            <button style={styles.action} onClick={() => setFormOpen(true)}><Plus size={14} /> Add expense</button>
+            <button style={styles.action} onClick={() => { setFormType("expense"); setCategoryView("expense"); update("category", "raw_ingredients"); setFormOpen(true); }}><Plus size={14} /> Add expense</button>
+            <button style={styles.action} onClick={() => { setFormType("sales"); setCategoryView("sales"); update("category", "food_menu"); setFormOpen(true); }}><Plus size={14} /> Add sales</button>
             <button style={styles.action} onClick={() => setScannerOpen(true)}><Camera size={14} /> Scan recipient</button>
             <button style={styles.action} onClick={() => setReceiptOptionsOpen((open) => !open)}><Receipt size={14} /> {receiptScanning ? "Reading receipt..." : "Receipt upload / scan"}</button>
             {receiptOptionsOpen && <div style={styles.actions}><label style={styles.action}>Upload receipt<input type="file" accept="image/*" onChange={scanReceipt} hidden /></label><label style={styles.action}>Scan with camera<input type="file" accept="image/*" capture="environment" onChange={scanReceipt} hidden /></label></div>}
@@ -218,31 +233,31 @@ export default function ManagerExpenses() {
       </div>
 
       {formOpen && <Card style={{ ...styles.card, marginBottom: 14 }}>
-        <h3 style={styles.sectionTitle}>Add expense</h3>
+        <h3 style={styles.sectionTitle}>Add {formType}</h3>
         <form onSubmit={save} style={styles.form}>
           <label style={styles.field}><span style={styles.label}>Amount</span><input style={styles.input} type="number" min="0.01" step="0.01" value={form.amount} onChange={(e) => update("amount", e.target.value)} required /></label>
           <label style={styles.field}><span style={styles.label}>Date</span><input style={styles.input} type="date" value={form.date} onChange={(e) => update("date", e.target.value)} required /></label>
-          <label style={styles.field}><span style={styles.label}>Category</span><select style={styles.input} value={form.category} onChange={(e) => update("category", e.target.value)}>{expenseCategories.map((item) => <option key={item} value={item}>{item.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase())}</option>)}</select></label>
-          <label style={styles.field}><span style={styles.label}>Recipient ID (optional)</span><input style={styles.input} value={form.recipient_id} onChange={(e) => update("recipient_id", e.target.value)} placeholder="Scan or enter employee ID" /></label>
-          <label style={{ ...styles.field, ...styles.fieldFull }}><span style={styles.label}>Description</span><input style={styles.input} value={form.description} onChange={(e) => update("description", e.target.value)} placeholder="What was this expense for?" /></label>
-          <label style={styles.field}><span style={styles.label}>Vendor</span><input style={styles.input} value={form.vendor_name} onChange={(e) => update("vendor_name", e.target.value)} placeholder="Vendor name" /></label>
-          <label style={styles.field}><span style={styles.label}>Payment method</span><select style={styles.input} value={form.payment_method} onChange={(e) => update("payment_method", e.target.value)}><option value="cash">Cash</option><option value="card">Card</option><option value="bank_transfer">Bank transfer</option><option value="mobile_wallet">Mobile wallet</option><option value="other">Other</option></select></label>
-          <div style={{ ...styles.field, ...styles.fieldFull, display: "flex", flexDirection: "row" }}><input style={{ ...styles.input, flex: 1 }} value={newCategory} onChange={(e) => setNewCategory(e.target.value)} placeholder="New category name" /><button type="button" style={styles.action} onClick={addCategory}>Add category</button></div>
-          <div style={{ ...styles.fieldFull, display: "flex", gap: 8, flexDirection: "row" }}><button style={styles.submit} disabled={saving}>{saving ? "Saving…" : "Save expense"}</button><button type="button" style={styles.cancel} onClick={() => setFormOpen(false)}>Cancel</button></div>
+          <label style={styles.field}><span style={styles.label}>Category</span><select style={styles.input} value={form.category} onChange={(e) => update("category", e.target.value)}>{(formType === "sales" ? salesCategories : expenseCategories).map((item) => <option key={item} value={item}>{item.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase())}</option>)}</select></label>
+          {formType === "expense" && <label style={styles.field}><span style={styles.label}>Recipient ID (optional)</span><input style={styles.input} value={form.recipient_id} onChange={(e) => update("recipient_id", e.target.value)} placeholder="Scan or enter employee ID" /></label>}
+          <label style={{ ...styles.field, ...styles.fieldFull }}><span style={styles.label}>Description</span><input style={styles.input} value={form.description} onChange={(e) => update("description", e.target.value)} placeholder={`What was this ${formType === "sales" ? "sale" : "expense"} for?`} /></label>
+          {formType === "expense" && <><label style={styles.field}><span style={styles.label}>Vendor</span><input style={styles.input} value={form.vendor_name} onChange={(e) => update("vendor_name", e.target.value)} placeholder="Vendor name" /></label><label style={styles.field}><span style={styles.label}>Payment method</span><select style={styles.input} value={form.payment_method} onChange={(e) => update("payment_method", e.target.value)}><option value="cash">Cash</option><option value="card">Card</option><option value="bank_transfer">Bank transfer</option><option value="mobile_wallet">Mobile wallet</option><option value="other">Other</option></select></label></>}
+          <div style={{ ...styles.field, ...styles.fieldFull, display: "flex", flexDirection: "row" }}><input style={{ ...styles.input, flex: 1 }} value={newCategory} onChange={(e) => setNewCategory(e.target.value)} placeholder={`New ${formType} category`} /><button type="button" style={styles.action} onClick={addCategory}>Add category</button></div>
+          <div style={{ ...styles.fieldFull, display: "flex", gap: 8, flexDirection: "row" }}><button style={styles.submit} disabled={saving}>{saving ? "Saving…" : `Save ${formType}`}</button><button type="button" style={styles.cancel} onClick={() => setFormOpen(false)}>Cancel</button></div>
         </form>
       </Card>}
 
       <div style={styles.grid}>
         <Card style={styles.card}>
           <h3 style={styles.sectionTitle}><Receipt size={16} style={{ verticalAlign: "middle", marginRight: 6 }} />By category</h3>
-          {categories.length ? categories.map((item) => {
+          <div style={styles.tabs}><button style={{ ...styles.tab, ...(categoryView === "expense" ? styles.tabActive : {}) }} onClick={() => setCategoryView("expense")}>Expenses</button><button style={{ ...styles.tab, ...(categoryView === "sales" ? styles.tabActive : {}) }} onClick={() => setCategoryView("sales")}>Sales</button></div>
+          {categoryRows.length ? categoryRows.map((item) => {
             const percentage = totalCategoryExpense > 0 ? (Number(item.total || 0) / totalCategoryExpense) * 100 : 0;
             return <div key={item.category} style={styles.category}><span style={styles.categoryName}>{item.category.replaceAll("_", " ")}</span><div style={styles.barTrack}><div style={{ ...styles.bar, width: `${Math.max(4, Number(item.total) / maxCategory * 100)}%` }} /></div><span style={styles.categoryValue}>{money(item.total)} · {percentage.toFixed(1)}%</span></div>;
           }) : <p style={styles.muted}>No category data for this period.</p>}
         </Card>
         <Card style={styles.card}>
           <h3 style={styles.sectionTitle}><CalendarDays size={16} style={{ verticalAlign: "middle", marginRight: 6 }} />Recent expenses</h3>
-          {expenses.length ? expenses.map((item) => <div key={item.id} style={styles.row}><div style={styles.rowTop}><span style={styles.rowName}>{item.description || item.category || "Expense"}</span><span style={styles.rowAmount}>-{money(item.amount)}</span></div><div style={styles.rowMeta}>{item.date} · {item.category}{item.recipient ? ` · ${item.recipient.first_name} ${item.recipient.last_name}` : ""}</div></div>) : <p style={styles.muted}>No expenses recorded for this period.</p>}
+          {expenses.length ? expenses.map((item) => <div key={`${item.entryType}-${item.id}`} style={styles.row}><div style={styles.rowTop}><span style={styles.rowName}>{item.description || item.category || (item.entryType === "sales" ? "Sales" : "Expense")}</span><span style={{ ...styles.rowAmount, color: item.entryType === "sales" ? T.tealDeep : T.coral }}>{item.entryType === "sales" ? "+" : "-"}{money(item.amount)}</span></div><div style={styles.rowMeta}>{item.date} · {item.category}{item.recipient ? ` · ${item.recipient.first_name} ${item.recipient.last_name}` : ""}</div></div>) : <p style={styles.muted}>No finance activity recorded for this period.</p>}
         </Card>
       </div>
       {scannerOpen && <QrScannerModal title="Scan expense recipient" onClose={() => setScannerOpen(false)} onToken={(value) => { update("recipient_id", scannedRecipient(value)); setScannerOpen(false); setFormOpen(true); }} />}
