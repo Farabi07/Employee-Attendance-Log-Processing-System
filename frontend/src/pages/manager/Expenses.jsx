@@ -35,6 +35,7 @@ export default function ManagerExpenses() {
   const [receiptScanning, setReceiptScanning] = useState(false);
   const [saving, setSaving] = useState(false);
   const [receiptOptionsOpen, setReceiptOptionsOpen] = useState(false);
+  const [showAllActivity, setShowAllActivity] = useState(false);
   const [newCategory, setNewCategory] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -207,6 +208,8 @@ export default function ManagerExpenses() {
     rowName: { fontFamily: fontBody, color: T.ink, fontSize: 13 },
     rowAmount: { fontFamily: fontMono, color: T.coral, fontSize: 13 },
     rowMeta: { fontFamily: fontMono, color: T.faint, fontSize: 11, marginTop: 4 },
+    recentList: { maxHeight: 360, overflowY: "auto" },
+    seeMore: { display: "block", margin: "10px auto 0", padding: "6px 12px", border: "none", background: "transparent", color: T.tealDeep, fontFamily: fontBody, fontWeight: 600, cursor: "pointer" },
   }), [T]);
 
   return (
@@ -257,7 +260,7 @@ export default function ManagerExpenses() {
         </Card>
         <Card style={styles.card}>
           <h3 style={styles.sectionTitle}><CalendarDays size={16} style={{ verticalAlign: "middle", marginRight: 6 }} />Recent expenses</h3>
-          {expenses.length ? expenses.map((item) => <div key={`${item.entryType}-${item.id}`} style={styles.row}><div style={styles.rowTop}><span style={styles.rowName}>{item.description || item.category || (item.entryType === "sales" ? "Sales" : "Expense")}</span><span style={{ ...styles.rowAmount, color: item.entryType === "sales" ? T.tealDeep : T.coral }}>{item.entryType === "sales" ? "+" : "-"}{money(item.amount)}</span></div><div style={styles.rowMeta}>{item.date} · {item.category}{item.recipient ? ` · ${item.recipient.first_name} ${item.recipient.last_name}` : ""}</div></div>) : <p style={styles.muted}>No finance activity recorded for this period.</p>}
+          {expenses.length ? <><div style={showAllActivity ? styles.recentList : undefined}>{(showAllActivity ? expenses : expenses.slice(0, 5)).map((item) => <div key={`${item.entryType}-${item.id}`} style={styles.row}><div style={styles.rowTop}><span style={styles.rowName}>{item.description || item.category || (item.entryType === "sales" ? "Sales" : "Expense")}</span><span style={{ ...styles.rowAmount, color: item.entryType === "sales" ? T.tealDeep : T.coral }}>{item.entryType === "sales" ? "+" : "-"}{money(item.amount)}</span></div><div style={styles.rowMeta}>{item.date} · {item.category}{item.recipient ? ` · ${item.recipient.first_name} ${item.recipient.last_name}` : ""}</div></div>)}</div>{expenses.length > 5 && <button type="button" style={styles.seeMore} onClick={() => setShowAllActivity((visible) => !visible)}>{showAllActivity ? "Show less" : `See more (${expenses.length - 5})`}</button>}</> : <p style={styles.muted}>No finance activity recorded for this period.</p>}
         </Card>
       </div>
       {scannerOpen && <QrScannerModal title="Scan expense recipient" onClose={() => setScannerOpen(false)} onToken={(value) => { update("recipient_id", scannedRecipient(value)); setScannerOpen(false); setFormOpen(true); }} />}
